@@ -8,11 +8,12 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
     "editor",
     "Inspect the s&box editor bridge status and active editor context.",
     {
-      action: z.enum(["status", "context"]).describe("The editor action to run.")
+      action: z.enum(["status", "context", "get_selection", "set_selection"]).describe("The editor action to run."),
+      ids: z.array(z.string()).optional().describe("GameObject ids to select when action is set_selection.")
     },
-    async ({ action }) => {
-      const bridgeAction = action === "status" ? "bridge.status" : "editor.context";
-      return asJsonText(await bridge.send(bridgeAction));
+    async ({ action, ...payload }) => {
+      const bridgeAction = action === "status" ? "bridge.status" : `editor.${action}`;
+      return asJsonText(await bridge.send(bridgeAction, payload));
     }
   );
 }

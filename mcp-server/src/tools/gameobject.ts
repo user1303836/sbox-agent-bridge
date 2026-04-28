@@ -9,14 +9,35 @@ const vector3Schema = z.object({
   z: z.number()
 });
 
+const rotationSchema = z.union([
+  z.object({
+    pitch: z.number().optional(),
+    yaw: z.number().optional(),
+    roll: z.number().optional()
+  }),
+  z.object({
+    x: z.number(),
+    y: z.number(),
+    z: z.number(),
+    w: z.number()
+  })
+]);
+
 export function registerGameObjectTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
     "gameobject",
     "Perform small, undoable GameObject mutations in the active s&box editor scene.",
     {
-      action: z.enum(["create"]).describe("The GameObject action to run."),
-      name: z.string().optional().describe("Name for a newly created GameObject."),
-      position: vector3Schema.optional().describe("Optional world position for the new GameObject.")
+      action: z
+        .enum(["get", "create", "rename", "set_transform", "set_enabled"])
+        .describe("The GameObject action to run."),
+      id: z.string().optional().describe("Target GameObject id for read or mutation actions."),
+      name: z.string().optional().describe("Name for create or rename actions."),
+      makeUnique: z.boolean().optional().describe("Make the final GameObject name unique when renaming."),
+      enabled: z.boolean().optional().describe("Enabled state for set_enabled."),
+      position: vector3Schema.optional().describe("Optional world position."),
+      rotation: rotationSchema.optional().describe("Optional world rotation, either Euler degrees or quaternion."),
+      scale: vector3Schema.optional().describe("Optional world scale.")
     },
     async ({ action, ...payload }) => {
       return asJsonText(await bridge.send(`gameobject.${action}`, payload));

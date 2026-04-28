@@ -7,8 +7,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "ci": "npm run check && npm run build",
-    "dev": "tsx src/index.ts"
+    "ci": "npm run check && npm test && npm run build",
+    "dev": "tsx src/index.ts",
+    "test": "tsx --test test/bridge-client.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",

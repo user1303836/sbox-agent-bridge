@@ -36,14 +36,21 @@ Errors use the same envelope:
 }
 ```
 
-## Initial Actions
+## Actions
 
 - `bridge.status`
 - `editor.context`
+- `editor.get_selection`
+- `editor.set_selection`
 - `scene.summary`
 - `scene.hierarchy`
 - `scene.find`
+- `scene.details`
+- `gameobject.get`
 - `gameobject.create`
+- `gameobject.rename`
+- `gameobject.set_transform`
+- `gameobject.set_enabled`
 
 ## Mutation Rule
 

@@ -96,6 +96,18 @@ internal static class SceneHandlers
 		} );
 	}
 
+	public static BridgeResponse Details( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Scene object details read",
+			verified = HandlerUtil.DescribeGameObject( go )
+		} );
+	}
+
 	private static System.Collections.Generic.IEnumerable<object> BuildNode( GameObject go, bool includeDisabled, int maxDepth, int depth )
 	{
 		if ( !includeDisabled && !go.Enabled )

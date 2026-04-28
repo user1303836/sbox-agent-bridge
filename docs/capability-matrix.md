@@ -19,12 +19,12 @@ Status meanings:
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
 | Bridge status | `bridge.status` | `editor` / `status` | Verified | Returns running state, IPC root, active scene, play state. |
-| Editor context | `editor.context` | `editor` / `context` | Implemented | Needs MCP end-to-end verification. |
+| Editor context | `editor.context` | `editor` / `context` | Verified | Direct file-IPC read verified with selected GameObject details. |
 | Save scene | `editor.save_scene` | TBD | Planned | Should call active session save and verify dirty state. |
 | Undo | `editor.undo` | TBD | Planned | Need verify editor undo API entry point. |
 | Redo | `editor.redo` | TBD | Planned | Need verify editor redo API entry point. |
-| Selection read | `editor.get_selection` | TBD | Planned | Important before mutating selected objects. |
-| Selection set | `editor.set_selection` | TBD | Planned | Should accept object ids only. |
+| Selection read | `editor.get_selection` | `editor` / `get_selection` | Verified | Returns typed selection entries; GameObject selection verified. |
+| Selection set | `editor.set_selection` | `editor` / `set_selection` | Verified | Accepts GameObject ids only; verified with read-back count. |
 | Play mode start | `editor.play` | TBD | Planned | Use active scene/session APIs. |
 | Play mode stop | `editor.stop` | TBD | Planned | Keep runtime/editor state separate. |
 | Recent logs | `editor.logs` | TBD | Planned | Need reliable editor log capture path. |
@@ -36,18 +36,19 @@ Status meanings:
 | Scene summary | `scene.summary` | `scene` / `summary` | Verified | Returns object/component counts from active scene. |
 | Scene hierarchy | `scene.hierarchy` | `scene` / `hierarchy` | Implemented | Needs MCP end-to-end verification. |
 | Find GameObjects | `scene.find` | `scene` / `find` | Verified | Verified by finding a created object. |
-| Object details | `scene.details` | TBD | Planned | Should include transform, parent, children, components, tags. |
+| Object details | `scene.details` | `scene` / `details` | Verified | Includes id, parent, enabled/active state, transforms, components, child count. |
 | Find in radius | `scene.find_in_radius` | TBD | Planned | Useful for spatial workflows. |
 
 ## GameObjects
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
+| Read GameObject | `gameobject.get` | `gameobject` / `get` | Verified | Id-targeted read returning the same detail shape as `scene.details`. |
 | Create GameObject | `gameobject.create` | `gameobject` / `create` | Verified | Uses `SceneEditorSession.Active.Scene.CreateObject(true)` and verifies via read-back. |
 | Destroy GameObject | `gameobject.destroy` | TBD | Planned | Must use undo scope and id targeting. |
-| Rename GameObject | `gameobject.rename` | TBD | Planned | Verify unique-name behavior. |
-| Set transform | `gameobject.set_transform` | TBD | Planned | Position, rotation, scale; verify exact read-back. |
-| Enable/disable | `gameobject.set_enabled` | TBD | Planned | Include disabled subtree behavior in tests. |
+| Rename GameObject | `gameobject.rename` | `gameobject` / `rename` | Verified | Id-targeted, undo scoped, unique-name default verified by read-back. |
+| Set transform | `gameobject.set_transform` | `gameobject` / `set_transform` | Verified | World position, Euler/quaternion rotation input, and world scale; verified by read-back. |
+| Enable/disable | `gameobject.set_enabled` | `gameobject` / `set_enabled` | Verified | Verified false and true read-back on a live object. |
 | Reparent | `gameobject.reparent` | TBD | Planned | Preserve world transform by default. |
 | Duplicate | `gameobject.duplicate` | TBD | Planned | Return created id and source id. |
 
@@ -76,7 +77,8 @@ Status meanings:
 | Capability | Status | Notes |
 |---|---|---|
 | MCP TypeScript build | Verified | `npm run build` passes locally. |
-| CI MCP build | Implemented | GitHub Actions workflow added. |
+| MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
+| CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
-| Live editor smoke tests | Planned | Needs script or documented manual flow. |
+| Live editor smoke tests | Verified | Manual direct file-IPC flow verified core GameObject edits on 2026-04-28. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

@@ -31,6 +31,8 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `Active`
 - `Scene`
 - `Selection`
+- `GetSelection()`
+- `PushUndoSelection()`
 - `IsPlaying`
 - `SetPlaying(Scene scene)`
 - `StopPlaying()`
@@ -57,11 +59,40 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `Id`
 - `Name`
 - `Enabled`
+- `Active`
+- `Parent`
 - `Children`
+- `LocalPosition`
+- `LocalRotation`
+- `LocalScale`
 - `WorldPosition`
 - `WorldRotation`
 - `WorldScale`
 - `Components`
+- `MakeNameUnique()`
+
+`Sandbox.Scene`:
+
+- `Directory`
+- `CreateObject(bool enabled)`
+
+`Sandbox.GameObjectDirectory`:
+
+- `FindByGuid(Guid guid)`
+
+`Sandbox.SelectionSystem`:
+
+- `Clear()`
+- `Add(object obj)`
+- `Set(object obj)`
+- `Remove(object obj)`
+- `Count`
+
+`Rotation`:
+
+- `From(float pitch, float yaw, float roll)`
+- `Angles()`
+- `x`, `y`, `z`, `w`
 
 `Sandbox.ComponentList`:
 

@@ -13,10 +13,11 @@ GitHub Actions currently verifies:
 
 - MCP server dependencies install with `npm ci`.
 - TypeScript typecheck passes with `npm run check`.
+- Bridge-client file IPC tests pass with `npm test`.
 - MCP server builds with `npm run build`.
 - JSON metadata and `.sbproj` files parse as valid JSON.
 
-These checks catch broken MCP code and malformed metadata. They do not prove that the editor bridge compiles in s&box.
+These checks catch broken MCP code, malformed metadata, and regressions in the request/response file-IPC client. They do not prove that the editor bridge compiles in s&box.
 
 ## Local MCP Checks
 
@@ -24,6 +25,7 @@ These checks catch broken MCP code and malformed metadata. They do not prove tha
 cd mcp-server
 npm ci
 npm run check
+npm test
 npm run build
 ```
 
@@ -55,6 +57,19 @@ YourSboxProject/Libraries/sbox_agent_bridge
 8. Test one mutation such as `gameobject.create`.
 9. Verify the mutation through a separate read action such as `scene.find`.
 10. Confirm the mutation is visible and undoable in the editor.
+
+For core scene editing changes, also verify this direct file-IPC chain:
+
+1. `gameobject.create`
+2. `gameobject.rename`
+3. `gameobject.set_transform`
+4. `gameobject.set_enabled` false, then true
+5. `editor.set_selection`
+6. `editor.get_selection`
+7. `scene.details`
+8. `gameobject.get`
+
+This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 
 ## MCP End-To-End Checks
 
