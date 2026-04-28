@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "ci": "npm run check && npm run build",
     "dev": "tsx src/index.ts"
   },
   "dependencies": {

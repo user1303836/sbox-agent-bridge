@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  mcp-server:
+    name: MCP server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+  metadata:
+    name: Metadata and JSON
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JSON-like files
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          roots = [pathlib.Path("schemas"), pathlib.Path("editor"), pathlib.Path("mcp-server")]
+          failures = []
+
+          for root in roots:
+              for path in root.rglob("*"):
+                  if any(part in {".git", "node_modules", "dist"} for part in path.parts):
+                      continue
+                  if path.suffix not in {".json", ".sbproj"}:
+                      continue
+                  try:
+                      json.loads(path.read_text(encoding="utf-8-sig"))
+                      print(f"ok {path}")
+                  except Exception as exc:
+                      failures.append(f"{path}: {exc}")
+
+          if failures:
+              print("\n".join(failures), file=sys.stderr)
+              sys.exit(1)
+          PY

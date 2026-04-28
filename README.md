@@ -25,6 +25,16 @@ Tested against a fresh minimal s&box project on 2026-04-28:
 
 This means the basic loop works: external process -> bridge request file -> s&box editor frame pump -> editor scene mutation -> verified response file.
 
+## Project Docs
+
+- [Roadmap](docs/roadmap.md)
+- [Capability Matrix](docs/capability-matrix.md)
+- [Testing Strategy](docs/testing.md)
+- [Architecture](docs/architecture.md)
+- [Protocol](docs/protocol.md)
+- [Verified s&box APIs](docs/verified-sbox-apis.md)
+- [Contributing](CONTRIBUTING.md)
+
 ## Repository Layout
 
 ```text
@@ -71,13 +81,7 @@ That does not mean one unsafe "do anything" tool. The bridge should grow as a ma
 
 ## Near-Term Roadmap
 
-1. Add `gameobject.destroy`, `rename`, `set_transform`, `set_enabled`, `reparent`, and selection support.
-2. Add component read/write: list component types, add/remove components, get/set public properties.
-3. Add editor control: save scene, play/stop, undo/redo, frame selection, recent logs.
-4. Add asset queries: browse/search assets, inspect prefabs, instantiate prefab.
-5. Add compile/hotload diagnostics if s&box exposes reliable editor log/error access.
-6. Add screenshots or viewport capture once the editor API path is verified.
-7. Add MCP integration tests with fake bridge responses plus live smoke-test scripts for a running editor.
+The living plan is tracked in [docs/roadmap.md](docs/roadmap.md), and implementation status is tracked in [docs/capability-matrix.md](docs/capability-matrix.md).
 
 ## Local Development
 
@@ -88,6 +92,8 @@ cd mcp-server
 npm install
 npm run build
 ```
+
+CI runs `npm ci`, `npm run check`, `npm run build`, and JSON metadata validation. Live s&box editor behavior still needs local smoke testing; see [docs/testing.md](docs/testing.md).
 
 Example MCP config after building:
 
