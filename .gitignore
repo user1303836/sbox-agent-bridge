@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.DS_Store
+Thumbs.db
+
+# s&box/editor local output
+.vs/
+.idea/
+bin/
+obj/
+Generated/
+logs/
+
+# Local IPC scratch
+.sbox-agent-bridge/

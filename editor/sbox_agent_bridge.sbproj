@@ -1,0 +1,34 @@
+{
+  "Title": "sbox Agent Bridge",
+  "Type": "library",
+  "Org": "local",
+  "Ident": "sbox_agent_bridge",
+  "Schema": 1,
+  "Description": "Tiny editor bridge for MCP-capable agents to inspect and carefully operate the s&box editor.",
+  "IncludeSourceFiles": true,
+  "Resources": null,
+  "PackageReferences": [],
+  "EditorReferences": null,
+  "Mounts": null,
+  "IsStandaloneOnly": false,
+  "Metadata": {
+    "Summary": "Experimental local bridge for agent-assisted s&box editor workflows",
+    "Public": true,
+    "Tags": "ai,mcp,editor,bridge,automation,agent",
+    "Compiler": {
+      "RootNamespace": "Sandbox",
+      "DefineConstants": "SANDBOX",
+      "NoWarn": "1701;1702;1591;",
+      "WarningsAsErrors": "",
+      "TreatWarningsAsErrors": false,
+      "Nullables": false,
+      "ReleaseMode": "Debug",
+      "AssemblyReferences": [],
+      "ReplacementDirectives": {
+        ".Server.cs": "SERVER"
+      },
+      "IgnoreFolders": [],
+      "DistinctAssemblyReferences": []
+    }
+  }
+}
