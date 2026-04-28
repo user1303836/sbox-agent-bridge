@@ -23,6 +23,7 @@ Tested against a fresh minimal s&box project on 2026-04-28:
 - The first mutation, `gameobject.create`, created a GameObject in `SceneEditorSession.Active.Scene`.
 - The created object was verified through a follow-up `scene.find` read-back.
 - Core scene editing actions were verified through direct file IPC: `editor.context`, `editor.get_selection`, `editor.set_selection`, `scene.details`, `gameobject.get`, `gameobject.rename`, `gameobject.set_transform`, and `gameobject.set_enabled`.
+- Extended scene editing actions were verified through direct file IPC: `editor.undo`, `editor.redo`, `editor.frame_object`, `gameobject.destroy`, `gameobject.duplicate`, and `gameobject.reparent`.
 
 This means the basic loop works: external process -> bridge request file -> s&box editor frame pump -> editor scene mutation -> verified response file.
 
@@ -34,6 +35,7 @@ This means the basic loop works: external process -> bridge request file -> s&bo
 - [Architecture](docs/architecture.md)
 - [Protocol](docs/protocol.md)
 - [Verified s&box APIs](docs/verified-sbox-apis.md)
+- [Prior Art](docs/prior-art.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Repository Layout
@@ -61,10 +63,13 @@ Default IPC root:
 ## Initial Tool Surface
 
 - `editor`: `status`, `context`, `get_selection`, `set_selection`
+- `editor`: `save_scene`, `undo`, `redo`, `frame_object`
 - `scene`: `summary`, `hierarchy`, `find`, `details`
-- `gameobject`: `get`, `create`, `rename`, `set_transform`, `set_enabled`
+- `gameobject`: `get`, `create`, `rename`, `set_transform`, `set_enabled`, `destroy`, `duplicate`, `reparent`
 
 Every mutation should return a read-back `verified` payload. If a mutation cannot verify its own result, callers should treat it as incomplete.
+
+`gameobject.duplicate` is currently a shallow, scene-attached duplicate: it copies name, enabled state, transform, and parent. Component and child cloning are tracked as future work under the component/prefab milestones.
 
 ## Capability Goal
 

@@ -142,6 +142,16 @@ internal static class HandlerUtil
 		return RequireGameObjectById( scene, id, propertyName );
 	}
 
+	public static GameObject? GetOptionalGameObject( Scene scene, JsonElement payload, string propertyName = "parentId" )
+	{
+		var id = GetString( payload, propertyName );
+
+		if ( string.IsNullOrWhiteSpace( id ) )
+			return null;
+
+		return RequireGameObjectById( scene, id, propertyName );
+	}
+
 	public static GameObject RequireGameObjectById( Scene scene, string id, string propertyName = "id" )
 	{
 		if ( string.IsNullOrWhiteSpace( id ) )
@@ -156,6 +166,18 @@ internal static class HandlerUtil
 			throw new InvalidOperationException( $"No active GameObject found for id '{id}'." );
 
 		return go;
+	}
+
+	public static object DescribeDestroyedGameObject( Scene scene, string id )
+	{
+		var exists = Guid.TryParse( id, out var guid ) && scene.Directory.FindByGuid( guid ) is { IsValid: true, IsDestroyed: false };
+
+		return new
+		{
+			id,
+			exists,
+			destroyed = !exists
+		};
 	}
 
 	public static string GetRequiredString( JsonElement payload, string name )

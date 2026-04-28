@@ -37,7 +37,9 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `SetPlaying(Scene scene)`
 - `StopPlaying()`
 - `Save(bool saveAs)`
+- `FrameTo(BBox box)`
 - `UndoScope(string name)`
+- `UndoSystem`
 
 `Sandbox.GameTask`:
 
@@ -70,11 +72,15 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `WorldScale`
 - `Components`
 - `MakeNameUnique()`
+- `SetParent(GameObject value, bool keepWorldPosition)`
+- `Destroy()`
+- `GetBounds()`
 
 `Sandbox.Scene`:
 
 - `Directory`
 - `CreateObject(bool enabled)`
+- `ProcessDeletes()`
 
 `Sandbox.GameObjectDirectory`:
 
@@ -93,6 +99,16 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `From(float pitch, float yaw, float roll)`
 - `Angles()`
 - `x`, `y`, `z`, `w`
+
+`BBox`:
+
+- `Center`
+- `Size`
+
+`Sandbox.Helpers.UndoSystem`:
+
+- `Undo()`
+- `Redo()`
 
 `Sandbox.ComponentList`:
 

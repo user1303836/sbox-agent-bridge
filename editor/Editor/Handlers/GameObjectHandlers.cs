@@ -116,4 +116,105 @@ internal static class GameObjectHandlers
 			verified = HandlerUtil.DescribeGameObject( go )
 		} );
 	}
+
+	public static BridgeResponse Destroy( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
+		var id = go.Id.ToString();
+		var previous = HandlerUtil.DescribeGameObject( go );
+
+		using ( session.UndoScope( "Agent Bridge: Destroy GameObject" ).WithGameObjectDestructions( go ).Push() )
+		{
+			go.Destroy();
+		}
+
+		session.Scene.ProcessDeletes();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "GameObject destroyed",
+			previous,
+			verified = HandlerUtil.DescribeDestroyedGameObject( session.Scene, id )
+		} );
+	}
+
+	public static BridgeResponse Duplicate( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var source = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
+		var name = HandlerUtil.GetString( request.Payload, "name" );
+		var position = HandlerUtil.GetVector3( request.Payload, "position" );
+		var offset = HandlerUtil.GetVector3( request.Payload, "offset" );
+		GameObject clone;
+
+		using ( session.UndoScope( "Agent Bridge: Duplicate GameObject" ).WithGameObjectCreations().Push() )
+		{
+			clone = session.Scene.CreateObject( source.Enabled );
+
+			if ( string.IsNullOrWhiteSpace( name ) )
+				clone.Name = $"{source.Name} Copy";
+			else
+				clone.Name = name;
+
+			clone.MakeNameUnique();
+			clone.WorldPosition = source.WorldPosition;
+			clone.WorldRotation = source.WorldRotation;
+			clone.WorldScale = source.WorldScale;
+
+			if ( source.Parent is not null )
+				clone.SetParent( source.Parent, true );
+
+			if ( position.HasValue )
+				clone.WorldPosition = position.Value;
+			else if ( offset.HasValue )
+				clone.WorldPosition += offset.Value;
+		}
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "GameObject shallow duplicated",
+			shallow = true,
+			copiedComponents = false,
+			source = HandlerUtil.DescribeGameObject( source ),
+			verified = HandlerUtil.DescribeGameObject( clone )
+		} );
+	}
+
+	public static BridgeResponse Reparent( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
+		var parent = HandlerUtil.GetOptionalGameObject( session.Scene, request.Payload );
+		var keepWorldPosition = HandlerUtil.GetBool( request.Payload, "keepWorldPosition", true );
+		var previous = HandlerUtil.DescribeGameObject( go );
+
+		if ( parent is not null )
+		{
+			if ( parent.Id == go.Id )
+				throw new System.InvalidOperationException( "A GameObject cannot be parented to itself." );
+
+			var ancestor = parent.Parent;
+
+			while ( ancestor is not null )
+			{
+				if ( ancestor.Id == go.Id )
+					throw new System.InvalidOperationException( "A GameObject cannot be parented under one of its own descendants." );
+
+				ancestor = ancestor.Parent;
+			}
+		}
+
+		using ( session.UndoScope( "Agent Bridge: Reparent GameObject" ).WithGameObjectChanges( go, GameObjectUndoFlags.All ).Push() )
+		{
+			go.SetParent( parent!, keepWorldPosition );
+		}
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "GameObject reparented",
+			previous,
+			verified = HandlerUtil.DescribeGameObject( go )
+		} );
+	}
 }

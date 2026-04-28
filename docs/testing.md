@@ -69,6 +69,18 @@ For core scene editing changes, also verify this direct file-IPC chain:
 7. `scene.details`
 8. `gameobject.get`
 
+For extended core scene editing changes, verify:
+
+1. `gameobject.duplicate`
+2. `gameobject.reparent` to another GameObject
+3. `gameobject.reparent` back to scene root
+4. `editor.frame_object`
+5. `gameobject.destroy`
+6. `editor.undo`
+7. `gameobject.get` on the restored object
+8. `editor.redo`
+9. `scene.find` to confirm the object is gone again
+
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 
 ## MCP End-To-End Checks

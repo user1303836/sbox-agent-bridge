@@ -10,6 +10,10 @@ internal static class CommandDispatcher
 			"editor.context" => EditorHandlers.Context( request ),
 			"editor.get_selection" => EditorHandlers.GetSelection( request ),
 			"editor.set_selection" => EditorHandlers.SetSelection( request ),
+			"editor.save_scene" => EditorHandlers.SaveScene( request ),
+			"editor.undo" => EditorHandlers.Undo( request ),
+			"editor.redo" => EditorHandlers.Redo( request ),
+			"editor.frame_object" => EditorHandlers.FrameObject( request ),
 			"scene.summary" => SceneHandlers.Summary( request ),
 			"scene.hierarchy" => SceneHandlers.Hierarchy( request ),
 			"scene.find" => SceneHandlers.Find( request ),
@@ -19,10 +23,13 @@ internal static class CommandDispatcher
 			"gameobject.rename" => GameObjectHandlers.Rename( request ),
 			"gameobject.set_transform" => GameObjectHandlers.SetTransform( request ),
 			"gameobject.set_enabled" => GameObjectHandlers.SetEnabled( request ),
+			"gameobject.destroy" => GameObjectHandlers.Destroy( request ),
+			"gameobject.duplicate" => GameObjectHandlers.Duplicate( request ),
+			"gameobject.reparent" => GameObjectHandlers.Reparent( request ),
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, scene.summary, scene.hierarchy, scene.find, scene.details, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled."
+				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, scene.summary, scene.hierarchy, scene.find, scene.details, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent."
 			)
 		};
 	}

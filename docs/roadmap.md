@@ -46,22 +46,23 @@ Acceptance criteria:
 
 Goal: give agents basic editor hands for GameObjects.
 
-Status: in progress. Verified so far: selection read/set, object details, id-targeted read, rename, transform edits, and enabled-state edits.
+Status: in progress. Verified so far: selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, destroy, undo/redo, reparent, and shallow duplicate.
 
 Candidate actions:
 
-- `editor.save_scene`
-- `editor.undo`
-- `editor.redo`
+- `editor.save_scene` - implemented, live verification pending
+- `editor.undo` - verified
+- `editor.redo` - verified
+- `editor.frame_object` - verified
 - `editor.get_selection` - verified
 - `editor.set_selection` - verified
-- `gameobject.destroy`
+- `gameobject.destroy` - verified
 - `gameobject.get` - verified
 - `gameobject.rename` - verified
 - `gameobject.set_transform` - verified
 - `gameobject.set_enabled` - verified
-- `gameobject.reparent`
-- `gameobject.duplicate`
+- `gameobject.reparent` - verified
+- `gameobject.duplicate` - verified as a shallow scene-attached duplicate
 
 Acceptance criteria:
 

@@ -29,13 +29,16 @@ export function registerGameObjectTools(server: McpServer, bridge: BridgeClient)
     "Perform small, undoable GameObject mutations in the active s&box editor scene.",
     {
       action: z
-        .enum(["get", "create", "rename", "set_transform", "set_enabled"])
+        .enum(["get", "create", "rename", "set_transform", "set_enabled", "destroy", "duplicate", "reparent"])
         .describe("The GameObject action to run."),
       id: z.string().optional().describe("Target GameObject id for read or mutation actions."),
+      parentId: z.string().optional().describe("Parent GameObject id for reparent; omit to move to scene root."),
       name: z.string().optional().describe("Name for create or rename actions."),
       makeUnique: z.boolean().optional().describe("Make the final GameObject name unique when renaming."),
+      keepWorldPosition: z.boolean().optional().describe("Preserve world transform when reparenting."),
       enabled: z.boolean().optional().describe("Enabled state for set_enabled."),
       position: vector3Schema.optional().describe("Optional world position."),
+      offset: vector3Schema.optional().describe("Optional world-position offset for duplicate."),
       rotation: rotationSchema.optional().describe("Optional world rotation, either Euler degrees or quaternion."),
       scale: vector3Schema.optional().describe("Optional world scale.")
     },

@@ -90,4 +90,69 @@ internal static class EditorHandlers
 			}
 		} );
 	}
+
+	public static BridgeResponse SaveScene( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var saveAs = HandlerUtil.GetBool( request.Payload, "saveAs", false );
+
+		session.Save( saveAs );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor scene save requested",
+			verified = new
+			{
+				scene = session.Scene.Name,
+				saveAs,
+				hasUnsavedChanges = session.HasUnsavedChanges
+			}
+		} );
+	}
+
+	public static BridgeResponse Undo( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var undone = session.UndoSystem.Undo();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = undone ? "Editor undo applied" : "Editor undo had nothing to apply",
+			verified = new
+			{
+				undone,
+				hasUnsavedChanges = session.HasUnsavedChanges
+			}
+		} );
+	}
+
+	public static BridgeResponse Redo( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var redone = session.UndoSystem.Redo();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = redone ? "Editor redo applied" : "Editor redo had nothing to apply",
+			verified = new
+			{
+				redone,
+				hasUnsavedChanges = session.HasUnsavedChanges
+			}
+		} );
+	}
+
+	public static BridgeResponse FrameObject( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
+
+		session.FrameTo( go.GetBounds() );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor framed GameObject",
+			verified = HandlerUtil.DescribeGameObject( go )
+		} );
+	}
 }

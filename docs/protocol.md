@@ -42,6 +42,10 @@ Errors use the same envelope:
 - `editor.context`
 - `editor.get_selection`
 - `editor.set_selection`
+- `editor.save_scene`
+- `editor.undo`
+- `editor.redo`
+- `editor.frame_object`
 - `scene.summary`
 - `scene.hierarchy`
 - `scene.find`
@@ -51,6 +55,9 @@ Errors use the same envelope:
 - `gameobject.rename`
 - `gameobject.set_transform`
 - `gameobject.set_enabled`
+- `gameobject.destroy`
+- `gameobject.duplicate`
+- `gameobject.reparent`
 
 ## Mutation Rule
 
