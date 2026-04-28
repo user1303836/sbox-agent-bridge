@@ -13,6 +13,18 @@ Experimental POC. The first target is a reliable local loop:
 3. Run the MCP server from `mcp-server/`.
 4. Ask an agent for editor status, context, scene summary, hierarchy, or a very small test mutation.
 
+### Verified Locally
+
+Tested against a fresh minimal s&box project on 2026-04-28:
+
+- The editor bridge library compiled and the **Agent Bridge** dock appeared in the editor.
+- The dock started file IPC at `%TEMP%/sbox-agent-bridge`.
+- Direct bridge requests for `bridge.status`, `scene.summary`, and `scene.find` returned live editor data.
+- The first mutation, `gameobject.create`, created a GameObject in `SceneEditorSession.Active.Scene`.
+- The created object was verified through a follow-up `scene.find` read-back.
+
+This means the basic loop works: external process -> bridge request file -> s&box editor frame pump -> editor scene mutation -> verified response file.
+
 ## Repository Layout
 
 ```text
@@ -42,6 +54,30 @@ Default IPC root:
 - `gameobject`: `create`
 
 Every mutation should return a read-back `verified` payload. If a mutation cannot verify its own result, callers should treat it as incomplete.
+
+## Capability Goal
+
+The long-term goal is to let MCP-capable agents access as much of the s&box editor as a careful human collaborator can, while keeping operations observable, undoable, and grounded in live editor state.
+
+That does not mean one unsafe "do anything" tool. The bridge should grow as a map of editor affordances:
+
+- inspect active scene/session, selection, hierarchy, components, assets, logs, compile state, and play mode;
+- mutate GameObjects, components, transforms, properties, prefabs, assets, and project settings through narrow actions;
+- wrap scene mutations in editor undo scopes;
+- read back state after every mutation;
+- prefer object ids/GUIDs over guessed names;
+- return actionable errors and suggestions;
+- keep file/code edits in normal coding tools, and use the bridge for live editor state.
+
+## Near-Term Roadmap
+
+1. Add `gameobject.destroy`, `rename`, `set_transform`, `set_enabled`, `reparent`, and selection support.
+2. Add component read/write: list component types, add/remove components, get/set public properties.
+3. Add editor control: save scene, play/stop, undo/redo, frame selection, recent logs.
+4. Add asset queries: browse/search assets, inspect prefabs, instantiate prefab.
+5. Add compile/hotload diagnostics if s&box exposes reliable editor log/error access.
+6. Add screenshots or viewport capture once the editor API path is verified.
+7. Add MCP integration tests with fake bridge responses plus live smoke-test scripts for a running editor.
 
 ## Local Development
 

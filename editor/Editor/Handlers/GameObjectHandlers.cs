@@ -14,7 +14,8 @@ internal static class GameObjectHandlers
 
 		using ( session.UndoScope( "Agent Bridge: Create GameObject" ).WithGameObjectCreations().Push() )
 		{
-			go = new GameObject( true, name );
+			go = session.Scene.CreateObject( true );
+			go.Name = name;
 			go.MakeNameUnique();
 
 			if ( position.HasValue )
