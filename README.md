@@ -1,33 +1,250 @@
-# sbox-agent-bridge
+# s&box Agent Bridge
 
-Tiny proof-of-concept bridge for letting MCP-capable coding agents inspect and carefully mutate the s&box editor.
+Experimental local editor bridge and MCP server for letting coding agents inspect and carefully operate the live s&box editor.
 
-The project is intentionally small: one editor-side bridge library and one external MCP server. The bridge knows how to talk to the live editor. The MCP server knows how to talk to agents.
+The goal is simple: an MCP-capable agent should be able to ask the editor what is actually in the current scene, make small undoable changes, and read back the result instead of guessing from files alone.
 
-## Status
+This repo contains both halves:
 
-Experimental POC. The first target is a reliable local loop:
+- `editor/`: an s&box library with an **Agent Bridge** editor dock.
+- `mcp-server/`: a TypeScript MCP server that exposes agent-facing tools over stdio.
 
-1. Install the editor bridge into a s&box project `Libraries/` folder.
-2. Open the Agent Bridge dock in the s&box editor.
-3. Run the MCP server from `mcp-server/`.
-4. Ask an agent for editor status, context, scene summary, hierarchy, or a very small test mutation.
+The project is intentionally provider-neutral. It is not built for one model or one MCP client.
 
-### Verified Locally
+## Current Status
 
-Tested against a fresh minimal s&box project on 2026-04-28:
+This is an early proof of concept, but the local loop works.
 
-- The editor bridge library compiled and the **Agent Bridge** dock appeared in the editor.
-- The dock started file IPC at `%TEMP%/sbox-agent-bridge`.
-- Direct bridge requests for `bridge.status`, `scene.summary`, and `scene.find` returned live editor data.
-- The first mutation, `gameobject.create`, created a GameObject in `SceneEditorSession.Active.Scene`.
-- The created object was verified through a follow-up `scene.find` read-back.
-- Core scene editing actions were verified through direct file IPC: `editor.context`, `editor.get_selection`, `editor.set_selection`, `scene.details`, `gameobject.get`, `gameobject.rename`, `gameobject.set_transform`, and `gameobject.set_enabled`.
-- Extended scene editing actions were verified through direct file IPC: `editor.undo`, `editor.redo`, `editor.frame_object`, `gameobject.destroy`, `gameobject.duplicate`, and `gameobject.reparent`.
-- Component discovery, inspection, and mutation actions were verified through direct file IPC: `component.list_types`, `component.list_on_gameobject`, `component.get`, `component.get_properties`, `component.add`, `component.remove`, `component.set_enabled`, and `component.set_property`.
-- `component.set_property` is live-smoked against `AgentBridgeMutationFixture`, covering string, bool, integer, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` reference, and `Component` reference values.
+As of 2026-04-29, the bridge has been verified against a minimal s&box project on Windows:
 
-This means the basic loop works: external process -> bridge request file -> s&box editor frame pump -> editor scene mutation -> verified response file.
+- The editor library compiles and the **Agent Bridge** dock appears in s&box.
+- The dock listens through local file IPC at `%TEMP%/sbox-agent-bridge`.
+- The MCP server can read editor status, active context, selection, scene summaries, hierarchy, object details, component lists, and component properties.
+- GameObject mutations are undo-scoped and read back after the edit: create, rename, transform, enable/disable, reparent, duplicate, destroy.
+- Component mutations are undo-scoped and read back after the edit: add, remove, enable/disable, and set property.
+- `component.set_property` is live-smoked against `AgentBridgeMutationFixture` for string, bool, integer, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` reference, and `Component` reference values.
+- GitHub Actions runs metadata validation, typecheck, tests, and build for the MCP server.
+
+Still experimental:
+
+- The editor bridge must be installed into each s&box project that should expose live editor access.
+- The s&box editor must be open and the Agent Bridge dock must be running.
+- CI does not run a real s&box editor, so live editor behavior is verified with local smoke tests.
+- `gameobject.duplicate` is currently shallow: it copies name, enabled state, transform, and parent, but not components or children.
+- `component.set_property` does not yet support resource references or collection/list editing.
+
+## Quick Start
+
+### 1. Clone And Build The MCP Server
+
+Requirements:
+
+- s&box installed
+- Node.js 20 or newer
+- npm
+- An MCP-capable client or coding agent
+
+```powershell
+git clone https://github.com/user1303836/sbox-agent-bridge.git
+cd sbox-agent-bridge
+cd mcp-server
+npm install
+npm run build
+```
+
+### 2. Install The Editor Bridge Into A s&box Project
+
+Create or open a s&box project, then copy this repo's `editor/` folder into that project's `Libraries/sbox_agent_bridge/` folder.
+
+From the repo root in PowerShell:
+
+```powershell
+$Project = 'C:\Users\you\Documents\s&box projects\YourProject'
+New-Item -ItemType Directory -Force -Path "$Project\Libraries\sbox_agent_bridge" | Out-Null
+Copy-Item -Path '.\editor\*' -Destination "$Project\Libraries\sbox_agent_bridge" -Recurse -Force
+```
+
+The installed project should look like this:
+
+```text
+YourProject/
+  Libraries/
+    sbox_agent_bridge/
+      sbox_agent_bridge.sbproj
+      Code/
+        AgentBridgeMutationFixture.cs
+      Editor/
+        BridgeDock.cs
+        BridgeRuntime.cs
+        ...
+```
+
+Open the project in the s&box editor and let it compile. Then open:
+
+```text
+View -> Agent Bridge
+```
+
+Leave the dock open while using the MCP server. If the dock does not show `Status: running`, click **Start Bridge**.
+
+### 3. Connect Your MCP Client
+
+After `npm run build`, point your MCP client at the built server:
+
+```json
+{
+  "mcpServers": {
+    "sbox-agent-bridge": {
+      "command": "node",
+      "args": ["C:/absolute/path/to/sbox-agent-bridge/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+The default IPC root is:
+
+```text
+%TEMP%/sbox-agent-bridge
+```
+
+If you need a custom IPC folder, set `SBOX_AGENT_BRIDGE_IPC` for the MCP server:
+
+```json
+{
+  "mcpServers": {
+    "sbox-agent-bridge": {
+      "command": "node",
+      "args": ["C:/absolute/path/to/sbox-agent-bridge/mcp-server/dist/index.js"],
+      "env": {
+        "SBOX_AGENT_BRIDGE_IPC": "C:/temp/my-sbox-agent-bridge"
+      }
+    }
+  }
+}
+```
+
+### 4. Try A Safe First Prompt
+
+With s&box open and the Agent Bridge dock running, ask your agent something like:
+
+```text
+Use the sbox-agent-bridge MCP tools to check the editor bridge status, summarize the active scene, and list the current selection. Do not mutate the scene yet.
+```
+
+Then try a tiny mutation:
+
+```text
+Use the sbox-agent-bridge MCP tools to create one GameObject named Agent Bridge Test, verify that it exists, then undo the creation.
+```
+
+## MCP Tools
+
+The MCP server exposes four compact tools. Each tool has an `action` field.
+
+### `editor`
+
+Editor/session operations:
+
+- `status`
+- `context`
+- `get_selection`
+- `set_selection`
+- `save_scene`
+- `undo`
+- `redo`
+- `frame_object`
+
+### `scene`
+
+Scene inspection:
+
+- `summary`
+- `hierarchy`
+- `find`
+- `details`
+
+### `gameobject`
+
+Small undoable GameObject operations:
+
+- `get`
+- `create`
+- `rename`
+- `set_transform`
+- `set_enabled`
+- `destroy`
+- `duplicate`
+- `reparent`
+
+### `component`
+
+Component discovery, inspection, and mutation:
+
+- `list_types`
+- `list_on_gameobject`
+- `get`
+- `get_properties`
+- `add`
+- `remove`
+- `set_enabled`
+- `set_property`
+
+Every mutation should return a `verified` payload read back from the editor. If a mutation cannot verify its own result, callers should treat it as incomplete.
+
+## Live Smoke Test
+
+The MCP server includes an opt-in smoke test that talks to a real open s&box editor through the same file IPC path:
+
+```powershell
+cd mcp-server
+npm run smoke:live
+```
+
+This test creates temporary GameObjects, verifies scene and GameObject actions, mutates `AgentBridgeMutationFixture`, checks component property readbacks, tests undo/redo, and cleans up after itself.
+
+If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.
+
+## Architecture
+
+The first transport is local file IPC:
+
+```text
+Agent / MCP client
+  <-> MCP server over stdio
+    <-> request/response JSON files in %TEMP%/sbox-agent-bridge
+      <-> Agent Bridge dock in the s&box editor
+        <-> SceneEditorSession.Active
+```
+
+Request and response files use an atomic same-directory rename so Windows file-lock races do not become false command failures.
+
+File IPC is not the final dream transport. It is the smallest useful transport for this POC: local, debuggable, and easy to inspect. A later HTTP/SSE or named-pipe transport can reuse the same bridge command envelope.
+
+## Repository Layout
+
+```text
+editor/       s&box library/editor bridge source
+mcp-server/   TypeScript MCP server that forwards tool calls to the bridge
+schemas/      JSON schemas for bridge command/response envelopes
+docs/         architecture, protocol, roadmap, testing, and API notes
+examples/     install and usage notes
+```
+
+## Local Development
+
+```powershell
+cd mcp-server
+npm install
+npm run ci
+```
+
+Useful scripts:
+
+- `npm run dev`: run the MCP server from TypeScript.
+- `npm run build`: compile the MCP server to `dist/`.
+- `npm run ci`: typecheck, unit test, and build.
+- `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
 
 ## Project Docs
 
@@ -40,101 +257,13 @@ This means the basic loop works: external process -> bridge request file -> s&bo
 - [Prior Art](docs/prior-art.md)
 - [Contributing](CONTRIBUTING.md)
 
-## Repository Layout
-
-```text
-editor/       s&box library/editor bridge source
-mcp-server/   TypeScript MCP server that forwards tool calls to the bridge
-schemas/      JSON schemas for bridge command/response envelopes
-docs/         architecture, protocol, and verified s&box API notes
-examples/     install and usage notes
-```
-
-## Design
-
-The bridge uses file IPC for the first POC. It is less elegant than HTTP/SSE, but it is simple, debuggable, and avoids spending the first week arguing with transport details. The protocol is stable enough that a later HTTP/SSE transport can reuse the same command envelope.
-
-Default IPC root:
-
-```text
-%TEMP%/sbox-agent-bridge/
-  requests/
-  responses/
-```
-
-## Initial Tool Surface
-
-- `editor`: `status`, `context`, `get_selection`, `set_selection`
-- `editor`: `save_scene`, `undo`, `redo`, `frame_object`
-- `scene`: `summary`, `hierarchy`, `find`, `details`
-- `gameobject`: `get`, `create`, `rename`, `set_transform`, `set_enabled`, `destroy`, `duplicate`, `reparent`
-- `component`: `list_types`, `list_on_gameobject`, `get`, `get_properties`, `add`, `remove`, `set_enabled`, `set_property`
-
-Every mutation should return a read-back `verified` payload. If a mutation cannot verify its own result, callers should treat it as incomplete.
-
-`gameobject.duplicate` is currently a shallow, scene-attached duplicate: it copies name, enabled state, transform, and parent. Component and child cloning are tracked as future work under the component/prefab milestones.
-
-`component.set_property` is intentionally typed and narrow. Current verified conversions include `string`, `bool`, numeric primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` references, and `Component` references. Resource references and collection editing are future work. The dedicated live-smoke fixture lives at `editor/Code/AgentBridgeMutationFixture.cs`.
-
-## Capability Goal
-
-The long-term goal is to let MCP-capable agents access as much of the s&box editor as a careful human collaborator can, while keeping operations observable, undoable, and grounded in live editor state.
-
-That does not mean one unsafe "do anything" tool. The bridge should grow as a map of editor affordances:
-
-- inspect active scene/session, selection, hierarchy, components, assets, logs, compile state, and play mode;
-- mutate GameObjects, components, transforms, properties, prefabs, assets, and project settings through narrow actions;
-- wrap scene mutations in editor undo scopes;
-- read back state after every mutation;
-- prefer object ids/GUIDs over guessed names;
-- return actionable errors and suggestions;
-- keep file/code edits in normal coding tools, and use the bridge for live editor state.
-
-## Near-Term Roadmap
-
-The living plan is tracked in [docs/roadmap.md](docs/roadmap.md), and implementation status is tracked in [docs/capability-matrix.md](docs/capability-matrix.md).
-
-## Local Development
-
-Install dependencies and build the MCP server:
-
-```bash
-cd mcp-server
-npm install
-npm run build
-```
-
-CI runs `npm ci`, `npm run check`, `npm test`, `npm run build`, and JSON metadata validation. Live s&box editor behavior still needs local smoke testing; see [docs/testing.md](docs/testing.md).
-
-Run the opt-in live smoke check against an already-open editor bridge:
-
-```bash
-cd mcp-server
-npm run smoke:live
-```
-
-Example MCP config after building:
-
-```json
-{
-  "mcpServers": {
-    "sbox-agent-bridge": {
-      "command": "node",
-      "args": ["C:/path/to/sbox-agent-bridge/mcp-server/dist/index.js"]
-    }
-  }
-}
-```
-
-See [examples/minimal-sbox-project-install.md](examples/minimal-sbox-project-install.md) for editor bridge installation.
-
 ## Grounding
 
-This repo is grounded in the official s&box docs/API schema:
+This repo is grounded in the official s&box docs/API schema and local public source research:
 
-- Editor projects can access editor tools and game code and are not sandboxed.
+- s&box editor projects can access editor tools and game code.
 - `SceneEditorSession.Active` exposes the active editor scene/session.
 - Scene edits should run on the editor main thread and use undo scopes.
-- Normal game code is whitelisted, so this bridge belongs in editor/library code, not runtime gameplay components.
+- Normal game code is sandboxed/restricted, so the live editor bridge belongs in editor/library code.
 
-See [docs/verified-sbox-apis.md](docs/verified-sbox-apis.md).
+See [docs/verified-sbox-apis.md](docs/verified-sbox-apis.md) for the currently verified API surface.
