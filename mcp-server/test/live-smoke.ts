@@ -42,6 +42,22 @@ interface ComponentListResult {
   };
 }
 
+interface ComponentMutationResult {
+  verified: {
+    component: {
+      id: string;
+      type: string;
+      enabled: boolean;
+    };
+    property?: {
+      value?: {
+        type: string;
+        value: unknown;
+      };
+    };
+  };
+}
+
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC,
   timeoutMs: Number(process.env.SBOX_AGENT_BRIDGE_TIMEOUT_MS ?? 10_000)
@@ -110,6 +126,72 @@ try {
     maxResults: 5
   });
 
+  const addedComponent = await bridge.send<ComponentMutationResult>("component.add", {
+    gameObjectId: source.id,
+    type: "CameraComponent",
+    startEnabled: true
+  });
+  const addedComponentId = addedComponent.verified.component.id;
+
+  await bridge.send("component.get", {
+    id: addedComponentId
+  });
+  const disabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
+    id: addedComponentId,
+    enabled: false
+  });
+  const enabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
+    id: addedComponentId,
+    enabled: true
+  });
+  const fovSet = await bridge.send<ComponentMutationResult>("component.set_property", {
+    id: addedComponentId,
+    property: "FieldOfView",
+    value: 80
+  });
+  const orthographicSet = await bridge.send<ComponentMutationResult>("component.set_property", {
+    id: addedComponentId,
+    property: "Orthographic",
+    value: true
+  });
+  const backgroundSet = await bridge.send<ComponentMutationResult>("component.set_property", {
+    id: addedComponentId,
+    property: "BackgroundColor",
+    value: { r: 0.1, g: 0.2, b: 0.3, a: 1 }
+  });
+  const addedProperties = await bridge.send<{ verified: { count: number } }>("component.get_properties", {
+    id: addedComponentId,
+    includeAll: false,
+    maxProperties: 30
+  });
+  await bridge.send("component.remove", {
+    id: addedComponentId
+  });
+  const removedComponentGetFailed = await rejectsBridgeCommand(() =>
+    bridge.send("component.get", {
+      id: addedComponentId
+    })
+  );
+  const componentUndo = await bridge.send<{ verified: { undone: boolean } }>("editor.undo");
+  await bridge.send("component.get", {
+    id: addedComponentId
+  });
+  const componentRedo = await bridge.send<{ verified: { redone: boolean } }>("editor.redo");
+  const removedAgainGetFailed = await rejectsBridgeCommand(() =>
+    bridge.send("component.get", {
+      id: addedComponentId
+    })
+  );
+  ensure(disabledComponent.verified.component.enabled === false, "component.set_enabled false did not read back false");
+  ensure(enabledComponent.verified.component.enabled === true, "component.set_enabled true did not read back true");
+  ensure(fovSet.verified.property?.value?.value === 80, "FieldOfView did not read back as 80");
+  ensure(orthographicSet.verified.property?.value?.value === true, "Orthographic did not read back as true");
+  ensure(removedComponentGetFailed, "component.remove did not make component.get fail");
+  ensure(componentUndo.verified.undone, "editor.undo did not restore removed component");
+  ensure(componentRedo.verified.redone, "editor.redo did not re-remove component");
+  ensure(removedAgainGetFailed, "component.get succeeded after redo removed the component");
+
+  const optionalStringProperty = await tryStringPropertySmoke(source.id, stamp);
   const inspectedComponent = await inspectExistingComponent();
 
   await bridge.send("gameobject.destroy", { id: duplicate.id });
@@ -138,6 +220,18 @@ try {
   summary.components = {
     availableTypeSampleCount: componentTypes.verified.count,
     sourceComponentCount: objectComponents.verified.count,
+    addedComponentId,
+    disabledReadback: disabledComponent.verified.component.enabled,
+    enabledReadback: enabledComponent.verified.component.enabled,
+    fieldOfView: fovSet.verified.property?.value?.value,
+    orthographic: orthographicSet.verified.property?.value?.value,
+    backgroundColor: backgroundSet.verified.property?.value?.value,
+    addedPropertyCount: addedProperties.verified.count,
+    removedComponentGetFailed,
+    componentUndoApplied: componentUndo.verified.undone,
+    componentRedoApplied: componentRedo.verified.redone,
+    removedAgainGetFailed,
+    optionalStringProperty,
     inspectedExistingComponent: inspectedComponent
   };
 
@@ -209,4 +303,55 @@ async function inspectExistingComponent(): Promise<Record<string, unknown> | nul
     componentType: firstComponent.type,
     propertyCount: properties.verified.count
   };
+}
+
+async function tryStringPropertySmoke(gameObjectId: string, stamp: string): Promise<Record<string, unknown> | null> {
+  const customTypes = await bridge.send<{ verified: { count: number } }>("component.list_types", {
+    query: "MyComponent",
+    maxResults: 5
+  });
+
+  if (customTypes.verified.count < 1) {
+    return null;
+  }
+
+  const added = await bridge.send<ComponentMutationResult>("component.add", {
+    gameObjectId,
+    type: "MyComponent",
+    startEnabled: true
+  });
+  const componentId = added.verified.component.id;
+  const expected = `smoke-${stamp}`;
+
+  const set = await bridge.send<ComponentMutationResult>("component.set_property", {
+    id: componentId,
+    property: "StringProperty",
+    value: expected
+  });
+
+  ensure(set.verified.property?.value?.value === expected, "StringProperty did not read back expected string");
+
+  await bridge.send("component.remove", {
+    id: componentId
+  });
+
+  return {
+    componentId,
+    value: set.verified.property?.value?.value
+  };
+}
+
+async function rejectsBridgeCommand(command: () => Promise<unknown>): Promise<boolean> {
+  try {
+    await command();
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function ensure(condition: boolean, message: string): void {
+  if (!condition) {
+    throw new Error(message);
+  }
 }

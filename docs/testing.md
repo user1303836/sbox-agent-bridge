@@ -106,6 +106,16 @@ For component discovery changes, verify:
 3. `component.get`
 4. `component.get_properties`
 
+For component mutation changes, verify:
+
+1. `component.add`
+2. `component.set_enabled` false, then true
+3. `component.set_property` for at least float, bool, Color, and string when a local test component is available
+4. `component.remove`
+5. `component.get` fails after removal
+6. `editor.undo` restores the removed component
+7. `editor.redo` removes it again
+
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 
 ## MCP End-To-End Checks

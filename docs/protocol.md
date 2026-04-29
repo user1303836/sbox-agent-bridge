@@ -62,7 +62,20 @@ Errors use the same envelope:
 - `component.list_on_gameobject`
 - `component.get`
 - `component.get_properties`
+- `component.add`
+- `component.remove`
+- `component.set_enabled`
+- `component.set_property`
 
 ## Mutation Rule
 
 Mutations should return a `verified` object read back from the editor after the operation. If `verified` is missing, the caller should assume the change may not have stuck.
+
+## File Handoff
+
+Writers should create request and response files through an atomic same-directory rename:
+
+1. Write the JSON body to a hidden/temp file in the target directory.
+2. Rename it to `request-{id}.json` or `response-{id}.json` only after the write handle is closed.
+
+The editor bridge ignores locked request files and will retry them on a later pump. This keeps Windows file-lock races from turning into false command failures.

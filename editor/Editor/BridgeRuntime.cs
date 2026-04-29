@@ -50,10 +50,26 @@ internal static class BridgeRuntime
 	private static void ProcessRequestFile( string file )
 	{
 		BridgeRequest? request = null;
+		var shouldDelete = false;
 
 		try
 		{
-			var json = File.ReadAllText( file, Encoding.UTF8 );
+			string json;
+
+			try
+			{
+				json = File.ReadAllText( file, Encoding.UTF8 );
+			}
+			catch ( IOException )
+			{
+				return;
+			}
+			catch ( UnauthorizedAccessException )
+			{
+				return;
+			}
+
+			shouldDelete = true;
 			request = JsonSerializer.Deserialize<BridgeRequest>( json, JsonOptions );
 
 			if ( request is null || string.IsNullOrWhiteSpace( request.Id ) || string.IsNullOrWhiteSpace( request.Action ) )
@@ -71,13 +87,16 @@ internal static class BridgeRuntime
 		}
 		finally
 		{
-			try
+			if ( shouldDelete )
 			{
-				File.Delete( file );
-			}
-			catch ( Exception ex )
-			{
-				Log.Warning( $"Failed to delete processed bridge request: {ex.Message}" );
+				try
+				{
+					File.Delete( file );
+				}
+				catch ( Exception ex )
+				{
+					Log.Warning( $"Failed to delete processed bridge request: {ex.Message}" );
+				}
 			}
 		}
 	}
@@ -87,7 +106,15 @@ internal static class BridgeRuntime
 		Directory.CreateDirectory( ResponsePath );
 
 		var path = Path.Combine( ResponsePath, $"response-{response.Id}.json" );
+		var tempPath = Path.Combine( ResponsePath, $".response-{response.Id}.{Guid.NewGuid():N}.tmp" );
 		var json = JsonSerializer.Serialize( response, JsonOptions );
-		File.WriteAllText( path, json, new UTF8Encoding( false ) );
+		File.WriteAllText( tempPath, json, new UTF8Encoding( false ) );
+
+		if ( File.Exists( path ) )
+		{
+			File.Delete( path );
+		}
+
+		File.Move( tempPath, path );
 	}
 }

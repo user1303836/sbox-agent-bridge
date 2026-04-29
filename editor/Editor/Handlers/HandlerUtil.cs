@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Editor;
@@ -314,9 +315,46 @@ internal static class HandlerUtil
 		return component;
 	}
 
+	public static TypeDescription RequireComponentType( JsonElement payload, string propertyName = "type" )
+	{
+		var typeName = GetRequiredString( payload, propertyName );
+		var type = Game.TypeLibrary.GetType( typeName, true )
+			?? Game.TypeLibrary.GetTypes( typeof( Component ) ).FirstOrDefault( x =>
+				string.Equals( x.Name, typeName, StringComparison.OrdinalIgnoreCase ) ||
+				string.Equals( x.FullName, typeName, StringComparison.OrdinalIgnoreCase ) ||
+				string.Equals( x.Title, typeName, StringComparison.OrdinalIgnoreCase )
+			);
+
+		if ( type is null || !type.IsValid )
+			throw new InvalidOperationException( $"No Component type found for '{typeName}'." );
+
+		if ( type.IsAbstract )
+			throw new InvalidOperationException( $"Component type '{type.FullName}' is abstract and cannot be added." );
+
+		if ( type.IsGenericType )
+			throw new InvalidOperationException( $"Component type '{type.FullName}' is generic and cannot be added directly." );
+
+		if ( !typeof( Component ).IsAssignableFrom( type.TargetType ) )
+			throw new InvalidOperationException( $"Type '{type.FullName}' is not a Component." );
+
+		return type;
+	}
+
 	public static object DescribeDestroyedGameObject( Scene scene, string id )
 	{
 		var exists = Guid.TryParse( id, out var guid ) && scene.Directory.FindByGuid( guid ) is { IsValid: true, IsDestroyed: false };
+
+		return new
+		{
+			id,
+			exists,
+			destroyed = !exists
+		};
+	}
+
+	public static object DescribeDestroyedComponent( Scene scene, string id )
+	{
+		var exists = Guid.TryParse( id, out var guid ) && scene.Directory.FindComponentByGuid( guid ) is { IsValid: true };
 
 		return new
 		{
@@ -344,6 +382,288 @@ internal static class HandlerUtil
 	public static bool IsInspectorProperty( PropertyDescription property )
 	{
 		return property.HasAttribute( typeof( PropertyAttribute ) );
+	}
+
+	public static PropertyDescription RequireProperty( Component component, JsonElement payload )
+	{
+		var propertyName = GetRequiredString( payload, "property" );
+		var includeAll = GetBool( payload, "includeAll", false );
+		var type = Game.TypeLibrary.GetType( component.GetType() );
+		var properties = type.Properties.Where( IsReadableProperty );
+
+		if ( !includeAll )
+			properties = properties.Where( IsInspectorProperty );
+
+		var property = properties.FirstOrDefault( x =>
+			string.Equals( x.Name, propertyName, StringComparison.OrdinalIgnoreCase ) ||
+			string.Equals( x.Title, propertyName, StringComparison.OrdinalIgnoreCase )
+		);
+
+		if ( property is null )
+			throw new InvalidOperationException( $"No readable {(includeAll ? "" : "inspector ")}property '{propertyName}' found on component '{component.GetType().Name}'." );
+
+		if ( !property.CanWrite || property.ReadOnly )
+			throw new InvalidOperationException( $"Property '{property.Name}' on component '{component.GetType().Name}' is read-only." );
+
+		return property;
+	}
+
+	public static object? ConvertJsonValue( JsonElement value, Type targetType, Scene scene )
+	{
+		var nullableType = Nullable.GetUnderlyingType( targetType );
+
+		if ( nullableType is not null )
+		{
+			if ( value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined )
+				return null;
+
+			targetType = nullableType;
+		}
+
+		if ( value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined )
+		{
+			if ( !targetType.IsValueType )
+				return null;
+
+			throw new InvalidOperationException( $"Cannot assign null to non-nullable value type '{targetType.Name}'." );
+		}
+
+		if ( targetType == typeof( string ) )
+			return value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
+
+		if ( targetType == typeof( bool ) )
+			return value.ValueKind switch
+			{
+				JsonValueKind.True => true,
+				JsonValueKind.False => false,
+				JsonValueKind.String when bool.TryParse( value.GetString(), out var result ) => result,
+				_ => throw new InvalidOperationException( "Expected a boolean value." )
+			};
+
+		if ( targetType.IsEnum )
+			return ConvertEnum( value, targetType );
+
+		if ( targetType == typeof( int ) )
+			return GetIntegralValue<int>( value, x => checked((int)x) );
+
+		if ( targetType == typeof( uint ) )
+			return GetUnsignedIntegralValue<uint>( value, x => checked((uint)x) );
+
+		if ( targetType == typeof( long ) )
+			return GetIntegralValue<long>( value, x => x );
+
+		if ( targetType == typeof( ulong ) )
+			return GetUnsignedIntegralValue<ulong>( value, x => x );
+
+		if ( targetType == typeof( short ) )
+			return GetIntegralValue<short>( value, x => checked((short)x) );
+
+		if ( targetType == typeof( ushort ) )
+			return GetUnsignedIntegralValue<ushort>( value, x => checked((ushort)x) );
+
+		if ( targetType == typeof( byte ) )
+			return GetUnsignedIntegralValue<byte>( value, x => checked((byte)x) );
+
+		if ( targetType == typeof( sbyte ) )
+			return GetIntegralValue<sbyte>( value, x => checked((sbyte)x) );
+
+		if ( targetType == typeof( float ) )
+			return value.GetSingle();
+
+		if ( targetType == typeof( double ) )
+			return value.GetDouble();
+
+		if ( targetType == typeof( decimal ) )
+			return value.GetDecimal();
+
+		if ( targetType == typeof( Vector2 ) )
+			return ConvertVector2( value );
+
+		if ( targetType == typeof( Vector3 ) )
+			return ConvertVector3( value );
+
+		if ( targetType == typeof( Rotation ) )
+			return ConvertRotation( value );
+
+		if ( targetType == typeof( Angles ) )
+			return ConvertAngles( value );
+
+		if ( targetType == typeof( Transform ) )
+			return ConvertTransform( value );
+
+		if ( targetType == typeof( Color ) )
+			return ConvertColor( value );
+
+		if ( targetType == typeof( GameObject ) )
+			return RequireGameObjectById( scene, GetReferenceId( value ), "value" );
+
+		if ( typeof( Component ).IsAssignableFrom( targetType ) )
+		{
+			var component = RequireComponentById( scene, GetReferenceId( value ), "value" );
+
+			if ( !targetType.IsAssignableFrom( component.GetType() ) )
+				throw new InvalidOperationException( $"Component '{component.Id}' is '{component.GetType().Name}', not assignable to '{targetType.Name}'." );
+
+			return component;
+		}
+
+		throw new InvalidOperationException( $"Property type '{targetType.FullName ?? targetType.Name}' is not supported by component.set_property yet." );
+	}
+
+	public static Component RequireComponentById( Scene scene, string id, string propertyName = "id" )
+	{
+		if ( string.IsNullOrWhiteSpace( id ) )
+			throw new InvalidOperationException( $"Missing required payload property '{propertyName}'." );
+
+		if ( !Guid.TryParse( id, out var guid ) )
+			throw new InvalidOperationException( $"Payload property '{propertyName}' must be a Component GUID." );
+
+		var component = scene.Directory.FindComponentByGuid( guid );
+
+		if ( component is null || !component.IsValid )
+			throw new InvalidOperationException( $"No active Component found for id '{id}'." );
+
+		return component;
+	}
+
+	private static object ConvertEnum( JsonElement value, Type targetType )
+	{
+		if ( value.ValueKind == JsonValueKind.String )
+			return Enum.Parse( targetType, value.GetString() ?? "", true );
+
+		if ( value.ValueKind == JsonValueKind.Number && value.TryGetInt64( out var intValue ) )
+			return Enum.ToObject( targetType, intValue );
+
+		throw new InvalidOperationException( $"Expected enum name or numeric value for '{targetType.Name}'." );
+	}
+
+	private static T GetIntegralValue<T>( JsonElement value, Func<long, T> convert )
+	{
+		if ( value.ValueKind == JsonValueKind.Number && value.TryGetInt64( out var number ) )
+			return convert( number );
+
+		if ( value.ValueKind == JsonValueKind.String && long.TryParse( value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed ) )
+			return convert( parsed );
+
+		throw new InvalidOperationException( "Expected an integer value." );
+	}
+
+	private static T GetUnsignedIntegralValue<T>( JsonElement value, Func<ulong, T> convert )
+	{
+		if ( value.ValueKind == JsonValueKind.Number && value.TryGetUInt64( out var number ) )
+			return convert( number );
+
+		if ( value.ValueKind == JsonValueKind.String && ulong.TryParse( value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed ) )
+			return convert( parsed );
+
+		throw new InvalidOperationException( "Expected an unsigned integer value." );
+	}
+
+	private static string GetReferenceId( JsonElement value )
+	{
+		if ( value.ValueKind == JsonValueKind.String )
+			return value.GetString() ?? "";
+
+		if ( value.ValueKind == JsonValueKind.Object && value.TryGetProperty( "id", out var idElement ) && idElement.ValueKind == JsonValueKind.String )
+			return idElement.GetString() ?? "";
+
+		throw new InvalidOperationException( "Expected a reference id string or an object with an id property." );
+	}
+
+	private static Vector2 ConvertVector2( JsonElement value )
+	{
+		if ( value.ValueKind != JsonValueKind.Object )
+			throw new InvalidOperationException( "Expected a Vector2 object with x and y properties." );
+
+		var x = value.TryGetProperty( "x", out var xElement ) && xElement.TryGetSingle( out var xValue ) ? xValue : 0f;
+		var y = value.TryGetProperty( "y", out var yElement ) && yElement.TryGetSingle( out var yValue ) ? yValue : 0f;
+
+		return new Vector2( x, y );
+	}
+
+	private static Vector3 ConvertVector3( JsonElement value )
+	{
+		if ( value.ValueKind != JsonValueKind.Object )
+			throw new InvalidOperationException( "Expected a Vector3 object with x, y, and z properties." );
+
+		var x = value.TryGetProperty( "x", out var xElement ) && xElement.TryGetSingle( out var xValue ) ? xValue : 0f;
+		var y = value.TryGetProperty( "y", out var yElement ) && yElement.TryGetSingle( out var yValue ) ? yValue : 0f;
+		var z = value.TryGetProperty( "z", out var zElement ) && zElement.TryGetSingle( out var zValue ) ? zValue : 0f;
+
+		return new Vector3( x, y, z );
+	}
+
+	private static Rotation ConvertRotation( JsonElement value )
+	{
+		if ( value.ValueKind != JsonValueKind.Object )
+			throw new InvalidOperationException( "Expected a Rotation object." );
+
+		var hasPitch = value.TryGetProperty( "pitch", out var pitchElement );
+		var hasYaw = value.TryGetProperty( "yaw", out var yawElement );
+		var hasRoll = value.TryGetProperty( "roll", out var rollElement );
+
+		if ( hasPitch || hasYaw || hasRoll )
+		{
+			var pitch = hasPitch && pitchElement.TryGetSingle( out var pitchValue ) ? pitchValue : 0f;
+			var yaw = hasYaw && yawElement.TryGetSingle( out var yawValue ) ? yawValue : 0f;
+			var roll = hasRoll && rollElement.TryGetSingle( out var rollValue ) ? rollValue : 0f;
+
+			return Rotation.From( pitch, yaw, roll );
+		}
+
+		var x = value.TryGetProperty( "x", out var xElement ) && xElement.TryGetSingle( out var xValue ) ? xValue : 0f;
+		var y = value.TryGetProperty( "y", out var yElement ) && yElement.TryGetSingle( out var yValue ) ? yValue : 0f;
+		var z = value.TryGetProperty( "z", out var zElement ) && zElement.TryGetSingle( out var zValue ) ? zValue : 0f;
+		var w = value.TryGetProperty( "w", out var wElement ) && wElement.TryGetSingle( out var wValue ) ? wValue : 1f;
+
+		return new Rotation( x, y, z, w );
+	}
+
+	private static Angles ConvertAngles( JsonElement value )
+	{
+		if ( value.ValueKind != JsonValueKind.Object )
+			throw new InvalidOperationException( "Expected an Angles object with pitch, yaw, and roll properties." );
+
+		var pitch = value.TryGetProperty( "pitch", out var pitchElement ) && pitchElement.TryGetSingle( out var pitchValue ) ? pitchValue : 0f;
+		var yaw = value.TryGetProperty( "yaw", out var yawElement ) && yawElement.TryGetSingle( out var yawValue ) ? yawValue : 0f;
+		var roll = value.TryGetProperty( "roll", out var rollElement ) && rollElement.TryGetSingle( out var rollValue ) ? rollValue : 0f;
+
+		return new Angles( pitch, yaw, roll );
+	}
+
+	private static Transform ConvertTransform( JsonElement value )
+	{
+		if ( value.ValueKind != JsonValueKind.Object )
+			throw new InvalidOperationException( "Expected a Transform object." );
+
+		var position = value.TryGetProperty( "position", out var positionElement ) ? ConvertVector3( positionElement ) : Vector3.Zero;
+		var rotation = value.TryGetProperty( "rotation", out var rotationElement ) ? ConvertRotation( rotationElement ) : Rotation.Identity;
+		var scale = value.TryGetProperty( "scale", out var scaleElement ) ? ConvertVector3( scaleElement ) : new Vector3( 1f, 1f, 1f );
+
+		return new Transform( position, rotation, scale );
+	}
+
+	private static Color ConvertColor( JsonElement value )
+	{
+		if ( value.ValueKind == JsonValueKind.String )
+		{
+			var parsed = Color.Parse( value.GetString() ?? "" );
+
+			if ( parsed.HasValue )
+				return parsed.Value;
+
+			throw new InvalidOperationException( "Could not parse color string." );
+		}
+
+		if ( value.ValueKind != JsonValueKind.Object )
+			throw new InvalidOperationException( "Expected a Color string or object with r, g, b, and optional a properties." );
+
+		var r = value.TryGetProperty( "r", out var rElement ) && rElement.TryGetSingle( out var rValue ) ? rValue : 1f;
+		var g = value.TryGetProperty( "g", out var gElement ) && gElement.TryGetSingle( out var gValue ) ? gValue : 1f;
+		var b = value.TryGetProperty( "b", out var bElement ) && bElement.TryGetSingle( out var bValue ) ? bValue : 1f;
+		var a = value.TryGetProperty( "a", out var aElement ) && aElement.TryGetSingle( out var aValue ) ? aValue : 1f;
+
+		return new Color( r, g, b, a );
 	}
 
 	public static string GetString( JsonElement payload, string name, string fallback = "" )

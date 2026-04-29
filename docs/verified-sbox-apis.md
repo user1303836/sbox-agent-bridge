@@ -117,6 +117,14 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `Create(TypeDescription type, bool startEnabled)`
 - `Get(Guid id)`
 
+`Sandbox.Component`:
+
+- `Id`
+- `Enabled`
+- `Active`
+- `IsValid`
+- `Destroy()`
+
 `Sandbox.Game`:
 
 - `TypeLibrary`
@@ -148,10 +156,13 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `ReadOnly`
 - `IsIndexer`
 - `GetValue(object obj)`
+- `SetValue(object obj, object value)`
 
 `ISceneUndoScope`:
 
 - `WithGameObjectCreations()`
 - `WithGameObjectChanges(...)`
 - `WithComponentCreations()`
+- `WithComponentDestructions(Component component)`
+- `WithComponentChanges(Component component)`
 - `Push()`

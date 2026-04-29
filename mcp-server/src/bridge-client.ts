@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -36,17 +36,31 @@ export class BridgeClient {
     const requestDir = join(this.root, "requests");
     const responseDir = join(this.root, "responses");
     const requestPath = join(requestDir, `request-${id}.json`);
+    const requestTempPath = join(requestDir, `.request-${id}.tmp`);
     const responsePath = join(responseDir, `response-${id}.json`);
 
     await mkdir(requestDir, { recursive: true });
     await mkdir(responseDir, { recursive: true });
-    await writeFile(requestPath, JSON.stringify({ id, action, payload }, null, 2), "utf8");
+    await writeFile(requestTempPath, JSON.stringify({ id, action, payload }, null, 2), "utf8");
+    await rename(requestTempPath, requestPath);
 
     const started = Date.now();
 
     while (Date.now() - started < this.timeoutMs) {
       if (existsSync(responsePath)) {
-        const raw = await readFile(responsePath, "utf8");
+        let raw: string;
+
+        try {
+          raw = await readFile(responsePath, "utf8");
+        } catch (error) {
+          if (isTransientFileAccessError(error)) {
+            await sleep(this.pollMs);
+            continue;
+          }
+
+          throw error;
+        }
+
         await rm(responsePath, { force: true });
 
         const response = JSON.parse(stripBom(raw)) as BridgeResponse<T>;
@@ -72,4 +86,9 @@ function sleep(ms: number): Promise<void> {
 
 function stripBom(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+function isTransientFileAccessError(error: unknown): boolean {
+  const code = (error as { code?: string }).code;
+  return code === "EBUSY" || code === "EPERM" || code === "EACCES" || code === "ENOENT";
 }

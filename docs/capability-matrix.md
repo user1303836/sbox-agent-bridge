@@ -61,10 +61,10 @@ Status meanings:
 | List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list. |
 | Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context. |
 | Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties. |
-| Add component | `component.add` | TBD | Planned | Verify created component type/id. |
-| Remove component | `component.remove` | TBD | Planned | Undoable destruction. |
-| Set property | `component.set_property` | TBD | Planned | Type conversion is the hard part. |
-| Enable/disable component | `component.set_enabled` | TBD | Planned | Verify `Enabled` read-back. |
+| Add component | `component.add` | `component` / `add` | Verified | Live smoke adds `CameraComponent` by type name and verifies id/type read-back. |
+| Remove component | `component.remove` | `component` / `remove` | Verified | Undo scoped; live smoke verifies `component.get` fails after removal, undo restores, redo removes again. |
+| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies float, bool, Color, and optional string property writes. |
+| Enable/disable component | `component.set_enabled` | `component` / `set_enabled` | Verified | Live smoke verifies false and true read-back. |
 
 ## Assets And Prefabs
 
