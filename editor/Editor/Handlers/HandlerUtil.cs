@@ -177,6 +177,7 @@ internal static class HandlerUtil
 			Vector2 vector2 => new { type = "Vector2", value = new { x = vector2.x, y = vector2.y } },
 			Vector3 vector3 => new { type = "Vector3", value = ToJson( vector3 ) },
 			Rotation rotation => new { type = "Rotation", value = ToJson( rotation ) },
+			Angles angles => new { type = "Angles", value = new { pitch = angles.pitch, yaw = angles.yaw, roll = angles.roll } },
 			Transform transform => new
 			{
 				type = "Transform",

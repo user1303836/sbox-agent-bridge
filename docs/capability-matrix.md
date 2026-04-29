@@ -61,9 +61,9 @@ Status meanings:
 | List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list. |
 | Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context. |
 | Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties. |
-| Add component | `component.add` | `component` / `add` | Verified | Live smoke adds `CameraComponent` by type name and verifies id/type read-back. |
+| Add component | `component.add` | `component` / `add` | Verified | Live smoke adds `AgentBridgeMutationFixture` by type name and verifies id/type read-back. |
 | Remove component | `component.remove` | `component` / `remove` | Verified | Undo scoped; live smoke verifies `component.get` fails after removal, undo restores, redo removes again. |
-| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies float, bool, Color, and optional string property writes. |
+| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`. |
 | Enable/disable component | `component.set_enabled` | `component` / `set_enabled` | Verified | Live smoke verifies false and true read-back. |
 
 ## Assets And Prefabs
@@ -83,5 +83,5 @@ Status meanings:
 | MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
-| Live editor smoke script | Verified | `npm run smoke:live` verified core GameObject edits and component inspection against an already-open editor. |
+| Live editor smoke script | Verified | `npm run smoke:live` verified core GameObject edits, component inspection, and fixture-backed component mutation against an already-open editor. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

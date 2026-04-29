@@ -126,72 +126,7 @@ try {
     maxResults: 5
   });
 
-  const addedComponent = await bridge.send<ComponentMutationResult>("component.add", {
-    gameObjectId: source.id,
-    type: "CameraComponent",
-    startEnabled: true
-  });
-  const addedComponentId = addedComponent.verified.component.id;
-
-  await bridge.send("component.get", {
-    id: addedComponentId
-  });
-  const disabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
-    id: addedComponentId,
-    enabled: false
-  });
-  const enabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
-    id: addedComponentId,
-    enabled: true
-  });
-  const fovSet = await bridge.send<ComponentMutationResult>("component.set_property", {
-    id: addedComponentId,
-    property: "FieldOfView",
-    value: 80
-  });
-  const orthographicSet = await bridge.send<ComponentMutationResult>("component.set_property", {
-    id: addedComponentId,
-    property: "Orthographic",
-    value: true
-  });
-  const backgroundSet = await bridge.send<ComponentMutationResult>("component.set_property", {
-    id: addedComponentId,
-    property: "BackgroundColor",
-    value: { r: 0.1, g: 0.2, b: 0.3, a: 1 }
-  });
-  const addedProperties = await bridge.send<{ verified: { count: number } }>("component.get_properties", {
-    id: addedComponentId,
-    includeAll: false,
-    maxProperties: 30
-  });
-  await bridge.send("component.remove", {
-    id: addedComponentId
-  });
-  const removedComponentGetFailed = await rejectsBridgeCommand(() =>
-    bridge.send("component.get", {
-      id: addedComponentId
-    })
-  );
-  const componentUndo = await bridge.send<{ verified: { undone: boolean } }>("editor.undo");
-  await bridge.send("component.get", {
-    id: addedComponentId
-  });
-  const componentRedo = await bridge.send<{ verified: { redone: boolean } }>("editor.redo");
-  const removedAgainGetFailed = await rejectsBridgeCommand(() =>
-    bridge.send("component.get", {
-      id: addedComponentId
-    })
-  );
-  ensure(disabledComponent.verified.component.enabled === false, "component.set_enabled false did not read back false");
-  ensure(enabledComponent.verified.component.enabled === true, "component.set_enabled true did not read back true");
-  ensure(fovSet.verified.property?.value?.value === 80, "FieldOfView did not read back as 80");
-  ensure(orthographicSet.verified.property?.value?.value === true, "Orthographic did not read back as true");
-  ensure(removedComponentGetFailed, "component.remove did not make component.get fail");
-  ensure(componentUndo.verified.undone, "editor.undo did not restore removed component");
-  ensure(componentRedo.verified.redone, "editor.redo did not re-remove component");
-  ensure(removedAgainGetFailed, "component.get succeeded after redo removed the component");
-
-  const optionalStringProperty = await tryStringPropertySmoke(source.id, stamp);
+  const mutationFixture = await runMutationFixtureSmoke(source.id, parent.id, stamp);
   const inspectedComponent = await inspectExistingComponent();
 
   await bridge.send("gameobject.destroy", { id: duplicate.id });
@@ -220,18 +155,7 @@ try {
   summary.components = {
     availableTypeSampleCount: componentTypes.verified.count,
     sourceComponentCount: objectComponents.verified.count,
-    addedComponentId,
-    disabledReadback: disabledComponent.verified.component.enabled,
-    enabledReadback: enabledComponent.verified.component.enabled,
-    fieldOfView: fovSet.verified.property?.value?.value,
-    orthographic: orthographicSet.verified.property?.value?.value,
-    backgroundColor: backgroundSet.verified.property?.value?.value,
-    addedPropertyCount: addedProperties.verified.count,
-    removedComponentGetFailed,
-    componentUndoApplied: componentUndo.verified.undone,
-    componentRedoApplied: componentRedo.verified.redone,
-    removedAgainGetFailed,
-    optionalStringProperty,
+    mutationFixture,
     inspectedExistingComponent: inspectedComponent
   };
 
@@ -305,40 +229,150 @@ async function inspectExistingComponent(): Promise<Record<string, unknown> | nul
   };
 }
 
-async function tryStringPropertySmoke(gameObjectId: string, stamp: string): Promise<Record<string, unknown> | null> {
-  const customTypes = await bridge.send<{ verified: { count: number } }>("component.list_types", {
-    query: "MyComponent",
+async function runMutationFixtureSmoke(
+  gameObjectId: string,
+  referenceGameObjectId: string,
+  stamp: string
+): Promise<Record<string, unknown>> {
+  const fixtureTypes = await bridge.send<{ verified: { count: number } }>("component.list_types", {
+    query: "AgentBridgeMutationFixture",
     maxResults: 5
   });
-
-  if (customTypes.verified.count < 1) {
-    return null;
-  }
+  ensure(
+    fixtureTypes.verified.count >= 1,
+    "AgentBridgeMutationFixture is not available. Copy the bridge library into the project and wait for hotload."
+  );
 
   const added = await bridge.send<ComponentMutationResult>("component.add", {
     gameObjectId,
-    type: "MyComponent",
+    type: "AgentBridgeMutationFixture",
     startEnabled: true
   });
   const componentId = added.verified.component.id;
-  const expected = `smoke-${stamp}`;
 
-  const set = await bridge.send<ComponentMutationResult>("component.set_property", {
-    id: componentId,
-    property: "StringProperty",
-    value: expected
+  await bridge.send("component.get", {
+    id: componentId
   });
 
-  ensure(set.verified.property?.value?.value === expected, "StringProperty did not read back expected string");
+  const disabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
+    id: componentId,
+    enabled: false
+  });
+  const enabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
+    id: componentId,
+    enabled: true
+  });
+  ensure(disabledComponent.verified.component.enabled === false, "component.set_enabled false did not read back false");
+  ensure(enabledComponent.verified.component.enabled === true, "component.set_enabled true did not read back true");
+
+  const stringValue = `smoke-${stamp}`;
+  const stringSet = await setFixtureProperty(componentId, "StringValue", stringValue);
+  const boolSet = await setFixtureProperty(componentId, "BoolValue", true);
+  const intSet = await setFixtureProperty(componentId, "IntValue", 42);
+  const uintSet = await setFixtureProperty(componentId, "UIntValue", 43);
+  const longSet = await setFixtureProperty(componentId, "LongValue", "123456789");
+  const floatSet = await setFixtureProperty(componentId, "FloatValue", 12.5);
+  const doubleSet = await setFixtureProperty(componentId, "DoubleValue", 987.125);
+  const enumSet = await setFixtureProperty(componentId, "EnumValue", "Complete");
+  const vector2Set = await setFixtureProperty(componentId, "Vector2Value", { x: 1.25, y: 2.5 });
+  const vector3Set = await setFixtureProperty(componentId, "Vector3Value", { x: 3.5, y: 4.75, z: 5.25 });
+  const rotationSet = await setFixtureProperty(componentId, "RotationValue", { pitch: 10, yaw: 20, roll: 30 });
+  const anglesSet = await setFixtureProperty(componentId, "AnglesValue", { pitch: 15, yaw: 25, roll: 35 });
+  const transformSet = await setFixtureProperty(componentId, "TransformValue", {
+    position: { x: 6, y: 7, z: 8 },
+    rotation: { pitch: 1, yaw: 2, roll: 3 },
+    scale: { x: 1.5, y: 2, z: 2.5 }
+  });
+  const colorSet = await setFixtureProperty(componentId, "ColorValue", { r: 0.2, g: 0.4, b: 0.6, a: 0.8 });
+  const gameObjectReferenceSet = await setFixtureProperty(componentId, "GameObjectReference", referenceGameObjectId);
+  const componentReferenceSet = await setFixtureProperty(componentId, "ComponentReference", componentId);
+
+  ensure(propertyValue(stringSet) === stringValue, "StringValue did not read back expected string");
+  ensure(propertyValue(boolSet) === true, "BoolValue did not read back true");
+  ensure(propertyValue(intSet) === 42, "IntValue did not read back 42");
+  ensure(propertyValue(uintSet) === 43, "UIntValue did not read back 43");
+  ensure(propertyValue(longSet) === 123456789, "LongValue did not read back 123456789");
+  ensureClose(propertyValue(floatSet), 12.5, "FloatValue did not read back 12.5");
+  ensureClose(propertyValue(doubleSet), 987.125, "DoubleValue did not read back 987.125");
+  ensure(propertyValue(enumSet) === "Complete", "EnumValue did not read back Complete");
+  ensureVector(propertyValue(vector2Set), { x: 1.25, y: 2.5 }, "Vector2Value");
+  ensureVector(propertyValue(vector3Set), { x: 3.5, y: 4.75, z: 5.25 }, "Vector3Value");
+  ensureVector((propertyValue(rotationSet) as JsonObject).angles, { pitch: 10, yaw: 20, roll: 30 }, "RotationValue angles");
+  ensureVector(propertyValue(anglesSet), { pitch: 15, yaw: 25, roll: 35 }, "AnglesValue");
+
+  const transform = propertyValue(transformSet) as JsonObject;
+  ensureVector(transform.position, { x: 6, y: 7, z: 8 }, "TransformValue position");
+  ensureVector(transform.scale, { x: 1.5, y: 2, z: 2.5 }, "TransformValue scale");
+  ensureColor(propertyValue(colorSet), { r: 0.2, g: 0.4, b: 0.6, a: 0.8 }, "ColorValue");
+  ensure((propertyValue(gameObjectReferenceSet) as JsonObject).id === referenceGameObjectId, "GameObjectReference id mismatch");
+  ensure((propertyValue(componentReferenceSet) as JsonObject).id === componentId, "ComponentReference id mismatch");
+
+  const properties = await bridge.send<{ verified: { count: number } }>("component.get_properties", {
+    id: componentId,
+    includeAll: false,
+    maxProperties: 50
+  });
 
   await bridge.send("component.remove", {
     id: componentId
   });
+  const removedComponentGetFailed = await rejectsBridgeCommand(() =>
+    bridge.send("component.get", {
+      id: componentId
+    })
+  );
+  const componentUndo = await bridge.send<{ verified: { undone: boolean } }>("editor.undo");
+  await bridge.send("component.get", {
+    id: componentId
+  });
+  const componentRedo = await bridge.send<{ verified: { redone: boolean } }>("editor.redo");
+  const removedAgainGetFailed = await rejectsBridgeCommand(() =>
+    bridge.send("component.get", {
+      id: componentId
+    })
+  );
+
+  ensure(removedComponentGetFailed, "component.remove did not make component.get fail");
+  ensure(componentUndo.verified.undone, "editor.undo did not restore removed component");
+  ensure(componentRedo.verified.redone, "editor.redo did not re-remove component");
+  ensure(removedAgainGetFailed, "component.get succeeded after redo removed the component");
 
   return {
     componentId,
-    value: set.verified.property?.value?.value
+    disabledReadback: disabledComponent.verified.component.enabled,
+    enabledReadback: enabledComponent.verified.component.enabled,
+    propertyCount: properties.verified.count,
+    removedComponentGetFailed,
+    componentUndoApplied: componentUndo.verified.undone,
+    componentRedoApplied: componentRedo.verified.redone,
+    removedAgainGetFailed,
+    values: {
+      string: propertyValue(stringSet),
+      bool: propertyValue(boolSet),
+      int: propertyValue(intSet),
+      uint: propertyValue(uintSet),
+      long: propertyValue(longSet),
+      float: propertyValue(floatSet),
+      double: propertyValue(doubleSet),
+      enum: propertyValue(enumSet),
+      vector2: propertyValue(vector2Set),
+      vector3: propertyValue(vector3Set),
+      rotation: propertyValue(rotationSet),
+      angles: propertyValue(anglesSet),
+      transform: propertyValue(transformSet),
+      color: propertyValue(colorSet),
+      gameObjectReference: propertyValue(gameObjectReferenceSet),
+      componentReference: propertyValue(componentReferenceSet)
+    }
   };
+}
+
+async function setFixtureProperty(componentId: string, property: string, value: unknown): Promise<ComponentMutationResult> {
+  return await bridge.send<ComponentMutationResult>("component.set_property", {
+    id: componentId,
+    property,
+    value
+  });
 }
 
 async function rejectsBridgeCommand(command: () => Promise<unknown>): Promise<boolean> {
@@ -354,4 +388,30 @@ function ensure(condition: boolean, message: string): void {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function propertyValue(result: ComponentMutationResult): unknown {
+  return result.verified.property?.value?.value;
+}
+
+interface JsonObject {
+  [key: string]: unknown;
+}
+
+function ensureClose(actual: unknown, expected: number, label: string): void {
+  ensure(typeof actual === "number", `${label} did not read back as a number`);
+  ensure(Math.abs(actual - expected) < 0.001, `${label} expected ${expected}, got ${actual}`);
+}
+
+function ensureVector(actual: unknown, expected: Record<string, number>, label: string): void {
+  ensure(typeof actual === "object" && actual !== null, `${label} did not read back as an object`);
+  const values = actual as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(expected)) {
+    ensureClose(values[key], value, `${label}.${key}`);
+  }
+}
+
+function ensureColor(actual: unknown, expected: Record<string, number>, label: string): void {
+  ensureVector(actual, expected, label);
 }

@@ -25,6 +25,7 @@ Tested against a fresh minimal s&box project on 2026-04-28:
 - Core scene editing actions were verified through direct file IPC: `editor.context`, `editor.get_selection`, `editor.set_selection`, `scene.details`, `gameobject.get`, `gameobject.rename`, `gameobject.set_transform`, and `gameobject.set_enabled`.
 - Extended scene editing actions were verified through direct file IPC: `editor.undo`, `editor.redo`, `editor.frame_object`, `gameobject.destroy`, `gameobject.duplicate`, and `gameobject.reparent`.
 - Component discovery, inspection, and mutation actions were verified through direct file IPC: `component.list_types`, `component.list_on_gameobject`, `component.get`, `component.get_properties`, `component.add`, `component.remove`, `component.set_enabled`, and `component.set_property`.
+- `component.set_property` is live-smoked against `AgentBridgeMutationFixture`, covering string, bool, integer, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` reference, and `Component` reference values.
 
 This means the basic loop works: external process -> bridge request file -> s&box editor frame pump -> editor scene mutation -> verified response file.
 
@@ -73,7 +74,7 @@ Every mutation should return a read-back `verified` payload. If a mutation canno
 
 `gameobject.duplicate` is currently a shallow, scene-attached duplicate: it copies name, enabled state, transform, and parent. Component and child cloning are tracked as future work under the component/prefab milestones.
 
-`component.set_property` is intentionally typed and narrow. Current verified conversions include `string`, `bool`, numeric primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` references, and `Component` references. Resource references and collection editing are future work.
+`component.set_property` is intentionally typed and narrow. Current verified conversions include `string`, `bool`, numeric primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` references, and `Component` references. Resource references and collection editing are future work. The dedicated live-smoke fixture lives at `editor/Code/AgentBridgeMutationFixture.cs`.
 
 ## Capability Goal
 

@@ -85,13 +85,13 @@ Candidate actions:
 - `component.get_properties` - verified
 - `component.add` - verified
 - `component.remove` - verified
-- `component.set_property` - verified for common scalar/math/reference shapes
+- `component.set_property` - verified through `AgentBridgeMutationFixture` for common scalar/math/reference shapes
 - `component.set_enabled` - verified
 
 Acceptance criteria:
 
 - Type lookup uses s&box type metadata rather than hardcoded assumptions.
-- Property read/write supports primitives, enums, `Vector2`, `Vector3`, `Rotation`, colors, and object/component references.
+- Property read/write supports primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, colors, and object/component references.
 - Set-property failures return actionable type-conversion errors.
 - Read-back verifies the property value after a set.
 

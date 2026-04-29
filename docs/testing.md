@@ -38,7 +38,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-This script uses the same file IPC path as the MCP server. It creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types, reads a component from the active scene when one exists, and then cleans up the temporary objects.
+This script uses the same file IPC path as the MCP server. It creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types, mutates `AgentBridgeMutationFixture`, reads a component from the active scene when one exists, and then cleans up the temporary objects.
 
 Useful environment variables:
 
@@ -110,11 +110,13 @@ For component mutation changes, verify:
 
 1. `component.add`
 2. `component.set_enabled` false, then true
-3. `component.set_property` for at least float, bool, Color, and string when a local test component is available
+3. `component.set_property` through `AgentBridgeMutationFixture` for string, bool, int/uint/long, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component`
 4. `component.remove`
 5. `component.get` fails after removal
 6. `editor.undo` restores the removed component
 7. `editor.redo` removes it again
+
+`AgentBridgeMutationFixture` lives at `editor/Code/AgentBridgeMutationFixture.cs`. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`.
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 
