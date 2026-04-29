@@ -116,7 +116,7 @@ For component mutation changes, verify:
 6. `editor.undo` restores the removed component
 7. `editor.redo` removes it again
 
-`AgentBridgeMutationFixture` lives at `editor/Code/AgentBridgeMutationFixture.cs`. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`.
+`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`.
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 

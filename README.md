@@ -72,7 +72,8 @@ YourProject/
     sbox_agent_bridge/
       sbox_agent_bridge.sbproj
       Code/
-        AgentBridgeMutationFixture.cs
+        TestFixtures/
+          AgentBridgeMutationFixture.cs
       Editor/
         BridgeDock.cs
         BridgeRuntime.cs
@@ -203,7 +204,9 @@ npm run smoke:live
 
 This test creates temporary GameObjects, verifies scene and GameObject actions, mutates `AgentBridgeMutationFixture`, checks component property readbacks, tests undo/redo, and cleans up after itself.
 
-If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.
+`AgentBridgeMutationFixture` is runtime/library code under `editor/Code/TestFixtures/`, not editor-only code under `editor/Editor/`, because the smoke test needs to add it to a scene GameObject by type name.
+
+If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.
 
 ## Architecture
 
