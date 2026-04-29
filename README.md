@@ -24,6 +24,7 @@ Tested against a fresh minimal s&box project on 2026-04-28:
 - The created object was verified through a follow-up `scene.find` read-back.
 - Core scene editing actions were verified through direct file IPC: `editor.context`, `editor.get_selection`, `editor.set_selection`, `scene.details`, `gameobject.get`, `gameobject.rename`, `gameobject.set_transform`, and `gameobject.set_enabled`.
 - Extended scene editing actions were verified through direct file IPC: `editor.undo`, `editor.redo`, `editor.frame_object`, `gameobject.destroy`, `gameobject.duplicate`, and `gameobject.reparent`.
+- Component discovery and inspection actions were verified through direct file IPC: `component.list_types`, `component.list_on_gameobject`, `component.get`, and `component.get_properties`.
 
 This means the basic loop works: external process -> bridge request file -> s&box editor frame pump -> editor scene mutation -> verified response file.
 
@@ -66,6 +67,7 @@ Default IPC root:
 - `editor`: `save_scene`, `undo`, `redo`, `frame_object`
 - `scene`: `summary`, `hierarchy`, `find`, `details`
 - `gameobject`: `get`, `create`, `rename`, `set_transform`, `set_enabled`, `destroy`, `duplicate`, `reparent`
+- `component`: `list_types`, `list_on_gameobject`, `get`, `get_properties`
 
 Every mutation should return a read-back `verified` payload. If a mutation cannot verify its own result, callers should treat it as incomplete.
 
@@ -100,6 +102,13 @@ npm run build
 ```
 
 CI runs `npm ci`, `npm run check`, `npm test`, `npm run build`, and JSON metadata validation. Live s&box editor behavior still needs local smoke testing; see [docs/testing.md](docs/testing.md).
+
+Run the opt-in live smoke check against an already-open editor bridge:
+
+```bash
+cd mcp-server
+npm run smoke:live
+```
 
 Example MCP config after building:
 

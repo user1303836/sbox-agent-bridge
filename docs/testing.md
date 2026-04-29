@@ -29,6 +29,24 @@ npm test
 npm run build
 ```
 
+## Opt-In Live Smoke Script
+
+When a s&box editor project is open and the **Agent Bridge** dock is running:
+
+```bash
+cd mcp-server
+npm run smoke:live
+```
+
+This script uses the same file IPC path as the MCP server. It creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types, reads a component from the active scene when one exists, and then cleans up the temporary objects.
+
+Useful environment variables:
+
+- `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root.
+- `SBOX_AGENT_BRIDGE_TIMEOUT_MS`: override command timeout.
+- `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
+- `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
+
 ## Live Editor Smoke Checks
 
 Use these when bridge code changes.
@@ -80,6 +98,13 @@ For extended core scene editing changes, verify:
 7. `gameobject.get` on the restored object
 8. `editor.redo`
 9. `scene.find` to confirm the object is gone again
+
+For component discovery changes, verify:
+
+1. `component.list_types`
+2. `component.list_on_gameobject`
+3. `component.get`
+4. `component.get_properties`
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 

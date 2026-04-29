@@ -75,12 +75,16 @@ Acceptance criteria:
 
 Goal: let agents add and configure the behavior/rendering/physics building blocks that make scene editing useful.
 
+Status: in progress. Verified so far: component type discovery, component listing on a GameObject, id-targeted component reads, and read-only property metadata/value inspection.
+
 Candidate actions:
 
-- `component.list_types`
+- `component.list_types` - verified
+- `component.list_on_gameobject` - verified
+- `component.get` - verified
+- `component.get_properties` - verified
 - `component.add`
 - `component.remove`
-- `component.get_properties`
 - `component.set_property`
 - `component.set_enabled`
 

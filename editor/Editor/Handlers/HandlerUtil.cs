@@ -71,14 +71,142 @@ internal static class HandlerUtil
 	public static object DescribeComponent( Component component )
 	{
 		var type = component.GetType();
+		var description = Game.TypeLibrary.GetType( type );
 
 		return new
 		{
 			id = component.Id.ToString(),
 			type = type.Name,
 			fullType = type.FullName,
+			title = description?.Title ?? type.Name,
+			description = description?.Description ?? "",
+			group = description?.Group ?? "",
 			enabled = component.Enabled,
-			active = component.Active
+			active = component.Active,
+			propertyCount = description?.Properties.Length ?? 0
+		};
+	}
+
+	public static object DescribeComponentType( TypeDescription type )
+	{
+		var properties = type.Properties
+			.Where( IsReadableProperty )
+			.ToArray();
+
+		var inspectorProperties = properties
+			.Where( IsInspectorProperty )
+			.ToArray();
+
+		return new
+		{
+			name = type.Name,
+			fullName = type.FullName,
+			title = type.Title,
+			description = type.Description,
+			group = type.Group,
+			icon = type.Icon,
+			isAbstract = type.IsAbstract,
+			isGenericType = type.IsGenericType,
+			propertyCount = properties.Length,
+			inspectorPropertyCount = inspectorProperties.Length
+		};
+	}
+
+	public static object DescribePropertyMetadata( PropertyDescription property )
+	{
+		return new
+		{
+			name = property.Name,
+			title = property.Title,
+			description = property.Description,
+			group = property.Group,
+			type = property.PropertyType.Name,
+			fullType = property.PropertyType.FullName,
+			canRead = property.CanRead,
+			canWrite = property.CanWrite,
+			readOnly = property.ReadOnly,
+			isPublic = property.IsPublic,
+			isStatic = property.IsStatic,
+			isIndexer = property.IsIndexer,
+			isInspectorProperty = IsInspectorProperty( property )
+		};
+	}
+
+	public static object DescribePropertyValue( Component component, PropertyDescription property )
+	{
+		try
+		{
+			return new
+			{
+				metadata = DescribePropertyMetadata( property ),
+				value = DescribeValue( property.GetValue( component ) )
+			};
+		}
+		catch ( Exception ex )
+		{
+			return new
+			{
+				metadata = DescribePropertyMetadata( property ),
+				error = ex.Message
+			};
+		}
+	}
+
+	public static object DescribeValue( object? value )
+	{
+		if ( value is null )
+			return new { type = "null", value = (object?)null };
+
+		return value switch
+		{
+			string stringValue => new { type = "string", value = stringValue },
+			bool boolValue => new { type = "bool", value = boolValue },
+			int intValue => new { type = "int", value = intValue },
+			uint uintValue => new { type = "uint", value = uintValue },
+			long longValue => new { type = "long", value = longValue },
+			ulong ulongValue => new { type = "ulong", value = ulongValue },
+			short shortValue => new { type = "short", value = shortValue },
+			ushort ushortValue => new { type = "ushort", value = ushortValue },
+			byte byteValue => new { type = "byte", value = byteValue },
+			sbyte sbyteValue => new { type = "sbyte", value = sbyteValue },
+			float floatValue => new { type = "float", value = floatValue },
+			double doubleValue => new { type = "double", value = doubleValue },
+			decimal decimalValue => new { type = "decimal", value = decimalValue },
+			Enum enumValue => new { type = value.GetType().FullName ?? value.GetType().Name, value = enumValue.ToString() },
+			Vector2 vector2 => new { type = "Vector2", value = new { x = vector2.x, y = vector2.y } },
+			Vector3 vector3 => new { type = "Vector3", value = ToJson( vector3 ) },
+			Rotation rotation => new { type = "Rotation", value = ToJson( rotation ) },
+			Transform transform => new
+			{
+				type = "Transform",
+				value = new
+				{
+					position = ToJson( transform.Position ),
+					rotation = ToJson( transform.Rotation ),
+					scale = ToJson( transform.Scale )
+				}
+			},
+			Color color => new
+			{
+				type = "Color",
+				value = new
+				{
+					r = color.r,
+					g = color.g,
+					b = color.b,
+					a = color.a,
+					hex = color.Hex
+				}
+			},
+			GameObject go => new { type = "GameObject", value = new { id = go.Id.ToString(), name = go.Name } },
+			Component component => new { type = "Component", value = new { id = component.Id.ToString(), type = component.GetType().Name, gameObjectId = component.GameObject.Id.ToString() } },
+			Type type => new { type = "Type", value = type.FullName ?? type.Name },
+			_ => new
+			{
+				type = value.GetType().FullName ?? value.GetType().Name,
+				value = value.ToString() ?? "",
+				serialized = false
+			}
 		};
 	}
 
@@ -168,6 +296,24 @@ internal static class HandlerUtil
 		return go;
 	}
 
+	public static Component RequireComponent( Scene scene, JsonElement payload, string propertyName = "id" )
+	{
+		var id = GetString( payload, propertyName );
+
+		if ( string.IsNullOrWhiteSpace( id ) )
+			throw new InvalidOperationException( $"Missing required payload property '{propertyName}'." );
+
+		if ( !Guid.TryParse( id, out var guid ) )
+			throw new InvalidOperationException( $"Payload property '{propertyName}' must be a Component GUID." );
+
+		var component = scene.Directory.FindComponentByGuid( guid );
+
+		if ( component is null || !component.IsValid )
+			throw new InvalidOperationException( $"No active Component found for id '{id}'." );
+
+		return component;
+	}
+
 	public static object DescribeDestroyedGameObject( Scene scene, string id )
 	{
 		var exists = Guid.TryParse( id, out var guid ) && scene.Directory.FindByGuid( guid ) is { IsValid: true, IsDestroyed: false };
@@ -188,6 +334,16 @@ internal static class HandlerUtil
 			throw new InvalidOperationException( $"Missing required payload property '{name}'." );
 
 		return value;
+	}
+
+	public static bool IsReadableProperty( PropertyDescription property )
+	{
+		return property.CanRead && !property.IsIndexer && !property.IsStatic;
+	}
+
+	public static bool IsInspectorProperty( PropertyDescription property )
+	{
+		return property.HasAttribute( typeof( PropertyAttribute ) );
 	}
 
 	public static string GetString( JsonElement payload, string name, string fallback = "" )

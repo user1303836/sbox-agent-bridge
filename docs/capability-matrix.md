@@ -57,10 +57,12 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| List component types | `component.list_types` | TBD | Planned | Use s&box type metadata. |
+| List component types | `component.list_types` | `component` / `list_types` | Verified | Uses `Game.TypeLibrary.GetTypes(typeof(Component))`; live smoke returned 131 types. |
+| List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list. |
+| Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context. |
+| Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties. |
 | Add component | `component.add` | TBD | Planned | Verify created component type/id. |
 | Remove component | `component.remove` | TBD | Planned | Undoable destruction. |
-| Get properties | `component.get_properties` | TBD | Planned | Public readable properties, compact values. |
 | Set property | `component.set_property` | TBD | Planned | Type conversion is the hard part. |
 | Enable/disable component | `component.set_enabled` | TBD | Planned | Verify `Enabled` read-back. |
 
@@ -81,5 +83,5 @@ Status meanings:
 | MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
-| Live editor smoke tests | Verified | Manual direct file-IPC flow verified core GameObject edits on 2026-04-28. |
+| Live editor smoke script | Verified | `npm run smoke:live` verified core GameObject edits and component inspection against an already-open editor. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

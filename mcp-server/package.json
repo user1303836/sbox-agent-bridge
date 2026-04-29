@@ -9,6 +9,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "ci": "npm run check && npm test && npm run build",
     "dev": "tsx src/index.ts",
+    "smoke:live": "tsx test/live-smoke.ts",
     "test": "tsx --test test/bridge-client.test.ts"
   },
   "dependencies": {

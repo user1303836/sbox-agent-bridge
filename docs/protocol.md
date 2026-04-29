@@ -58,6 +58,10 @@ Errors use the same envelope:
 - `gameobject.destroy`
 - `gameobject.duplicate`
 - `gameobject.reparent`
+- `component.list_types`
+- `component.list_on_gameobject`
+- `component.get`
+- `component.get_properties`
 
 ## Mutation Rule
 

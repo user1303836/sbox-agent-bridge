@@ -26,10 +26,14 @@ internal static class CommandDispatcher
 			"gameobject.destroy" => GameObjectHandlers.Destroy( request ),
 			"gameobject.duplicate" => GameObjectHandlers.Duplicate( request ),
 			"gameobject.reparent" => GameObjectHandlers.Reparent( request ),
+			"component.list_types" => ComponentHandlers.ListTypes( request ),
+			"component.list_on_gameobject" => ComponentHandlers.ListOnGameObject( request ),
+			"component.get" => ComponentHandlers.Get( request ),
+			"component.get_properties" => ComponentHandlers.GetProperties( request ),
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, scene.summary, scene.hierarchy, scene.find, scene.details, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent."
+				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, scene.summary, scene.hierarchy, scene.find, scene.details, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties."
 			)
 		};
 	}

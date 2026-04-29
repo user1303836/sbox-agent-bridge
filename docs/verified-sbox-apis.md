@@ -85,6 +85,7 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 `Sandbox.GameObjectDirectory`:
 
 - `FindByGuid(Guid guid)`
+- `FindComponentByGuid(Guid guid)`
 
 `Sandbox.SelectionSystem`:
 
@@ -114,6 +115,39 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 
 - `GetAll()`
 - `Create(TypeDescription type, bool startEnabled)`
+- `Get(Guid id)`
+
+`Sandbox.Game`:
+
+- `TypeLibrary`
+
+`Sandbox.Internal.TypeLibrary`:
+
+- `GetTypes(Type type)`
+- `GetType(Type type)`
+
+`Sandbox.TypeDescription`:
+
+- `Name`
+- `FullName`
+- `Title`
+- `Description`
+- `Group`
+- `Icon`
+- `Properties`
+
+`Sandbox.PropertyDescription`:
+
+- `Name`
+- `Title`
+- `Description`
+- `Group`
+- `PropertyType`
+- `CanRead`
+- `CanWrite`
+- `ReadOnly`
+- `IsIndexer`
+- `GetValue(object obj)`
 
 `ISceneUndoScope`:
 
