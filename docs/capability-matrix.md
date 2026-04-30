@@ -20,7 +20,8 @@ Status meanings:
 |---|---|---|---|---|
 | Bridge status | `bridge.status` | `editor` / `status` | Verified | Returns running state, IPC root, active scene, play state. |
 | Editor context | `editor.context` | `editor` / `context` | Verified | Direct file-IPC read verified with selected GameObject details. |
-| Save scene | `editor.save_scene` | `editor` / `save_scene` | Verified | Reports before/after dirty state and scene source path; guards untitled scenes instead of opening a save-as flow. Live IPC verified dry-run and no-source skip behavior; actual disk write requires a scene with a source path. |
+| Open scene | `editor.open_scene` | `editor` / `open_scene` | Verified | Opens a scene resource by path and makes its session active. Supports `forceReload` for reloading an already-open sourced scene when play/stop leaves the editor session stale. |
+| Save scene | `editor.save_scene` | `editor` / `save_scene` | Verified | Reports before/after dirty state and scene source path; guards untitled scenes instead of opening a save-as flow. Live IPC verified dry-run, no-source skip behavior, and disk write against `scenes/minimal.scene`. |
 | Undo | `editor.undo` | `editor` / `undo` | Verified | Verified by restoring a destroyed GameObject. |
 | Redo | `editor.redo` | `editor` / `redo` | Verified | Verified by re-applying the destroy operation after undo. |
 | Selection read | `editor.get_selection` | `editor` / `get_selection` | Verified | Returns typed selection entries; GameObject selection verified. |

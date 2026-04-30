@@ -40,6 +40,7 @@ Errors use the same envelope:
 
 - `bridge.status`
 - `editor.context`
+- `editor.open_scene`
 - `editor.get_selection`
 - `editor.set_selection`
 - `editor.save_scene`
@@ -78,6 +79,8 @@ Errors use the same envelope:
 ## Mutation Rule
 
 Mutations should return a `verified` object read back from the editor after the operation. If `verified` is missing, the caller should assume the change may not have stuck.
+
+`editor.open_scene` accepts `path`, optional `bringToFront`, and optional `forceReload`. Use `forceReload: true` only when the scene has no unsaved changes; it reloads an already-open sourced scene from disk and is useful after play-mode transitions leave the active editor session stale.
 
 `editor.save_scene` returns before/after save state. `dryRun: true` reads save state without writing. Untitled scenes without a source path are guarded: the bridge returns `saveAttempted: false` and a `skippedReason` instead of opening a surprise save-as flow. When a save is attempted, `saveVerified` is true only if the after-state reports no unsaved changes.
 

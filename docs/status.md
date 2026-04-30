@@ -23,7 +23,8 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - Component property values can be dry-run validated through `component.validate_property` or `component.set_property` with `dryRun: true`.
 - `component.set_property` is live-smoked against `AgentBridgeMutationFixture` for string, bool, integer, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` reference, and `Component` reference values.
 - Resource-backed component properties can be validated and set from asset paths; live IPC verified `ModelRenderer.Model` with `models/dev/plane_blend.vmdl` and `ModelRenderer.MaterialOverride` with `materials/dev/reflectivity_30.vmat`.
-- `editor.save_scene` reports before/after save state, source path, skipped reason, and whether a save was verified. The current live scene is untitled, so direct IPC verified dry-run and safe no-source skip behavior rather than a disk write.
+- `editor.save_scene` reports before/after save state, source path, skipped reason, and whether a save was verified. Direct IPC verified dry-run, safe no-source skip behavior, and an actual disk write against the sourced `scenes/minimal.scene` test scene.
+- `editor.open_scene` opens sourced scene resources and supports `forceReload` for recovering an already-open scene after play/stop session staleness.
 - `scene.batch` runs a bounded list of existing bridge actions with `$ref` aliases. Direct IPC verified a parent/child create, component add, model/material property writes, save-state check, and details read-back.
 - Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, and combined feedback.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
@@ -37,12 +38,13 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `gameobject.duplicate` is currently shallow: it copies name, enabled state, transform, and parent, but not components or children.
 - `component.set_property` does not yet support collection/list editing. Resource reference support is implemented for `Sandbox.Resource` subclasses, with live coverage so far on model and material properties.
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
-- `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text.
+- `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. It does not yet support a timestamp/cursor, so stale errors can appear in current feedback.
+- Runtime/game-session inspection is not reliable yet. The ARPG POC showed that scene reads can target a stale editor session during or after play mode until the sourced scene is force-reloaded.
 - `AgentBridgeMutationFixture` is not visible through `Game.TypeLibrary` in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set.
 - The full live smoke is currently blocked in this editor session by the `gameobject.destroy` delete/undo null reference. Direct feedback-loop actions were verified separately.
 
 ## Next Larger Milestones
 
-- Minimal game POC to discover the next practical editor gaps.
+- Continue the minimal ARPG POC and use it to discover the next practical editor gaps.
 - Editor feedback loop refinements: wait-for-compile, structured live log events, and runtime/game-session inspection.
 - Asset and prefab discovery/instantiation workflows.

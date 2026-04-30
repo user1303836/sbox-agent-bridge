@@ -8,6 +8,7 @@ internal static class CommandDispatcher
 		{
 			"bridge.status" => EditorHandlers.Status( request ),
 			"editor.context" => EditorHandlers.Context( request ),
+			"editor.open_scene" => EditorHandlers.OpenScene( request ),
 			"editor.get_selection" => EditorHandlers.GetSelection( request ),
 			"editor.set_selection" => EditorHandlers.SetSelection( request ),
 			"editor.save_scene" => EditorHandlers.SaveScene( request ),
@@ -45,7 +46,7 @@ internal static class CommandDispatcher
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, scene.summary, scene.hierarchy, scene.find, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
+				"Use one of: bridge.status, editor.context, editor.open_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, scene.summary, scene.hierarchy, scene.find, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
 			)
 		};
 	}

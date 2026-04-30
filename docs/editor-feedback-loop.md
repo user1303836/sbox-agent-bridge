@@ -30,10 +30,18 @@ Recommended agent flow after source or scene changes:
 5. If compile is clean enough to test, call `editor.play`.
 6. Call `editor.feedback` while playing to inspect play state and recent errors.
 7. Call `editor.stop` before returning to editor-scene mutations.
+8. If scene reads become empty or stale after play/stop, call `editor.open_scene` with `forceReload: true` for the saved scene path before continuing editor-scene mutations.
+
+## Current ARPG POC Finding
+
+The first ARPG POC showed that play-mode state and scene inspection are not yet fully aligned. `editor.play` can successfully start play mode, but follow-up `scene.summary`, `scene.hierarchy`, or `scene.find` calls may still target a stale editor session rather than the live game session. After stopping play, the active editor session can also expose an empty scene until the saved scene is reopened from disk.
+
+`editor.open_scene` now supports `forceReload: true` to recover the editable scene when it has no unsaved changes. This is a recovery path, not a substitute for proper runtime inspection.
 
 ## Open Work
 
 - Add a wait action for compile/hotload completion instead of requiring clients to poll.
 - Capture structured live `LogEvent` entries if a stable public hook is verified for editor libraries.
 - Separate runtime/game-session inspection from editor-scene inspection so agents do not confuse play-mode objects with editable scene objects.
+- Add timestamp or cursor-based log reads so stale errors do not pollute current feedback after long editor sessions.
 - Add viewport or screenshot feedback once a reliable editor capture path is verified.

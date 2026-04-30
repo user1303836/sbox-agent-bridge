@@ -164,7 +164,7 @@ Find the object named PlayerStart, inspect its components, validate any property
 
 The bridge currently exposes four MCP tools: `editor`, `scene`, `gameobject`, and `component`.
 
-- `editor`: bridge status, active context, selection, save verification, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
+- `editor`: bridge status, active context, open scene, selection, save verification, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
 - `scene`: summary, hierarchy, search, GameObject details, small verified batches
 - `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent; create can optionally parent the new object
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, validate property
@@ -211,6 +211,7 @@ Useful scripts:
 - [Capability Matrix](docs/capability-matrix.md)
 - [Testing Strategy](docs/testing.md)
 - [Editor Feedback Loop](docs/editor-feedback-loop.md)
+- [ARPG POC First Pass](docs/poc-arpg-first-pass.md)
 - [Architecture](docs/architecture.md)
 - [Protocol](docs/protocol.md)
 - [Verified s&box APIs](docs/verified-sbox-apis.md)

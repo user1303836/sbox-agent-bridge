@@ -51,6 +51,7 @@ Status: in progress. Verified so far: selection read/set, object details, id-tar
 Candidate actions:
 
 - `editor.save_scene` - verified for save-state reporting and no-source guard; actual disk-write verification needs a sourced scene
+- `editor.open_scene` - verified for opening sourced scenes and force-reloading stale open sessions
 - `editor.undo` - verified
 - `editor.redo` - verified
 - `editor.frame_object` - verified
@@ -130,6 +131,8 @@ Acceptance criteria:
 
 Goal: build the smallest real playable scene through the bridge and use the rough edges to drive the next capability work.
 
+Status: first ARPG vertical slice created in the local test project. See [poc-arpg-first-pass.md](poc-arpg-first-pass.md).
+
 Candidate acceptance criteria:
 
 - The agent can inspect the scene, create/configure a minimal playable setup, save or explicitly report why save is unavailable, and read editor feedback.
@@ -163,6 +166,7 @@ Remaining gaps:
 - Wait/poll helper for compile completion.
 - Structured live log-event capture, if a stable editor-library hook is verified.
 - Dedicated runtime/game-session inspection while playing.
+- Timestamp/cursor-based logs so stale errors do not look current.
 - Reverify destructive scene edits after play/stop transitions. The current editor session exposed a null reference in the native GameObject delete/undo path.
 
 ## Milestone 6: Rich Editor Access

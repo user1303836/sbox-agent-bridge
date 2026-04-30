@@ -46,6 +46,53 @@ internal static class EditorHandlers
 		} );
 	}
 
+	public static BridgeResponse OpenScene( BridgeRequest request )
+	{
+		var path = HandlerUtil.GetRequiredString( request.Payload, "path" ).Replace( '\\', '/' ).TrimStart( '/' );
+		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
+		var forceReload = HandlerUtil.GetBool( request.Payload, "forceReload", false );
+		var sceneFile = ResourceLibrary.Get<SceneFile>( path );
+
+		if ( sceneFile is null || !sceneFile.IsValid )
+			throw new InvalidOperationException( $"Could not load scene resource '{path}'." );
+
+		var existing = SceneEditorSession.Resolve( sceneFile );
+
+		if ( existing is null )
+		{
+			EditorScene.OpenScene( sceneFile );
+			existing = SceneEditorSession.Resolve( sceneFile ) ?? SceneEditorSession.Active;
+		}
+		else if ( forceReload )
+		{
+			if ( existing.HasUnsavedChanges )
+				throw new InvalidOperationException( $"Scene '{path}' has unsaved changes; refusing forceReload." );
+
+			existing.Destroy();
+			EditorScene.OpenScene( sceneFile );
+			existing = SceneEditorSession.Resolve( sceneFile ) ?? SceneEditorSession.Active;
+		}
+
+		if ( existing is null )
+			throw new InvalidOperationException( $"Scene '{path}' was opened but no editor session was available." );
+
+		existing.MakeActive( bringToFront );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor scene opened",
+			verified = new
+			{
+				requestedPath = path,
+				bringToFront,
+				forceReload,
+				scene = existing.Scene.Name,
+				hasUnsavedChanges = existing.HasUnsavedChanges,
+				source = HandlerUtil.DescribeResourceReference( existing.Scene.Source )
+			}
+		} );
+	}
+
 	public static BridgeResponse PlayState( BridgeRequest request )
 	{
 		var session = HandlerUtil.RequireSession();

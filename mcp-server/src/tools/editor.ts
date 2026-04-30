@@ -12,6 +12,7 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         .enum([
           "status",
           "context",
+          "open_scene",
           "get_selection",
           "set_selection",
           "save_scene",
@@ -27,6 +28,9 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         ])
         .describe("The editor action to run."),
       id: z.string().optional().describe("Target GameObject id for frame_object."),
+      path: z.string().optional().describe("Scene resource path for open_scene, such as scenes/minimal.scene."),
+      bringToFront: z.boolean().optional().describe("Bring the opened scene editor tab to front for open_scene."),
+      forceReload: z.boolean().optional().describe("For open_scene, reload an already-open sourced scene if it has no unsaved changes."),
       ids: z.array(z.string()).optional().describe("GameObject ids to select when action is set_selection."),
       saveAs: z.boolean().optional().describe("Force a save-as flow when saving the active scene."),
       dryRun: z.boolean().optional().describe("For save_scene, report save verification state without writing."),
