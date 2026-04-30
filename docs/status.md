@@ -33,6 +33,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - Physics helpers are live-verified for colliders, rigidbodies, and raycasts. Joint component creation works, but target assignment remains limited.
 - Prefab helpers are live-verified: `prefab.create`, `prefab.list`, `prefab.get_info`, and `prefab.instantiate`.
 - Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, and combined feedback. `editor.play_state` now reports `gameSessionDetails` when `SceneEditorSession.GameSession` is available, including runtime session type and scene object/component counts.
+- Rendering-oriented component mutation is live-verified through the ARPG visual pass: PointLight, SpotLight, DirectionalLight, DecalRenderer, PostProcessVolume, FilmGrain, Tonemapping, Bloom, Vignette, ColorAdjustments, and basic ParticleEffect/ParticleEmitter/ParticleRenderer settings.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
 
 ## Current Limitations
@@ -45,6 +46,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `gameobject.duplicate` is currently shallow: it copies name, enabled state, transform, and parent, but not components or children.
 - `component.list_types` still does not enumerate local game component types through editor-side `Game.TypeLibrary.GetTypes(typeof(Component))`. Existing local component instances can be inspected, and `component.add` can add a local component by exact compiled type name, but type discovery needs a separate local-component source.
 - `component.set_property` does not yet support collection/list editing. Resource reference support is implemented for `Sandbox.Resource` subclasses, with live coverage so far on model, material, and sound-event properties.
+- Particle authoring is partial. Basic bool/number/color properties work, but complex s&box particle wrapper types such as `ParticleFloat`, `ParticleVector3`, and `ParticleGradient` are not settable yet.
 - `physics.add_joint` creates joint components, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. It does not yet support a timestamp/cursor, so stale errors can appear in current feedback.

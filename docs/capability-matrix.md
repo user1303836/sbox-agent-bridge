@@ -71,7 +71,7 @@ Status meanings:
 | Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties and includes schema hints, attributes, enum values, and reference targets for settable JSON shapes. |
 | Add component | `component.add` | `component` / `add` | Verified | Built-in/editor-visible components use TypeLibrary. Local compiled game components can be added by exact C# type name through a serialized-probe fallback that resolves the runtime type, then calls `GameObject.AddComponent<T>()`; live verified with `AgentBridgeArpgFixture` on ARPG fixture objects without duplicating existing components. |
 | Remove component | `component.remove` | `component` / `remove` | Verified | Undo scoped; live smoke verifies `component.get` fails after removal, undo restores, redo removes again. |
-| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; live IPC also verified resource paths on built-in `ModelRenderer.Model` and `ModelRenderer.MaterialOverride`, plus local `AgentBridgeArpgFixture` enum/string/int properties; supports `dryRun: true`. |
+| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; live IPC also verified resource paths on built-in `ModelRenderer.Model`, `ModelRenderer.MaterialOverride`, and non-inspector `DecalRenderer.Material` via `includeAll: true`; local `AgentBridgeArpgFixture` enum/string/int properties are verified; supports `dryRun: true`. |
 | Validate property | `component.validate_property` | `component` / `validate_property` | Verified | Converts and resolves a candidate value without mutation; live smoke verifies valid conversion, invalid rejection, and unchanged fixture values. |
 | Enable/disable component | `component.set_enabled` | `component` / `set_enabled` | Verified | Live smoke verifies false and true read-back. |
 
@@ -107,6 +107,17 @@ Status meanings:
 | List prefabs | `prefab.list` | `prefab` / `list` | Verified | Live IPC listed built-in prefabs and the project-created ARPG prefab. |
 | Inspect prefab | `prefab.get_info` | `prefab` / `get_info` | Verified | Uses `AssetSystem` fallback when `PrefabFile.Load(path)` cannot load a project-created prefab path. |
 | Instantiate prefab | `prefab.instantiate` | `prefab` / `instantiate` | Verified | Instantiates by deserializing prefab `RootObject` into the active editor scene with fresh GUIDs; live IPC created `Loot Chest Prefab Instance - bridge fixture`. |
+
+## Rendering, Lighting, Post-Processing, And VFX
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Directional light tuning | `component.set_property` | `component` / `set_property` | Verified | Live IPC set `DirectionalLight.LightColor`, `SkyColor`, `FogMode`, `FogStrength`, `Shadows`, `ShadowBias`, and `ShadowHardness` on the scene Sun. |
+| Point light authoring | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | Live IPC created a warm brazier point light and set radius, attenuation, fog, color, and shadow properties. |
+| Spot light authoring | `gameobject.create`, `gameobject.set_transform`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | Live IPC created an obelisk spot light and set cone, radius, attenuation, fog, color, and shadow properties. |
+| Post-process components | `component.add`, `component.set_property` | `component` | Verified | Live IPC configured `FilmGrain`, `Tonemapping`, `Bloom`, `PostProcessVolume`, `Vignette`, and `ColorAdjustments` for the ARPG visual pass. |
+| DecalRenderer material assignment | `component.set_property` with `includeAll: true` | `component` | Verified | `DecalRenderer.Material` is public/non-inspector; setting it works when callers opt into all readable properties. Verified with blood/gold/void/bone decal materials. |
+| Basic particle stack setup | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Partial | Live IPC created `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` and set basic bool/number/color properties. Complex particle wrapper types remain unsupported. |
 
 ## Testing And CI
 
