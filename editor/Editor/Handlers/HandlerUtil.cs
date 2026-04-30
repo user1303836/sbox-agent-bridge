@@ -1165,11 +1165,14 @@ internal static class HandlerUtil
 		if ( payload.ValueKind != JsonValueKind.Object || !payload.TryGetProperty( name, out var value ) || value.ValueKind != JsonValueKind.Object )
 			return null;
 
-		var x = value.TryGetProperty( "x", out var xElement ) && xElement.TryGetSingle( out var xValue ) ? xValue : 0f;
-		var y = value.TryGetProperty( "y", out var yElement ) && yElement.TryGetSingle( out var yValue ) ? yValue : 0f;
-		var z = value.TryGetProperty( "z", out var zElement ) && zElement.TryGetSingle( out var zValue ) ? zValue : 0f;
+		if ( !value.TryGetProperty( "x", out var xElement ) || !xElement.TryGetSingle( out var xValue ) ||
+			!value.TryGetProperty( "y", out var yElement ) || !yElement.TryGetSingle( out var yValue ) ||
+			!value.TryGetProperty( "z", out var zElement ) || !zElement.TryGetSingle( out var zValue ) )
+		{
+			throw new InvalidOperationException( $"Payload property '{name}' must include numeric x, y, and z fields." );
+		}
 
-		return new Vector3( x, y, z );
+		return new Vector3( xValue, yValue, zValue );
 	}
 
 	public static Rotation? GetRotation( JsonElement payload, string name )

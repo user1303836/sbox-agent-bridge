@@ -30,3 +30,5 @@ Last updated: 2026-04-30
 ## Important Retired Finding
 
 Do not add local components by deserializing a modified full target `GameObject` JSON blob. Live testing showed that `GameObject.Deserialize` appended duplicate existing components on the target object. The safe fallback added on 2026-04-30 uses a temporary empty probe only to resolve the local runtime type, then adds the component to the real target through `GameObject.AddComponent<T>()`.
+
+Direct IPC callers must provide complete `Vector3` payloads. A live ARPG prop placement pass showed that partial vectors such as `{ "z": 0 }` could silently zero omitted axes before validation; bridge parsing now rejects vector objects unless numeric `x`, `y`, and `z` fields are all present.

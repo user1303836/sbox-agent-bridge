@@ -71,6 +71,16 @@ The controller builds the playable slice at runtime:
 - `component.set_property` was live verified on those local fixture components for enum, string, and integer properties.
 - The scene was saved after this pass through `editor.save_scene`, with `saveVerified: true`.
 
+## Generated Prop Visual Pass
+
+- Imported a generated dark-fantasy prop kit into `Assets/models/agent_bridge/arpg_props/source/`.
+- Converted valid GLB meshes to OBJ sources, extracted embedded albedo images for later material work, and normalized converted GLB origins so their bases sit at local `z = 0`.
+- Created `.vmdl` ModelDoc wrappers for 12 props: cobblestone floor tile, ruined wall, ruined arch, wooden barricade, iron brazier, candle cluster, loot chest, cursed obelisk, bone pile, grave marker, hanging banner, and waypoint rune pedestal.
+- Created simple project `.vmat` materials under `Assets/materials/agent_bridge/arpg_props/`.
+- Updated `ArpgDemoController` to use generated props for runtime arena dressing: cobblestone tile grid, ruin walls/arch, barricades, graves, bone piles, banner, waypoint pedestal, candle clusters, and brazier lights.
+- Swapped saved bridge-fixture special objects from dev boxes to generated prop models and saved `scenes/minimal.scene`.
+- Live bridge testing surfaced a direct-IPC vector footgun: `{ "z": 0 }` passed to `gameobject.set_transform` zeroed omitted axes. The bridge now rejects incomplete `Vector3` payloads unless `x`, `y`, and `z` are all present.
+
 ## Verification
 
 - `editor.compile_status` reports `local.testproject` with `buildSuccess: true` and `errorCount: 0`.
@@ -86,6 +96,10 @@ The controller builds the playable slice at runtime:
 - `component.set_property` was verified on local `AgentBridgeArpgFixture` properties including `Kind`, `DisplayName`, `Tooltip`, `Effect`, and `Value`.
 - `scene.summary` after local fixture metadata showed 18 objects and 46 components, including 4 `AgentBridgeArpgFixture` components and no temporary probe objects left behind.
 - `editor.save_scene` saved the fixture metadata with `saveVerified: true` and returned `hasUnsavedChanges: false`.
+- All 12 generated `.vmdl` prop wrappers were force-loaded through `asset.assign_model` and then read back as compiled/up-to-date with `isCompileFailed: false`.
+- Generated prop assignment to saved special fixtures was verified through `scene.batch` and persisted through `editor.save_scene`.
+- Direct IPC negative test verified incomplete vector payloads now fail with `Payload property 'position' must include numeric x, y, and z fields`, and read-back confirmed the target object position was unchanged.
+- Play/stop smoke after the generated prop pass reported compile success and returned to `isPlaying: false`.
 - `editor.open_scene` with `forceReload: true` reloads `scenes/minimal.scene` after play/stop session staleness and verifies:
   - `rootCount: 10`
   - `componentCount: 21`
@@ -106,10 +120,12 @@ The controller builds the playable slice at runtime:
 - Runtime-oriented `GameObject.Clone(prefab, ...)` failed in the editor bridge context with `No Active Scene`. The bridge now instantiates prefabs by deserializing `PrefabFile.RootObject` into the active editor scene with fresh GUIDs.
 - `component.add` can now add local compiled game components by exact C# type name, but `component.list_types` still cannot enumerate those local types through editor-side `Game.TypeLibrary`.
 - A rejected local-component fallback is documented in `tool-limitations.md`: do not deserialize a modified full target GameObject blob just to append a component, because live testing showed it duplicates existing components. The safe path only uses a temporary empty serialized probe to resolve the runtime type.
+- Direct IPC callers need bridge-side schema validation too, not only MCP-side Zod schemas. The generated prop pass showed why `Vector3` parsing must reject partial vectors before mutation.
 
 ## POC Gaps
 
-- The visual asset pass uses built-in/cached citizen/dev models and procedural props. A real distributable sample should include an explicit free asset pipeline or a documented s&box asset dependency.
+- The first generated prop pass imports static environment models, but still uses simple tint/material overrides rather than fully authored PBR material maps.
+- The visual asset pass still uses built-in/cached citizen/dev models for the player and zombies. Generated or authored animated characters need a separate model/animation graph pass.
 - Sound hooks exist as component properties, but defaults are empty because the local project does not yet include reliable ambient/zombie/weapon sound events. A proper sound asset import/use path is still needed.
 - Local game-component type discovery remains unresolved. Agents can add a known compiled type by exact name, but they cannot yet ask the bridge to list all local project component types.
 - Joint creation works, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
