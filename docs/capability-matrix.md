@@ -89,6 +89,7 @@ Status meanings:
 |---|---|---|---|---|
 | Search assets | `asset.search` | `asset` / `search` | Verified | Live IPC found built-in models/materials and newly created ARPG materials. |
 | Inspect asset | `asset.get_info` | `asset` / `get_info` | Verified | Live IPC inspected built-in material metadata and project-created assets. |
+| Inspect model orientation/bounds | TBD | TBD | Planned | Needed after the ARPG prop pass showed that `ModelRenderer.Bounds` can verify ground contact but cannot infer semantic up/down orientation. See `docs/spatial-reasoning.md`. |
 | Assign model | `asset.assign_model` | `asset` / `assign_model` | Verified | Live IPC assigned `models/dev/box.vmdl` to ARPG fixture objects with read-back. |
 | Create material | `asset.create_material` | `asset` / `create_material` | Verified | Writes a simple `.vmat` source, registers it, and compiles it. Verified four project materials under `materials/agent_bridge/`. |
 | Assign material | `asset.assign_material` | `asset` / `assign_material` | Verified | Live IPC assigned project-created materials to `ModelRenderer.MaterialOverride`. |

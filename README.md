@@ -241,6 +241,7 @@ Useful scripts:
 - [Tool Limitations](docs/tool-limitations.md)
 - [Testing Strategy](docs/testing.md)
 - [Editor Feedback Loop](docs/editor-feedback-loop.md)
+- [Spatial Reasoning And Asset Placement](docs/spatial-reasoning.md)
 - [ARPG POC First Pass](docs/poc-arpg-first-pass.md)
 - [Architecture](docs/architecture.md)
 - [Protocol](docs/protocol.md)

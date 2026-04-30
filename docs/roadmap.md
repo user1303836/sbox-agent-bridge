@@ -200,6 +200,7 @@ Goal: expand toward high-coverage editor workflows while preserving safety and o
 Candidate areas:
 
 - viewport screenshots/camera capture;
+- asset orientation metadata, bounds previews, and high-level grounded placement helpers;
 - model/material/light/audio helpers;
 - project settings and input bindings;
 - collision rules;
