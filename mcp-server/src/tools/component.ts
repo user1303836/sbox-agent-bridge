@@ -23,7 +23,10 @@ export function registerComponentTools(server: McpServer, bridge: BridgeClient):
         .describe("The component action to run."),
       id: z.string().optional().describe("Target Component id for get, get_properties, set_property, or validate_property."),
       gameObjectId: z.string().optional().describe("Target GameObject id for list_on_gameobject."),
-      type: z.string().optional().describe("Component type name or full name for add."),
+      type: z
+        .string()
+        .optional()
+        .describe("Component type name or full name for add. Local compiled game components can be added by exact C# type name."),
       startEnabled: z.boolean().optional().describe("Initial enabled state for add."),
       enabled: z.boolean().optional().describe("Enabled state for set_enabled."),
       property: z.string().optional().describe("Property name or title for set_property or validate_property."),

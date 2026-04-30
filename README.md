@@ -180,7 +180,7 @@ The bridge currently exposes these MCP tools: `editor`, `scene`, `gameobject`, `
 
 Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it, including resource references that can be set from asset paths. Property writes can also be dry-run validated without mutating the scene.
 
-For the detailed implementation status, see [docs/status.md](docs/status.md) and [docs/capability-matrix.md](docs/capability-matrix.md).
+For the detailed implementation status, see [docs/status.md](docs/status.md), [docs/capability-matrix.md](docs/capability-matrix.md), and [docs/tool-limitations.md](docs/tool-limitations.md).
 
 ## Live Smoke Test
 
@@ -218,6 +218,7 @@ Useful scripts:
 - [Status](docs/status.md)
 - [Roadmap](docs/roadmap.md)
 - [Capability Matrix](docs/capability-matrix.md)
+- [Tool Limitations](docs/tool-limitations.md)
 - [Testing Strategy](docs/testing.md)
 - [Editor Feedback Loop](docs/editor-feedback-loop.md)
 - [ARPG POC First Pass](docs/poc-arpg-first-pass.md)

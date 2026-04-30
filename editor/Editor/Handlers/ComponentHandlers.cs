@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Editor;
 using Sandbox;
 
@@ -147,13 +149,25 @@ internal static class ComponentHandlers
 	{
 		var session = HandlerUtil.RequireSession();
 		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload, "gameObjectId" );
-		var type = HandlerUtil.RequireComponentType( request.Payload );
+		var typeName = HandlerUtil.GetRequiredString( request.Payload, "type" );
+		var type = HandlerUtil.FindComponentType( typeName );
 		var startEnabled = HandlerUtil.GetBool( request.Payload, "startEnabled", true );
 		Component component;
+		string creationMode;
 
 		using ( session.UndoScope( "Agent Bridge: Add Component" ).WithComponentCreations().Push() )
 		{
-			component = go.Components.Create( type, startEnabled );
+			if ( type is not null )
+			{
+				HandlerUtil.ValidateComponentTypeForCreation( type );
+				component = go.Components.Create( type, startEnabled );
+				creationMode = "typeLibrary";
+			}
+			else
+			{
+				component = AddLocalComponentBySerializedProbe( go, typeName, startEnabled );
+				creationMode = "serializedProbe";
+			}
 		}
 
 		return BridgeResponse.Success( request.Id, new
@@ -161,6 +175,8 @@ internal static class ComponentHandlers
 			message = "Component added",
 			verified = new
 			{
+				requestedType = typeName,
+				creationMode,
 				component = HandlerUtil.DescribeComponent( component ),
 				gameObject = HandlerUtil.DescribeGameObject( go )
 			}
@@ -274,6 +290,90 @@ internal static class ComponentHandlers
 			throw new InvalidOperationException( $"{action} requires a value payload property." );
 
 		return valueElement;
+	}
+
+	private static Component AddLocalComponentBySerializedProbe( GameObject go, string typeName, bool startEnabled )
+	{
+		var runtimeType = ResolveLocalComponentRuntimeTypeBySerializedProbe( go.Scene, typeName );
+		var method = GetGenericAddComponentMethod().MakeGenericMethod( runtimeType );
+
+		try
+		{
+			return (Component)method.Invoke( go, new object[] { startEnabled } )!;
+		}
+		catch ( TargetInvocationException ex ) when ( ex.InnerException is not null )
+		{
+			throw new InvalidOperationException( $"Resolved local Component type '{runtimeType.FullName}', but AddComponent failed: {ex.InnerException.Message}", ex.InnerException );
+		}
+	}
+
+	private static MethodInfo GetGenericAddComponentMethod()
+	{
+		var method = typeof( GameObject ).GetMethods()
+			.FirstOrDefault( x =>
+				x.Name == nameof( GameObject.AddComponent ) &&
+				x.IsGenericMethodDefinition &&
+				x.GetParameters().Length == 1 &&
+				x.GetParameters()[0].ParameterType == typeof( bool ) );
+
+		return method ?? throw new InvalidOperationException( "Could not find GameObject.AddComponent<T>(bool) for local component creation." );
+	}
+
+	private static Type ResolveLocalComponentRuntimeTypeBySerializedProbe( Scene scene, string typeName )
+	{
+		var componentId = Guid.NewGuid();
+		var probe = scene.CreateObject( true );
+		probe.Name = "Agent Bridge Component Type Probe";
+		probe.Flags |= GameObjectFlags.Hidden | GameObjectFlags.NotSaved;
+		var stage = "create probe";
+
+		try
+		{
+			stage = "build probe json";
+			var node = new JsonObject();
+			var components = new JsonArray();
+			node["Components"] = components;
+
+			components.Add( new JsonObject
+			{
+				["__type"] = typeName,
+				["__guid"] = JsonValue.Create( componentId ),
+				["__enabled"] = false,
+				["Flags"] = 0L
+			} );
+
+			stage = "deserialize probe";
+			probe.Deserialize( node, new GameObject.DeserializeOptions() );
+
+			stage = "read probe component";
+			var component = probe.Components.GetAll().FirstOrDefault( x => x.Id == componentId )
+				?? probe.Components.GetAll().FirstOrDefault( x => ComponentTypeMatches( x, typeName ) );
+
+			if ( component is null || !component.IsValid )
+				throw new InvalidOperationException( $"No Component type found for '{typeName}' through TypeLibrary, and serialized probe did not produce a live component." );
+
+			var runtimeType = component.GetType();
+			if ( runtimeType == typeof( MissingComponent ) || !typeof( Component ).IsAssignableFrom( runtimeType ) || !ComponentTypeMatches( component, typeName ) )
+				throw new InvalidOperationException( $"No Component type found for '{typeName}' through TypeLibrary. Serialized probe produced '{runtimeType.FullName}', which is not a usable matching component type." );
+
+			return runtimeType;
+		}
+		catch ( Exception ex ) when ( ex is not InvalidOperationException )
+		{
+			throw new InvalidOperationException( $"No Component type found for '{typeName}' through TypeLibrary, and serialized probe failed during {stage}: {ex.Message}", ex );
+		}
+		finally
+		{
+			if ( probe.IsValid && !probe.IsDestroyed )
+				probe.DestroyImmediate();
+		}
+	}
+
+	private static bool ComponentTypeMatches( Component component, string typeName )
+	{
+		var type = component.GetType();
+		return string.Equals( type.Name, typeName, StringComparison.OrdinalIgnoreCase )
+			|| string.Equals( type.FullName, typeName, StringComparison.OrdinalIgnoreCase );
 	}
 
 	private static bool Contains( string? value, string query )

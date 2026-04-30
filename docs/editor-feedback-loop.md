@@ -13,7 +13,7 @@ The bridge feedback loop is designed around one rule: every signal should say wh
 
 ## Signal Accuracy
 
-`editor.play_state`, `editor.play`, and `editor.stop` are authoritative for the active editor session. The bridge reads `IsPlaying`, `GameSession`, active scene name, and unsaved-change state directly from `SceneEditorSession.Active`.
+`editor.play_state`, `editor.play`, and `editor.stop` are authoritative for the active editor session. The bridge reads `IsPlaying`, `GameSession`, active scene name, and unsaved-change state directly from `SceneEditorSession.Active`. When a game session is available, play state now includes `gameSessionDetails` with the runtime session type, scene name, source path, object count, component count, and parent editor-session information.
 
 `editor.compile_status` is event-observed. It tracks `CompileGroup` instances from `compile.started`, then reads their current `IsBuilding`, `NeedsBuild`, compiler build status, and Roslyn diagnostics. If no compile has started since the bridge library loaded, the action returns zero observed groups with an explicit note instead of pretending the project has no errors.
 
@@ -34,7 +34,7 @@ Recommended agent flow after source or scene changes:
 
 ## Current ARPG POC Finding
 
-The first ARPG POC showed that play-mode state and scene inspection are not yet fully aligned. `editor.play` can successfully start play mode, but follow-up `scene.summary`, `scene.hierarchy`, or `scene.find` calls may still target a stale editor session rather than the live game session. After stopping play, the active editor session can also expose an empty scene until the saved scene is reopened from disk.
+The first ARPG POC showed that play-mode state and scene inspection are not yet fully aligned. `editor.play` can successfully start play mode, but follow-up `scene.summary`, `scene.hierarchy`, or `scene.find` calls may still target a stale editor session rather than the live game session. After stopping play, the active editor session can also expose an empty scene until the saved scene is reopened from disk. `gameSessionDetails` is a diagnostic improvement, not a full runtime inspection API yet.
 
 `editor.open_scene` now supports `forceReload: true` to recover the editable scene when it has no unsaved changes. This is a recovery path, not a substitute for proper runtime inspection.
 

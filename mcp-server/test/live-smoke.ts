@@ -44,6 +44,7 @@ interface ComponentListResult {
 
 interface ComponentMutationResult {
   verified: {
+    creationMode?: string;
     component: {
       id: string;
       type: string;
@@ -547,25 +548,26 @@ async function runMutationFixtureSmoke(
     maxResults: 5
   });
 
-  if (fixtureTypes.verified.count < 1) {
+  let added: ComponentMutationResult;
+  try {
+    added = await bridge.send<ComponentMutationResult>("component.add", {
+      gameObjectId,
+      type: "AgentBridgeMutationFixture",
+      startEnabled: true
+    });
+  } catch (error) {
     ensure(
       !requireMutationFixture,
-      "AgentBridgeMutationFixture is not available. Copy the bridge library into the project, wait for hotload, or unset SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE."
+      `AgentBridgeMutationFixture could not be added. Copy the bridge library into the project, wait for hotload, or unset SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE. ${formatError(error)}`
     );
 
     return {
-      available: false,
+      available: fixtureTypes.verified.count > 0,
       skipped: true,
-      reason:
-        "AgentBridgeMutationFixture is not visible through component.list_types in this editor session. Set SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1 to make this a hard failure."
+      typeListed: fixtureTypes.verified.count > 0,
+      reason: `AgentBridgeMutationFixture could not be added by exact type name. ${formatError(error)}`
     };
   }
-
-  const added = await bridge.send<ComponentMutationResult>("component.add", {
-    gameObjectId,
-    type: "AgentBridgeMutationFixture",
-    startEnabled: true
-  });
   const componentId = added.verified.component.id;
 
   await bridge.send("component.get", {
@@ -678,6 +680,9 @@ async function runMutationFixtureSmoke(
   ensure(removedAgainGetFailed, "component.get succeeded after redo removed the component");
 
   return {
+    available: true,
+    typeListed: fixtureTypes.verified.count > 0,
+    creationMode: added.verified.creationMode,
     componentId,
     disabledReadback: disabledComponent.verified.component.enabled,
     enabledReadback: enabledComponent.verified.component.enabled,
@@ -843,6 +848,10 @@ async function rejectsBridgeCommand(command: () => Promise<unknown>): Promise<bo
   } catch {
     return true;
   }
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function ensure(condition: boolean, message: string): asserts condition {

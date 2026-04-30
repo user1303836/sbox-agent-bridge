@@ -360,6 +360,18 @@ internal static class HandlerUtil
 	public static TypeDescription RequireComponentType( JsonElement payload, string propertyName = "type" )
 	{
 		var typeName = GetRequiredString( payload, propertyName );
+		var type = FindComponentType( typeName );
+
+		if ( type is null || !type.IsValid )
+			throw new InvalidOperationException( $"No Component type found for '{typeName}'." );
+
+		ValidateComponentTypeForCreation( type );
+
+		return type;
+	}
+
+	public static TypeDescription? FindComponentType( string typeName )
+	{
 		var type = Game.TypeLibrary.GetType( typeName, typeof( Component ) )
 			?? Game.TypeLibrary.GetType( typeName, true )
 			?? Game.TypeLibrary.GetTypes( typeof( Component ) ).FirstOrDefault( x =>
@@ -375,9 +387,11 @@ internal static class HandlerUtil
 				type = Game.TypeLibrary.GetType( runtimeType );
 		}
 
-		if ( type is null || !type.IsValid )
-			throw new InvalidOperationException( $"No Component type found for '{typeName}'." );
+		return type is { IsValid: true } ? type : null;
+	}
 
+	public static void ValidateComponentTypeForCreation( TypeDescription type )
+	{
 		if ( type.IsAbstract )
 			throw new InvalidOperationException( $"Component type '{type.FullName}' is abstract and cannot be added." );
 
@@ -386,8 +400,6 @@ internal static class HandlerUtil
 
 		if ( !typeof( Component ).IsAssignableFrom( type.TargetType ) )
 			throw new InvalidOperationException( $"Type '{type.FullName}' is not a Component." );
-
-		return type;
 	}
 
 	private static Type? FindComponentRuntimeType( string typeName )

@@ -499,6 +499,7 @@ internal static class EditorHandlers
 		var isPlaying = false;
 		var hasGameSession = false;
 		var gameSession = "";
+		object gameSessionDetails = null;
 
 		try
 		{
@@ -532,6 +533,7 @@ internal static class EditorHandlers
 			var currentGameSession = session.GameSession;
 			hasGameSession = currentGameSession is not null;
 			gameSession = currentGameSession?.ToString() ?? "";
+			gameSessionDetails = currentGameSession is null ? null : DescribeGameSession( currentGameSession );
 		}
 		catch ( Exception ex )
 		{
@@ -545,7 +547,56 @@ internal static class EditorHandlers
 			IsPlaying = isPlaying,
 			HasGameSession = hasGameSession,
 			GameSession = gameSession,
+			GameSessionDetails = gameSessionDetails,
 			ReadErrors = readErrors.ToArray()
+		};
+	}
+
+	private static object DescribeGameSession( SceneEditorSession gameSession )
+	{
+		var readErrors = new System.Collections.Generic.List<object>();
+		var sceneName = "";
+		var sourcePath = "";
+		var objectCount = 0;
+		var componentCount = 0;
+
+		try
+		{
+			sceneName = gameSession.Scene?.Name ?? "";
+			sourcePath = gameSession.Scene?.Source?.ResourcePath ?? "";
+
+			if ( gameSession.Scene is not null )
+			{
+				var objects = HandlerUtil.WalkSceneObjects( gameSession.Scene ).ToArray();
+				objectCount = objects.Length;
+				componentCount = objects.Sum( x => x.Components.GetAll().Count() );
+			}
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "scene", ex );
+		}
+
+		var parent = gameSession is GameEditorSession gameEditorSession && gameEditorSession.Parent is not null
+			? new
+			{
+				id = GetSessionId( gameEditorSession.Parent ),
+				scene = gameEditorSession.Parent.Scene?.Name ?? "",
+				sourcePath = GetSessionSourcePath( gameEditorSession.Parent )
+			}
+			: null;
+
+		return new
+		{
+			type = gameSession.GetType().FullName ?? gameSession.GetType().Name,
+			id = GetSessionId( gameSession ),
+			scene = sceneName,
+			sourcePath,
+			isPlaying = TryReadIsPlaying( gameSession, false ),
+			objectCount,
+			componentCount,
+			parent,
+			readErrors = readErrors.ToArray()
 		};
 	}
 
@@ -682,6 +733,7 @@ internal static class EditorHandlers
 		public bool IsPlaying { get; set; }
 		public bool HasGameSession { get; set; }
 		public string GameSession { get; set; }
+		public object GameSessionDetails { get; set; }
 		public object[] ReadErrors { get; set; }
 	}
 

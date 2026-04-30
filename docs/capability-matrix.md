@@ -30,7 +30,7 @@ Status meanings:
 | Selection read | `editor.get_selection` | `editor` / `get_selection` | Verified | Returns typed selection entries; GameObject selection verified. |
 | Selection set | `editor.set_selection` | `editor` / `set_selection` | Verified | Accepts GameObject ids only; verified with read-back count. |
 | Frame/focus object | `editor.frame_object` | `editor` / `frame_object` | Verified | Calls `SceneEditorSession.FrameTo` for a target GameObject bounds. |
-| Play state | `editor.play_state` | `editor` / `play_state` | Verified | Reads active scene and play state from `SceneEditorSession.Active`; live smoke and direct IPC verified. |
+| Play state | `editor.play_state` | `editor` / `play_state` | Verified | Reads active scene and play state from `SceneEditorSession.Active`; when available, includes `gameSessionDetails` with runtime session type, scene, parent, object count, and component count. Live smoke and direct IPC verified. |
 | Play mode start | `editor.play` | `editor` / `play` | Verified | Calls `SceneEditorSession.SetPlaying(...)` and returns read-back play state. |
 | Play mode stop | `editor.stop` | `editor` / `stop` | Verified | Calls `SceneEditorSession.StopPlaying()` and returns immediate read-back with `transitionPending` when the editor settles on a later frame. |
 | Recent logs | `editor.logs` | `editor` / `logs` | Verified | Tails `sbox-dev.log`; raw lines are authoritative and log level is explicitly inferred. |
@@ -65,13 +65,13 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| List component types | `component.list_types` | `component` / `list_types` | Verified | Uses `Game.TypeLibrary.GetTypes(typeof(Component))`; live smoke returned 131 types. |
+| List component types | `component.list_types` | `component` / `list_types` | Partial | Uses `Game.TypeLibrary.GetTypes(typeof(Component))`; live smoke returned built-in/editor-visible types. Local game components such as `AgentBridgeArpgFixture` are not enumerated even after instances exist. |
 | List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list. |
 | Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context. |
 | Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties and includes schema hints, attributes, enum values, and reference targets for settable JSON shapes. |
-| Add component | `component.add` | `component` / `add` | Partial | Built-in/editor-visible component types can be added and are used by asset/sound/physics helpers. Direct add by local game component name is currently blocked: `Game.TypeLibrary` string/base-type lookup does not surface local game components such as `ArpgDemoController` or newly created `AgentBridgeArpgFixture`, even though existing instances can be inspected. |
+| Add component | `component.add` | `component` / `add` | Verified | Built-in/editor-visible components use TypeLibrary. Local compiled game components can be added by exact C# type name through a serialized-probe fallback that resolves the runtime type, then calls `GameObject.AddComponent<T>()`; live verified with `AgentBridgeArpgFixture` on ARPG fixture objects without duplicating existing components. |
 | Remove component | `component.remove` | `component` / `remove` | Verified | Undo scoped; live smoke verifies `component.get` fails after removal, undo restores, redo removes again. |
-| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; live IPC also verified resource paths on built-in `ModelRenderer.Model` and `ModelRenderer.MaterialOverride`; supports `dryRun: true`. |
+| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; live IPC also verified resource paths on built-in `ModelRenderer.Model` and `ModelRenderer.MaterialOverride`, plus local `AgentBridgeArpgFixture` enum/string/int properties; supports `dryRun: true`. |
 | Validate property | `component.validate_property` | `component` / `validate_property` | Verified | Converts and resolves a candidate value without mutation; live smoke verifies valid conversion, invalid rejection, and unchanged fixture values. |
 | Enable/disable component | `component.set_enabled` | `component` / `set_enabled` | Verified | Live smoke verifies false and true read-back. |
 

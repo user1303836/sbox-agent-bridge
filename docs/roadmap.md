@@ -81,15 +81,15 @@ Acceptance criteria:
 
 Goal: let agents add and configure the behavior/rendering/physics building blocks that make scene editing useful.
 
-Status: in progress. Verified so far: component type discovery for built-in/editor-visible components, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove for visible component types, enabled-state mutation, typed property mutation, and resource-backed property mutation.
+Status: in progress. Verified so far: component type discovery for built-in/editor-visible components, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove for visible component types, local game component add by exact compiled type name, enabled-state mutation, typed property mutation, and resource-backed property mutation.
 
 Candidate actions:
 
-- `component.list_types` - verified
+- `component.list_types` - partial; built-in/editor-visible components are listed, but local game components need a secondary discovery source
 - `component.list_on_gameobject` - verified
 - `component.get` - verified
 - `component.get_properties` - verified
-- `component.add` - verified
+- `component.add` - verified for built-in/editor-visible types and local compiled game components by exact C# type name
 - `component.remove` - verified
 - `component.set_property` - verified through `AgentBridgeMutationFixture` for common scalar/math/reference shapes and live-verified on built-in `ModelRenderer` resource properties
 - `component.validate_property` - verified for valid conversion, invalid rejection, and no-mutation read-back
@@ -106,7 +106,7 @@ Acceptance criteria:
 
 Remaining gaps:
 
-- Local game component creation by C# type name. The ARPG fixture pass showed that existing local components can be inspected, but `component.add` cannot currently resolve local game component names such as `ArpgDemoController` or a newly created `AgentBridgeArpgFixture` through editor-side `Game.TypeLibrary` string lookup.
+- Local game component discovery. `component.add` can now add local compiled components by exact C# type name through a serialized-probe fallback, but `component.list_types` still cannot enumerate those local game types through editor-side `Game.TypeLibrary`.
 - Collection/list property editing.
 - Full component/child cloning for `gameobject.duplicate`.
 

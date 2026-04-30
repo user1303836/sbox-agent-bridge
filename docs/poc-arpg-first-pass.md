@@ -60,17 +60,32 @@ The controller builds the playable slice at runtime:
 - Used `scene.batch` to compose object creation, reparenting, duplicate/rename, transform, selection/focus, asset assignment, sound assignment, physics, material-property, and raycast actions.
 - Saved `scenes/minimal.scene` through `editor.save_scene`, with `saveVerified: true`.
 
+## Special Object Hover And Local Component Pass
+
+- The runtime ARPG controller now discovers editor-authored special objects from the live scene.
+- Special objects are detected through `AgentBridgeArpgFixture` when present, with bridge-fixture names as a fallback.
+- Hovering the loot chest, blood shrine, breakable bone cache, cursed obelisk, or related bridge fixture objects now tints and pulses the object and shows a center-bottom interaction prompt.
+- Special objects are added to the runtime manual obstacle list so the player and zombies do not walk through them.
+- Special objects appear on the minimap, with a brighter marker when hovered.
+- `component.add` can now add local compiled game components by exact C# type name through a serialized-probe fallback. Live verified by adding `AgentBridgeArpgFixture` to the loot chest, blood shrine, breakable bone cache, and cursed obelisk.
+- `component.set_property` was live verified on those local fixture components for enum, string, and integer properties.
+- The scene was saved after this pass through `editor.save_scene`, with `saveVerified: true`.
+
 ## Verification
 
 - `editor.compile_status` reports `local.testproject` with `buildSuccess: true` and `errorCount: 0`.
 - After the state/collision pass, `editor.compile_status` sequence 61 reports `local.testproject` with `buildSuccess: true` and `errorCount: 0`.
-- `component.list_types` finds `ArpgDemoController`.
+- Earlier local runs saw `ArpgDemoController` through component lookup while adding the controller object, but current verification shows local component enumeration is not reliable through `component.list_types`; use exact-name `component.add` for compiled local types until local discovery is improved.
 - `scene.batch` created the controller object, added the component, and ran `editor.save_scene`.
 - `editor.save_scene` reported `saveVerified: true` for `scenes/minimal.scene`.
 - Tool-surface fixture pass ended with `editor.compile_status` sequence 80, `buildSuccess: true`, `errorCount: 0`.
 - `scene.hierarchy` verified the fixture yard with 7 children and expected component counts.
 - `sound.preview` returned a valid playing `SoundHandle` for `sounds/impacts/melee/impact-melee-flesh.sound`.
 - `prefab.create`, `prefab.list`, `prefab.get_info`, and `prefab.instantiate` were all verified after adding an `AssetSystem` load fallback and a RootObject deserialization path.
+- `component.add` local game-component creation by type name was verified with `AgentBridgeArpgFixture` through `creationMode: serializedProbe`.
+- `component.set_property` was verified on local `AgentBridgeArpgFixture` properties including `Kind`, `DisplayName`, `Tooltip`, `Effect`, and `Value`.
+- `scene.summary` after local fixture metadata showed 18 objects and 46 components, including 4 `AgentBridgeArpgFixture` components and no temporary probe objects left behind.
+- `editor.save_scene` saved the fixture metadata with `saveVerified: true` and returned `hasUnsavedChanges: false`.
 - `editor.open_scene` with `forceReload: true` reloads `scenes/minimal.scene` after play/stop session staleness and verifies:
   - `rootCount: 10`
   - `componentCount: 21`
@@ -89,13 +104,14 @@ The controller builds the playable slice at runtime:
 - `SoundEvent` read-back needs defensive metadata access. Some built-in sound files throw when reading duration/channel/rate before load; the bridge now reports those fields best-effort.
 - `PrefabFile.Load(path)` did not load a project-created prefab by the same path returned by `AssetSystem`. The bridge now falls back to `AssetSystem.FindByPath(...).LoadResource<PrefabFile>()`.
 - Runtime-oriented `GameObject.Clone(prefab, ...)` failed in the editor bridge context with `No Active Scene`. The bridge now instantiates prefabs by deserializing `PrefabFile.RootObject` into the active editor scene with fresh GUIDs.
-- `component.add` still cannot add local game components by C# type name from the editor bridge. Existing local component instances can be inspected, but editor-side type lookup does not surface `ArpgDemoController`, `AgentBridgeMutationFixture`, or newly created `AgentBridgeArpgFixture` as addable types.
+- `component.add` can now add local compiled game components by exact C# type name, but `component.list_types` still cannot enumerate those local types through editor-side `Game.TypeLibrary`.
+- A rejected local-component fallback is documented in `tool-limitations.md`: do not deserialize a modified full target GameObject blob just to append a component, because live testing showed it duplicates existing components. The safe path only uses a temporary empty serialized probe to resolve the runtime type.
 
 ## POC Gaps
 
 - The visual asset pass uses built-in/cached citizen/dev models and procedural props. A real distributable sample should include an explicit free asset pipeline or a documented s&box asset dependency.
 - Sound hooks exist as component properties, but defaults are empty because the local project does not yet include reliable ambient/zombie/weapon sound events. A proper sound asset import/use path is still needed.
-- Local game-component creation by type name remains unresolved. This blocks agent-authored custom marker/metadata components until we find the editor's component-picker API or a safe scene-serialization path.
+- Local game-component type discovery remains unresolved. Agents can add a known compiled type by exact name, but they cannot yet ask the bridge to list all local project component types.
 - Joint creation works, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
 - The bridge cannot yet inspect runtime-only objects created during play. For the next POC iteration, add a runtime feedback channel or play-session scene targeting so an agent can verify the warrior, zombies, HUD, loot, and gore state directly.
 - Combat has simple state/visuals rather than animation graph integration. Animation graph/property support should come after runtime feedback is trustworthy.

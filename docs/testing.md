@@ -46,7 +46,7 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_TIMEOUT_MS`: override command timeout.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
 - `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
-- `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` is not visible to `component.list_types`.
+- `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` cannot be added and mutated. The fixture may be addable by exact type name even when it is not visible to `component.list_types`.
 
 ## Live Editor Smoke Checks
 
@@ -134,7 +134,7 @@ For component mutation changes, verify:
 8. `editor.undo` restores the removed component
 9. `editor.redo` removes it again
 
-`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`. Some editor sessions may not expose local game components through `Game.TypeLibrary`; use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
+`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`. Some editor sessions may not expose local game components through `Game.TypeLibrary`; the bridge now has an exact-type-name fallback for `component.add`, but `component.list_types` may still not list the fixture. Use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
 
 For resource-backed component property changes, also verify at least one built-in component with known asset paths:
 
