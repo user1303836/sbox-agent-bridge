@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Text.Json;
+using Editor;
 using Sandbox;
 
 namespace SboxAgentBridge.Editor;
@@ -220,9 +222,11 @@ internal static class ComponentHandlers
 		var session = HandlerUtil.RequireSession();
 		var component = HandlerUtil.RequireComponent( session.Scene, request.Payload );
 		var property = HandlerUtil.RequireProperty( component, request.Payload );
+		var valueElement = RequireValueElement( request.Payload, "component.set_property" );
+		var dryRun = HandlerUtil.GetBool( request.Payload, "dryRun", false );
 
-		if ( request.Payload.ValueKind != System.Text.Json.JsonValueKind.Object || !request.Payload.TryGetProperty( "value", out var valueElement ) )
-			throw new InvalidOperationException( "component.set_property requires a value payload property." );
+		if ( dryRun )
+			return BuildValidationResponse( request, session, component, property, valueElement, "Component property value validated" );
 
 		var previous = HandlerUtil.DescribePropertyValue( component, property );
 		var converted = HandlerUtil.ConvertJsonValue( valueElement, property.PropertyType, session.Scene );
@@ -243,6 +247,33 @@ internal static class ComponentHandlers
 				property = HandlerUtil.DescribePropertyValue( component, property )
 			}
 		} );
+	}
+
+	public static BridgeResponse ValidateProperty( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var component = HandlerUtil.RequireComponent( session.Scene, request.Payload );
+		var property = HandlerUtil.RequireProperty( component, request.Payload );
+		var valueElement = RequireValueElement( request.Payload, "component.validate_property" );
+
+		return BuildValidationResponse( request, session, component, property, valueElement, "Component property value validated" );
+	}
+
+	private static BridgeResponse BuildValidationResponse( BridgeRequest request, SceneEditorSession session, Component component, PropertyDescription property, JsonElement valueElement, string message )
+	{
+		return BridgeResponse.Success( request.Id, new
+		{
+			message,
+			verified = HandlerUtil.ValidatePropertyValue( component, property, valueElement, session.Scene )
+		} );
+	}
+
+	private static JsonElement RequireValueElement( JsonElement payload, string action )
+	{
+		if ( payload.ValueKind != JsonValueKind.Object || !payload.TryGetProperty( "value", out var valueElement ) )
+			throw new InvalidOperationException( $"{action} requires a value payload property." );
+
+		return valueElement;
 	}
 
 	private static bool Contains( string? value, string query )

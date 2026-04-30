@@ -75,7 +75,7 @@ Acceptance criteria:
 
 Goal: let agents add and configure the behavior/rendering/physics building blocks that make scene editing useful.
 
-Status: in progress. Verified so far: component type discovery, component listing on a GameObject, id-targeted component reads, read-only property metadata/value inspection, component add/remove, enabled-state mutation, and typed property mutation.
+Status: in progress. Verified so far: component type discovery, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove, enabled-state mutation, and typed property mutation.
 
 Candidate actions:
 
@@ -86,12 +86,15 @@ Candidate actions:
 - `component.add` - verified
 - `component.remove` - verified
 - `component.set_property` - verified through `AgentBridgeMutationFixture` for common scalar/math/reference shapes
+- `component.validate_property` - verified for valid conversion, invalid rejection, and no-mutation read-back
 - `component.set_enabled` - verified
 
 Acceptance criteria:
 
 - Type lookup uses s&box type metadata rather than hardcoded assumptions.
 - Property read/write supports primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, colors, and object/component references.
+- Property metadata exposes settable JSON shapes before mutation.
+- Dry-run validation can convert and resolve a candidate property value without mutating the scene.
 - Set-property failures return actionable type-conversion errors.
 - Read-back verifies the property value after a set.
 

@@ -9,7 +9,7 @@ Status meanings:
 
 ## Current Verification Environment
 
-- Date: 2026-04-28
+- Date: 2026-04-29
 - s&box project: fresh Minimal Game project
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
@@ -60,10 +60,11 @@ Status meanings:
 | List component types | `component.list_types` | `component` / `list_types` | Verified | Uses `Game.TypeLibrary.GetTypes(typeof(Component))`; live smoke returned 131 types. |
 | List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list. |
 | Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context. |
-| Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties. |
+| Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties and includes schema hints for settable JSON shapes. |
 | Add component | `component.add` | `component` / `add` | Verified | Live smoke adds `AgentBridgeMutationFixture` by type name and verifies id/type read-back. |
 | Remove component | `component.remove` | `component` / `remove` | Verified | Undo scoped; live smoke verifies `component.get` fails after removal, undo restores, redo removes again. |
-| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`. |
+| Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; supports `dryRun: true`. |
+| Validate property | `component.validate_property` | `component` / `validate_property` | Verified | Converts and resolves a candidate value without mutation; live smoke verifies valid conversion, invalid rejection, and unchanged fixture values. |
 | Enable/disable component | `component.set_enabled` | `component` / `set_enabled` | Verified | Live smoke verifies false and true read-back. |
 
 ## Assets And Prefabs
@@ -83,5 +84,5 @@ Status meanings:
 | MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
-| Live editor smoke script | Verified | `npm run smoke:live` verified core GameObject edits, component inspection, and fixture-backed component mutation against an already-open editor. |
+| Live editor smoke script | Verified | `npm run smoke:live` verified core GameObject edits, component inspection, schema metadata, dry-run validation, and fixture-backed component mutation against an already-open editor. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

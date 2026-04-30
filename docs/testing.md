@@ -38,7 +38,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-This script uses the same file IPC path as the MCP server. It creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types, mutates `AgentBridgeMutationFixture`, reads a component from the active scene when one exists, and then cleans up the temporary objects.
+This script uses the same file IPC path as the MCP server. It creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture`, reads a component from the active scene when one exists, and then cleans up the temporary objects.
 
 Useful environment variables:
 
@@ -105,16 +105,19 @@ For component discovery changes, verify:
 2. `component.list_on_gameobject`
 3. `component.get`
 4. `component.get_properties`
+5. `component.get_properties` includes `metadata.schema` with supported kind, accepted JSON shapes, enum values, and reference targets where applicable
 
 For component mutation changes, verify:
 
 1. `component.add`
 2. `component.set_enabled` false, then true
-3. `component.set_property` through `AgentBridgeMutationFixture` for string, bool, int/uint/long, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component`
-4. `component.remove`
-5. `component.get` fails after removal
-6. `editor.undo` restores the removed component
-7. `editor.redo` removes it again
+3. `component.validate_property` accepts a valid value and rejects an invalid value without mutation
+4. `component.set_property` with `dryRun: true` converts a value without mutation
+5. `component.set_property` through `AgentBridgeMutationFixture` for string, bool, int/uint/long, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component`
+6. `component.remove`
+7. `component.get` fails after removal
+8. `editor.undo` restores the removed component
+9. `editor.redo` removes it again
 
 `AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`.
 

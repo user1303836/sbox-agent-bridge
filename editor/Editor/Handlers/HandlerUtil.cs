@@ -129,7 +129,30 @@ internal static class HandlerUtil
 			isPublic = property.IsPublic,
 			isStatic = property.IsStatic,
 			isIndexer = property.IsIndexer,
-			isInspectorProperty = IsInspectorProperty( property )
+			isInspectorProperty = IsInspectorProperty( property ),
+			typeConversionSupported = IsSetPropertyTypeSupported( property.PropertyType ),
+			setPropertySupported = property.CanWrite && !property.ReadOnly && !property.IsIndexer && !property.IsStatic && IsSetPropertyTypeSupported( property.PropertyType ),
+			schema = DescribePropertySchema( property.PropertyType )
+		};
+	}
+
+	public static object DescribePropertySchema( Type targetType )
+	{
+		var nullableType = Nullable.GetUnderlyingType( targetType );
+		var effectiveType = nullableType ?? targetType;
+		var supported = IsSetPropertyTypeSupported( targetType );
+
+		return new
+		{
+			kind = GetPropertyKind( effectiveType ),
+			nullable = !targetType.IsValueType || nullableType is not null,
+			targetType = effectiveType.FullName ?? effectiveType.Name,
+			acceptedJson = GetAcceptedJsonShapes( effectiveType ),
+			example = GetJsonExample( effectiveType ),
+			enumValues = effectiveType.IsEnum ? Enum.GetNames( effectiveType ) : Array.Empty<string>(),
+			reference = DescribeReferenceTarget( effectiveType ),
+			supported,
+			unsupportedReason = supported ? null : GetUnsupportedPropertyReason( effectiveType )
 		};
 	}
 
@@ -409,6 +432,22 @@ internal static class HandlerUtil
 		return property;
 	}
 
+	public static object ValidatePropertyValue( Component component, PropertyDescription property, JsonElement value, Scene scene )
+	{
+		var converted = ConvertJsonValue( value, property.PropertyType, scene );
+
+		return new
+		{
+			component = DescribeComponent( component ),
+			gameObject = DescribeGameObject( component.GameObject ),
+			property = DescribePropertyMetadata( property ),
+			current = DescribePropertyValue( component, property ),
+			converted = DescribeValue( converted ),
+			mutationApplied = false,
+			valid = true
+		};
+	}
+
 	public static object? ConvertJsonValue( JsonElement value, Type targetType, Scene scene )
 	{
 		var nullableType = Nullable.GetUnderlyingType( targetType );
@@ -509,6 +548,217 @@ internal static class HandlerUtil
 		}
 
 		throw new InvalidOperationException( $"Property type '{targetType.FullName ?? targetType.Name}' is not supported by component.set_property yet." );
+	}
+
+	public static bool IsSetPropertyTypeSupported( Type targetType )
+	{
+		var nullableType = Nullable.GetUnderlyingType( targetType );
+		var effectiveType = nullableType ?? targetType;
+
+		return effectiveType == typeof( string ) ||
+			effectiveType == typeof( bool ) ||
+			effectiveType.IsEnum ||
+			effectiveType == typeof( int ) ||
+			effectiveType == typeof( uint ) ||
+			effectiveType == typeof( long ) ||
+			effectiveType == typeof( ulong ) ||
+			effectiveType == typeof( short ) ||
+			effectiveType == typeof( ushort ) ||
+			effectiveType == typeof( byte ) ||
+			effectiveType == typeof( sbyte ) ||
+			effectiveType == typeof( float ) ||
+			effectiveType == typeof( double ) ||
+			effectiveType == typeof( decimal ) ||
+			effectiveType == typeof( Vector2 ) ||
+			effectiveType == typeof( Vector3 ) ||
+			effectiveType == typeof( Rotation ) ||
+			effectiveType == typeof( Angles ) ||
+			effectiveType == typeof( Transform ) ||
+			effectiveType == typeof( Color ) ||
+			effectiveType == typeof( GameObject ) ||
+			typeof( Component ).IsAssignableFrom( effectiveType );
+	}
+
+	private static string GetPropertyKind( Type targetType )
+	{
+		if ( targetType == typeof( string ) )
+			return "string";
+
+		if ( targetType == typeof( bool ) )
+			return "bool";
+
+		if ( targetType.IsEnum )
+			return "enum";
+
+		if ( targetType == typeof( int ) ||
+			targetType == typeof( uint ) ||
+			targetType == typeof( long ) ||
+			targetType == typeof( ulong ) ||
+			targetType == typeof( short ) ||
+			targetType == typeof( ushort ) ||
+			targetType == typeof( byte ) ||
+			targetType == typeof( sbyte ) )
+			return "integer";
+
+		if ( targetType == typeof( float ) ||
+			targetType == typeof( double ) ||
+			targetType == typeof( decimal ) )
+			return "number";
+
+		if ( targetType == typeof( Vector2 ) )
+			return "vector2";
+
+		if ( targetType == typeof( Vector3 ) )
+			return "vector3";
+
+		if ( targetType == typeof( Rotation ) )
+			return "rotation";
+
+		if ( targetType == typeof( Angles ) )
+			return "angles";
+
+		if ( targetType == typeof( Transform ) )
+			return "transform";
+
+		if ( targetType == typeof( Color ) )
+			return "color";
+
+		if ( targetType == typeof( GameObject ) )
+			return "gameObjectReference";
+
+		if ( typeof( Component ).IsAssignableFrom( targetType ) )
+			return "componentReference";
+
+		return "unsupported";
+	}
+
+	private static string[] GetAcceptedJsonShapes( Type targetType )
+	{
+		if ( targetType == typeof( string ) )
+			return new[] { "string", "any non-null JSON value converted to string" };
+
+		if ( targetType == typeof( bool ) )
+			return new[] { "boolean", "string 'true' or 'false'" };
+
+		if ( targetType.IsEnum )
+			return new[] { "string enum name", "integer enum value" };
+
+		if ( GetPropertyKind( targetType ) == "integer" )
+			return new[] { "integer", "integer string" };
+
+		if ( GetPropertyKind( targetType ) == "number" )
+			return new[] { "number" };
+
+		if ( targetType == typeof( Vector2 ) )
+			return new[] { "object { x: number, y: number }" };
+
+		if ( targetType == typeof( Vector3 ) )
+			return new[] { "object { x: number, y: number, z: number }" };
+
+		if ( targetType == typeof( Rotation ) )
+			return new[] { "object { pitch?: number, yaw?: number, roll?: number }", "object { x: number, y: number, z: number, w: number }" };
+
+		if ( targetType == typeof( Angles ) )
+			return new[] { "object { pitch: number, yaw: number, roll: number }" };
+
+		if ( targetType == typeof( Transform ) )
+			return new[] { "object { position?: Vector3, rotation?: Rotation, scale?: Vector3 }" };
+
+		if ( targetType == typeof( Color ) )
+			return new[] { "string color such as '#336699' or '#336699CC'", "object { r: number, g: number, b: number, a?: number }" };
+
+		if ( targetType == typeof( GameObject ) )
+			return new[] { "string GameObject id", "object { id: string }" };
+
+		if ( typeof( Component ).IsAssignableFrom( targetType ) )
+			return new[] { "string Component id", "object { id: string }" };
+
+		return Array.Empty<string>();
+	}
+
+	private static object? GetJsonExample( Type targetType )
+	{
+		if ( targetType == typeof( string ) )
+			return "hello";
+
+		if ( targetType == typeof( bool ) )
+			return true;
+
+		if ( targetType.IsEnum )
+			return Enum.GetNames( targetType ).FirstOrDefault() ?? "";
+
+		if ( GetPropertyKind( targetType ) == "integer" )
+			return 1;
+
+		if ( GetPropertyKind( targetType ) == "number" )
+			return 1.5;
+
+		if ( targetType == typeof( Vector2 ) )
+			return new { x = 1, y = 2 };
+
+		if ( targetType == typeof( Vector3 ) )
+			return new { x = 1, y = 2, z = 3 };
+
+		if ( targetType == typeof( Rotation ) )
+			return new { pitch = 0, yaw = 90, roll = 0 };
+
+		if ( targetType == typeof( Angles ) )
+			return new { pitch = 0, yaw = 90, roll = 0 };
+
+		if ( targetType == typeof( Transform ) )
+		{
+			return new
+			{
+				position = new { x = 0, y = 0, z = 0 },
+				rotation = new { pitch = 0, yaw = 0, roll = 0 },
+				scale = new { x = 1, y = 1, z = 1 }
+			};
+		}
+
+		if ( targetType == typeof( Color ) )
+			return new { r = 1, g = 1, b = 1, a = 1 };
+
+		if ( targetType == typeof( GameObject ) )
+			return "gameobject-guid";
+
+		if ( typeof( Component ).IsAssignableFrom( targetType ) )
+			return "component-guid";
+
+		return null;
+	}
+
+	private static object? DescribeReferenceTarget( Type targetType )
+	{
+		if ( targetType == typeof( GameObject ) )
+		{
+			return new
+			{
+				kind = "GameObject",
+				type = targetType.FullName ?? targetType.Name
+			};
+		}
+
+		if ( typeof( Component ).IsAssignableFrom( targetType ) )
+		{
+			return new
+			{
+				kind = "Component",
+				type = targetType.FullName ?? targetType.Name
+			};
+		}
+
+		return null;
+	}
+
+	private static string GetUnsupportedPropertyReason( Type targetType )
+	{
+		if ( targetType.IsArray )
+			return "Array properties are not supported by component.set_property yet.";
+
+		if ( typeof( System.Collections.IEnumerable ).IsAssignableFrom( targetType ) && targetType != typeof( string ) )
+			return "Collection properties are not supported by component.set_property yet.";
+
+		return $"Property type '{targetType.FullName ?? targetType.Name}' is not supported by component.set_property yet.";
 	}
 
 	public static Component RequireComponentById( Scene scene, string id, string propertyName = "id" )

@@ -58,6 +58,56 @@ interface ComponentMutationResult {
   };
 }
 
+interface ComponentPropertiesResult {
+  verified: {
+    count: number;
+    properties: ComponentPropertyResult[];
+  };
+}
+
+interface ComponentPropertyResult {
+  metadata: {
+    name: string;
+    type: string;
+    fullType: string;
+    canWrite: boolean;
+    readOnly: boolean;
+    typeConversionSupported: boolean;
+    setPropertySupported: boolean;
+    schema: {
+      kind: string;
+      nullable: boolean;
+      targetType: string;
+      acceptedJson: string[];
+      example: unknown;
+      enumValues: string[];
+      reference?: {
+        kind: string;
+        type: string;
+      } | null;
+      supported: boolean;
+      unsupportedReason?: string | null;
+    };
+  };
+  value?: {
+    type: string;
+    value: unknown;
+  };
+}
+
+interface ComponentValidationResult {
+  verified: {
+    property: ComponentPropertyResult["metadata"];
+    current: ComponentPropertyResult;
+    converted: {
+      type: string;
+      value: unknown;
+    };
+    mutationApplied: boolean;
+    valid: boolean;
+  };
+}
+
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC,
   timeoutMs: Number(process.env.SBOX_AGENT_BRIDGE_TIMEOUT_MS ?? 10_000)
@@ -254,6 +304,26 @@ async function runMutationFixtureSmoke(
     id: componentId
   });
 
+  const initialProperties = await getFixtureProperties(componentId);
+  const schemaSummary = assertFixtureSchemas(initialProperties);
+  const floatValidation = await validateFixtureProperty(componentId, "FloatValue", 12.5);
+  const stringDryRun = await dryRunSetFixtureProperty(componentId, "StringValue", `dry-${stamp}`);
+  const invalidValidationFailed = await rejectsBridgeCommand(() =>
+    validateFixtureProperty(componentId, "IntValue", "not-an-int")
+  );
+  const floatAfterValidation = await getFixturePropertyValue(componentId, "FloatValue");
+  const stringAfterDryRun = await getFixturePropertyValue(componentId, "StringValue");
+
+  ensure(floatValidation.verified.valid, "component.validate_property did not report FloatValue as valid");
+  ensure(floatValidation.verified.mutationApplied === false, "component.validate_property reported a mutation");
+  ensureClose(floatValidation.verified.converted.value, 12.5, "FloatValue validation converted value");
+  ensure(stringDryRun.verified.valid, "component.set_property dryRun did not report StringValue as valid");
+  ensure(stringDryRun.verified.mutationApplied === false, "component.set_property dryRun reported a mutation");
+  ensure(stringDryRun.verified.converted.value === `dry-${stamp}`, "StringValue dryRun converted value mismatch");
+  ensure(invalidValidationFailed, "component.validate_property accepted an invalid IntValue");
+  ensureClose(floatAfterValidation, 0, "FloatValue changed during validation");
+  ensure(stringAfterDryRun === "", "StringValue changed during dryRun validation");
+
   const disabledComponent = await bridge.send<ComponentMutationResult>("component.set_enabled", {
     id: componentId,
     enabled: false
@@ -307,11 +377,7 @@ async function runMutationFixtureSmoke(
   ensure((propertyValue(gameObjectReferenceSet) as JsonObject).id === referenceGameObjectId, "GameObjectReference id mismatch");
   ensure((propertyValue(componentReferenceSet) as JsonObject).id === componentId, "ComponentReference id mismatch");
 
-  const properties = await bridge.send<{ verified: { count: number } }>("component.get_properties", {
-    id: componentId,
-    includeAll: false,
-    maxProperties: 50
-  });
+  const properties = await getFixtureProperties(componentId);
 
   await bridge.send("component.remove", {
     id: componentId
@@ -342,6 +408,14 @@ async function runMutationFixtureSmoke(
     disabledReadback: disabledComponent.verified.component.enabled,
     enabledReadback: enabledComponent.verified.component.enabled,
     propertyCount: properties.verified.count,
+    schemaSummary,
+    validation: {
+      floatConverted: floatValidation.verified.converted.value,
+      stringDryRunConverted: stringDryRun.verified.converted.value,
+      invalidValidationFailed,
+      floatAfterValidation,
+      stringAfterDryRun
+    },
     removedComponentGetFailed,
     componentUndoApplied: componentUndo.verified.undone,
     componentRedoApplied: componentRedo.verified.redone,
@@ -367,12 +441,110 @@ async function runMutationFixtureSmoke(
   };
 }
 
+async function getFixtureProperties(componentId: string): Promise<ComponentPropertiesResult> {
+  return await bridge.send<ComponentPropertiesResult>("component.get_properties", {
+    id: componentId,
+    includeAll: false,
+    maxProperties: 50
+  });
+}
+
+async function getFixturePropertyValue(componentId: string, property: string): Promise<unknown> {
+  const properties = await bridge.send<ComponentPropertiesResult>("component.get_properties", {
+    id: componentId,
+    includeAll: false,
+    query: property,
+    maxProperties: 5
+  });
+
+  return requireProperty(properties, property).value?.value;
+}
+
+async function validateFixtureProperty(
+  componentId: string,
+  property: string,
+  value: unknown
+): Promise<ComponentValidationResult> {
+  return await bridge.send<ComponentValidationResult>("component.validate_property", {
+    id: componentId,
+    property,
+    value
+  });
+}
+
+async function dryRunSetFixtureProperty(
+  componentId: string,
+  property: string,
+  value: unknown
+): Promise<ComponentValidationResult> {
+  return await bridge.send<ComponentValidationResult>("component.set_property", {
+    id: componentId,
+    property,
+    value,
+    dryRun: true
+  });
+}
+
 async function setFixtureProperty(componentId: string, property: string, value: unknown): Promise<ComponentMutationResult> {
   return await bridge.send<ComponentMutationResult>("component.set_property", {
     id: componentId,
     property,
     value
   });
+}
+
+function assertFixtureSchemas(properties: ComponentPropertiesResult): Record<string, unknown> {
+  const stringProperty = requireProperty(properties, "StringValue");
+  const intProperty = requireProperty(properties, "IntValue");
+  const enumProperty = requireProperty(properties, "EnumValue");
+  const vector3Property = requireProperty(properties, "Vector3Value");
+  const rotationProperty = requireProperty(properties, "RotationValue");
+  const transformProperty = requireProperty(properties, "TransformValue");
+  const gameObjectProperty = requireProperty(properties, "GameObjectReference");
+  const componentProperty = requireProperty(properties, "ComponentReference");
+
+  ensureSchema(stringProperty, "string", "string");
+  ensureSchema(intProperty, "integer", "integer");
+  ensureSchema(enumProperty, "enum", "string enum name");
+  ensure(enumProperty.metadata.schema.enumValues.includes("Complete"), "EnumValue schema did not include Complete");
+  ensureSchema(vector3Property, "vector3", "object { x: number, y: number, z: number }");
+  ensureSchema(rotationProperty, "rotation", "object { pitch?: number, yaw?: number, roll?: number }");
+  ensureSchema(transformProperty, "transform", "object { position?: Vector3, rotation?: Rotation, scale?: Vector3 }");
+  ensureSchema(gameObjectProperty, "gameObjectReference", "string GameObject id");
+  ensureSchema(componentProperty, "componentReference", "string Component id");
+  ensure(gameObjectProperty.metadata.schema.reference?.kind === "GameObject", "GameObjectReference schema did not describe a GameObject reference");
+  ensure(componentProperty.metadata.schema.reference?.kind === "Component", "ComponentReference schema did not describe a Component reference");
+
+  return {
+    stringKind: stringProperty.metadata.schema.kind,
+    intKind: intProperty.metadata.schema.kind,
+    enumValues: enumProperty.metadata.schema.enumValues,
+    vector3AcceptedJson: vector3Property.metadata.schema.acceptedJson,
+    rotationAcceptedJson: rotationProperty.metadata.schema.acceptedJson,
+    transformAcceptedJson: transformProperty.metadata.schema.acceptedJson,
+    gameObjectReference: gameObjectProperty.metadata.schema.reference,
+    componentReference: componentProperty.metadata.schema.reference
+  };
+}
+
+function requireProperty(properties: ComponentPropertiesResult, property: string): ComponentPropertyResult {
+  const found = properties.verified.properties.find((item) => item.metadata.name === property);
+  ensure(found !== undefined, `${property} metadata was not returned by component.get_properties`);
+
+  return found;
+}
+
+function ensureSchema(property: ComponentPropertyResult, kind: string, acceptedJson: string): void {
+  ensure(property.metadata.canWrite, `${property.metadata.name} should be writable`);
+  ensure(!property.metadata.readOnly, `${property.metadata.name} should not be read-only`);
+  ensure(property.metadata.typeConversionSupported, `${property.metadata.name} should have supported value conversion`);
+  ensure(property.metadata.setPropertySupported, `${property.metadata.name} should be supported by set_property`);
+  ensure(property.metadata.schema.supported, `${property.metadata.name} schema should be supported`);
+  ensure(property.metadata.schema.kind === kind, `${property.metadata.name} schema kind should be ${kind}`);
+  ensure(
+    property.metadata.schema.acceptedJson.includes(acceptedJson),
+    `${property.metadata.name} schema did not include accepted JSON shape: ${acceptedJson}`
+  );
 }
 
 async function rejectsBridgeCommand(command: () => Promise<unknown>): Promise<boolean> {
@@ -384,7 +556,7 @@ async function rejectsBridgeCommand(command: () => Promise<unknown>): Promise<bo
   }
 }
 
-function ensure(condition: boolean, message: string): void {
+function ensure(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }

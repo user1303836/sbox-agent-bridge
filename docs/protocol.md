@@ -66,10 +66,23 @@ Errors use the same envelope:
 - `component.remove`
 - `component.set_enabled`
 - `component.set_property`
+- `component.validate_property`
 
 ## Mutation Rule
 
 Mutations should return a `verified` object read back from the editor after the operation. If `verified` is missing, the caller should assume the change may not have stuck.
+
+`component.set_property` also accepts `dryRun: true`. In dry-run mode, the bridge resolves the component/property and converts the input value, but does not call `PropertyDescription.SetValue`.
+
+`component.validate_property` performs the same conversion check without mutation. Its verified payload includes:
+
+- `property`: metadata and schema for the target property.
+- `current`: current read-back value.
+- `converted`: converted value that would be assigned.
+- `mutationApplied: false`.
+- `valid: true`.
+
+Property metadata includes `typeConversionSupported`, `setPropertySupported`, and a `schema` block with kind, nullability, accepted JSON shapes, an example value, enum values, reference target, support status, and unsupported reason where applicable.
 
 ## File Handoff
 

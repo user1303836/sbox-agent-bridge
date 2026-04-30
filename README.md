@@ -19,9 +19,10 @@ As of 2026-04-29, the bridge has been verified against a minimal s&box project o
 
 - The editor library compiles and the **Agent Bridge** dock appears in s&box.
 - The dock listens through local file IPC at `%TEMP%/sbox-agent-bridge`.
-- The MCP server can read editor status, active context, selection, scene summaries, hierarchy, object details, component lists, and component properties.
+- The MCP server can read editor status, active context, selection, scene summaries, hierarchy, object details, component lists, and component properties with explicit JSON-shape metadata.
 - GameObject mutations are undo-scoped and read back after the edit: create, rename, transform, enable/disable, reparent, duplicate, destroy.
 - Component mutations are undo-scoped and read back after the edit: add, remove, enable/disable, and set property.
+- Component property values can be dry-run validated through `component.validate_property` or `component.set_property` with `dryRun: true`.
 - `component.set_property` is live-smoked against `AgentBridgeMutationFixture` for string, bool, integer, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` reference, and `Component` reference values.
 - GitHub Actions runs metadata validation, typecheck, tests, and build for the MCP server.
 
@@ -190,8 +191,11 @@ Component discovery, inspection, and mutation:
 - `remove`
 - `set_enabled`
 - `set_property`
+- `validate_property`
 
 Every mutation should return a `verified` payload read back from the editor. If a mutation cannot verify its own result, callers should treat it as incomplete.
+
+`component.get_properties` includes a `metadata.schema` block for each property. It describes the supported property kind, nullability, accepted JSON shapes, example value, enum values, and reference target where applicable. Use `component.validate_property` before mutation when an agent is unsure whether a value can be converted.
 
 ## Live Smoke Test
 

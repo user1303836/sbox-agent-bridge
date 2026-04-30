@@ -6,18 +6,29 @@ import { asJsonText } from "./result.js";
 export function registerComponentTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
     "component",
-    "Discover component types and inspect components/properties in the active s&box editor scene.",
+    "Discover, inspect, validate, and mutate components/properties in the active s&box editor scene.",
     {
       action: z
-        .enum(["list_types", "list_on_gameobject", "get", "get_properties", "add", "remove", "set_enabled", "set_property"])
+        .enum([
+          "list_types",
+          "list_on_gameobject",
+          "get",
+          "get_properties",
+          "add",
+          "remove",
+          "set_enabled",
+          "set_property",
+          "validate_property"
+        ])
         .describe("The component action to run."),
-      id: z.string().optional().describe("Target Component id for get or get_properties."),
+      id: z.string().optional().describe("Target Component id for get, get_properties, set_property, or validate_property."),
       gameObjectId: z.string().optional().describe("Target GameObject id for list_on_gameobject."),
       type: z.string().optional().describe("Component type name or full name for add."),
       startEnabled: z.boolean().optional().describe("Initial enabled state for add."),
       enabled: z.boolean().optional().describe("Enabled state for set_enabled."),
-      property: z.string().optional().describe("Property name or title for set_property."),
-      value: z.any().optional().describe("JSON value for set_property."),
+      property: z.string().optional().describe("Property name or title for set_property or validate_property."),
+      value: z.any().optional().describe("JSON value for set_property or validate_property."),
+      dryRun: z.boolean().optional().describe("Validate and convert set_property input without mutating the component."),
       query: z.string().optional().describe("Case-insensitive filter for component types or properties."),
       includeAbstract: z.boolean().optional().describe("Include abstract component types in list_types."),
       includeAll: z

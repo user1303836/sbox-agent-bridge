@@ -136,6 +136,7 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 
 `Sandbox.TypeDescription`:
 
+- `TargetType`
 - `Name`
 - `FullName`
 - `Title`
@@ -143,6 +144,7 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `Group`
 - `Icon`
 - `Properties`
+- `IsEnum`
 
 `Sandbox.PropertyDescription`:
 
@@ -155,6 +157,9 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `CanWrite`
 - `ReadOnly`
 - `IsIndexer`
+- `IsStatic`
+- `IsPublic`
+- `HasAttribute(...)`
 - `GetValue(object obj)`
 - `SetValue(object obj, object value)`
 
