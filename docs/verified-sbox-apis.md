@@ -164,6 +164,29 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `GetValue(object obj)`
 - `SetValue(object obj, object value)`
 
+`Sandbox.Resource`:
+
+- `ResourcePath`
+- `ResourceName`
+- `ResourceId`
+- `IsValid`
+
+`Sandbox.ResourceLibrary`:
+
+- `Get<T>(string path)`
+
+`Sandbox.Model`:
+
+- `Load(string filename)`
+
+`Sandbox.Material`:
+
+- `Load(string filename)`
+
+`Sandbox.Texture`:
+
+- `Load(string filename, bool complain = true)`
+
 `ISceneUndoScope`:
 
 - `WithGameObjectCreations()`

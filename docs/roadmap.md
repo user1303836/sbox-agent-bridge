@@ -75,7 +75,7 @@ Acceptance criteria:
 
 Goal: let agents add and configure the behavior/rendering/physics building blocks that make scene editing useful.
 
-Status: in progress. Verified so far: component type discovery, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove, enabled-state mutation, and typed property mutation.
+Status: in progress. Verified so far: component type discovery, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove, enabled-state mutation, typed property mutation, and resource-backed property mutation.
 
 Candidate actions:
 
@@ -85,14 +85,14 @@ Candidate actions:
 - `component.get_properties` - verified
 - `component.add` - verified
 - `component.remove` - verified
-- `component.set_property` - verified through `AgentBridgeMutationFixture` for common scalar/math/reference shapes
+- `component.set_property` - verified through `AgentBridgeMutationFixture` for common scalar/math/reference shapes and live-verified on built-in `ModelRenderer` resource properties
 - `component.validate_property` - verified for valid conversion, invalid rejection, and no-mutation read-back
 - `component.set_enabled` - verified
 
 Acceptance criteria:
 
 - Type lookup uses s&box type metadata rather than hardcoded assumptions.
-- Property read/write supports primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, colors, and object/component references.
+- Property read/write supports primitives, enums, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, colors, object/component references, and `Sandbox.Resource` references by asset path.
 - Property metadata exposes settable JSON shapes before mutation.
 - Dry-run validation can convert and resolve a candidate property value without mutating the scene.
 - Set-property failures return actionable type-conversion errors.
@@ -100,7 +100,6 @@ Acceptance criteria:
 
 Remaining gaps:
 
-- Resource reference conversion.
 - Collection/list property editing.
 - Full component/child cloning for `gameobject.duplicate`.
 

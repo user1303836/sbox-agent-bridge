@@ -130,6 +130,7 @@ internal static class HandlerUtil
 			isStatic = property.IsStatic,
 			isIndexer = property.IsIndexer,
 			isInspectorProperty = IsInspectorProperty( property ),
+			attributes = property.Attributes.Select( x => x.GetType().Name ).ToArray(),
 			typeConversionSupported = IsSetPropertyTypeSupported( property.PropertyType ),
 			setPropertySupported = property.CanWrite && !property.ReadOnly && !property.IsIndexer && !property.IsStatic && IsSetPropertyTypeSupported( property.PropertyType ),
 			schema = DescribePropertySchema( property.PropertyType )
@@ -221,6 +222,17 @@ internal static class HandlerUtil
 					b = color.b,
 					a = color.a,
 					hex = color.Hex
+				}
+			},
+			Resource resource => new
+			{
+				type = value.GetType().FullName ?? value.GetType().Name,
+				value = new
+				{
+					path = resource.ResourcePath,
+					name = resource.ResourceName,
+					id = resource.ResourceId,
+					isValid = resource.IsValid
 				}
 			},
 			GameObject go => new { type = "GameObject", value = new { id = go.Id.ToString(), name = go.Name } },
@@ -534,6 +546,9 @@ internal static class HandlerUtil
 		if ( targetType == typeof( Color ) )
 			return ConvertColor( value );
 
+		if ( typeof( Resource ).IsAssignableFrom( targetType ) )
+			return ConvertResource( value, targetType );
+
 		if ( targetType == typeof( GameObject ) )
 			return RequireGameObjectById( scene, GetReferenceId( value ), "value" );
 
@@ -575,6 +590,7 @@ internal static class HandlerUtil
 			effectiveType == typeof( Angles ) ||
 			effectiveType == typeof( Transform ) ||
 			effectiveType == typeof( Color ) ||
+			typeof( Resource ).IsAssignableFrom( effectiveType ) ||
 			effectiveType == typeof( GameObject ) ||
 			typeof( Component ).IsAssignableFrom( effectiveType );
 	}
@@ -623,6 +639,9 @@ internal static class HandlerUtil
 		if ( targetType == typeof( Color ) )
 			return "color";
 
+		if ( typeof( Resource ).IsAssignableFrom( targetType ) )
+			return "resourceReference";
+
 		if ( targetType == typeof( GameObject ) )
 			return "gameObjectReference";
 
@@ -666,6 +685,9 @@ internal static class HandlerUtil
 
 		if ( targetType == typeof( Color ) )
 			return new[] { "string color such as '#336699' or '#336699CC'", "object { r: number, g: number, b: number, a?: number }" };
+
+		if ( typeof( Resource ).IsAssignableFrom( targetType ) )
+			return new[] { "string resource path", "object { path: string }", "object { resourcePath: string }" };
 
 		if ( targetType == typeof( GameObject ) )
 			return new[] { "string GameObject id", "object { id: string }" };
@@ -718,6 +740,9 @@ internal static class HandlerUtil
 		if ( targetType == typeof( Color ) )
 			return new { r = 1, g = 1, b = 1, a = 1 };
 
+		if ( typeof( Resource ).IsAssignableFrom( targetType ) )
+			return GetResourceExample( targetType );
+
 		if ( targetType == typeof( GameObject ) )
 			return "gameobject-guid";
 
@@ -744,6 +769,16 @@ internal static class HandlerUtil
 			{
 				kind = "Component",
 				type = targetType.FullName ?? targetType.Name
+			};
+		}
+
+		if ( typeof( Resource ).IsAssignableFrom( targetType ) )
+		{
+			return new
+			{
+				kind = "Resource",
+				type = targetType.FullName ?? targetType.Name,
+				pathProperty = "ResourcePath"
 			};
 		}
 
@@ -819,6 +854,88 @@ internal static class HandlerUtil
 			return idElement.GetString() ?? "";
 
 		throw new InvalidOperationException( "Expected a reference id string or an object with an id property." );
+	}
+
+	private static string GetResourcePath( JsonElement value )
+	{
+		if ( value.ValueKind == JsonValueKind.String )
+			return value.GetString() ?? "";
+
+		if ( value.ValueKind == JsonValueKind.Object )
+		{
+			if ( value.TryGetProperty( "path", out var pathElement ) && pathElement.ValueKind == JsonValueKind.String )
+				return pathElement.GetString() ?? "";
+
+			if ( value.TryGetProperty( "resourcePath", out var resourcePathElement ) && resourcePathElement.ValueKind == JsonValueKind.String )
+				return resourcePathElement.GetString() ?? "";
+		}
+
+		throw new InvalidOperationException( "Expected a resource path string or an object with a path/resourcePath property." );
+	}
+
+	private static object ConvertResource( JsonElement value, Type targetType )
+	{
+		var path = GetResourcePath( value );
+
+		if ( string.IsNullOrWhiteSpace( path ) )
+			throw new InvalidOperationException( "Resource path cannot be empty." );
+
+		var resource = LoadResource( path, targetType );
+
+		if ( resource is null )
+			throw new InvalidOperationException( $"Could not load resource '{path}' as '{targetType.Name}'." );
+
+		if ( !targetType.IsAssignableFrom( resource.GetType() ) )
+			throw new InvalidOperationException( $"Resource '{path}' loaded as '{resource.GetType().Name}', not assignable to '{targetType.Name}'." );
+
+		if ( !resource.IsValid )
+			throw new InvalidOperationException( $"Resource '{path}' loaded as '{targetType.Name}' but is not valid." );
+
+		return resource;
+	}
+
+	private static Resource? LoadResource( string path, Type targetType )
+	{
+		if ( targetType == typeof( Model ) )
+			return Model.Load( path );
+
+		if ( targetType == typeof( Material ) )
+			return Material.Load( path );
+
+		if ( targetType == typeof( Texture ) )
+			return Texture.Load( path, true );
+
+		var method = typeof( ResourceLibrary ).GetMethods()
+			.FirstOrDefault( x =>
+			{
+				if ( x.Name != "Get" || !x.IsGenericMethodDefinition )
+					return false;
+
+				var parameters = x.GetParameters();
+				return parameters.Length == 1 && parameters[0].ParameterType == typeof( string );
+			} );
+
+		if ( method is null )
+			throw new InvalidOperationException( "Could not find ResourceLibrary.Get<T>(string)." );
+
+		return method.MakeGenericMethod( targetType ).Invoke( null, new object[] { path } ) as Resource;
+	}
+
+	private static object GetResourceExample( Type targetType )
+	{
+		if ( targetType == typeof( Model ) )
+			return "models/citizen/citizen.vmdl";
+
+		if ( targetType == typeof( Material ) )
+			return "materials/dev/reflectivity_30.vmat";
+
+		if ( targetType == typeof( Texture ) )
+			return "textures/cubemaps/default2.vtex";
+
+		if ( targetType == typeof( SoundEvent ) )
+			return "sounds/ui/buttonclick.sound";
+
+		return "path/to/resource";
 	}
 
 	private static Vector2 ConvertVector2( JsonElement value )

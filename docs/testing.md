@@ -114,13 +114,21 @@ For component mutation changes, verify:
 2. `component.set_enabled` false, then true
 3. `component.validate_property` accepts a valid value and rejects an invalid value without mutation
 4. `component.set_property` with `dryRun: true` converts a value without mutation
-5. `component.set_property` through `AgentBridgeMutationFixture` for string, bool, int/uint/long, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component`
+5. `component.set_property` through `AgentBridgeMutationFixture` for string, bool, int/uint/long, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `Model`, `Material`, `Texture`, `GameObject`, and `Component`
 6. `component.remove`
 7. `component.get` fails after removal
 8. `editor.undo` restores the removed component
 9. `editor.redo` removes it again
 
 `AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`. Some editor sessions may not expose local game components through `Game.TypeLibrary`; use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
+
+For resource-backed component property changes, also verify at least one built-in component with known asset paths:
+
+1. Add `ModelRenderer` to a temporary GameObject.
+2. Confirm `component.get_properties` reports `Model` and `MaterialOverride` as `resourceReference` schema entries.
+3. Validate and set `ModelRenderer.Model` with `models/dev/plane_blend.vmdl`.
+4. Validate and set `ModelRenderer.MaterialOverride` with `materials/dev/reflectivity_30.vmat`.
+5. Confirm read-back includes `path`, `name`, `id`, and `isValid: true`.
 
 For editor feedback-loop changes, verify:
 

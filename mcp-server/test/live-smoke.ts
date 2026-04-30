@@ -478,6 +478,9 @@ async function runMutationFixtureSmoke(
     scale: { x: 1.5, y: 2, z: 2.5 }
   });
   const colorSet = await setFixtureProperty(componentId, "ColorValue", { r: 0.2, g: 0.4, b: 0.6, a: 0.8 });
+  const modelSet = await setFixtureProperty(componentId, "ModelValue", "models/dev/plane_blend.vmdl");
+  const materialSet = await setFixtureProperty(componentId, "MaterialValue", "materials/dev/reflectivity_30.vmat");
+  const textureSet = await setFixtureProperty(componentId, "TextureValue", "textures/cubemaps/default2.vtex");
   const gameObjectReferenceSet = await setFixtureProperty(componentId, "GameObjectReference", referenceGameObjectId);
   const componentReferenceSet = await setFixtureProperty(componentId, "ComponentReference", componentId);
 
@@ -498,6 +501,9 @@ async function runMutationFixtureSmoke(
   ensureVector(transform.position, { x: 6, y: 7, z: 8 }, "TransformValue position");
   ensureVector(transform.scale, { x: 1.5, y: 2, z: 2.5 }, "TransformValue scale");
   ensureColor(propertyValue(colorSet), { r: 0.2, g: 0.4, b: 0.6, a: 0.8 }, "ColorValue");
+  ensureResourcePath(propertyValue(modelSet), "models/dev/plane_blend.vmdl", "ModelValue");
+  ensureResourcePath(propertyValue(materialSet), "materials/dev/reflectivity_30.vmat", "MaterialValue");
+  ensureResourcePath(propertyValue(textureSet), "textures/cubemaps/default2.vtex", "TextureValue");
   ensure((propertyValue(gameObjectReferenceSet) as JsonObject).id === referenceGameObjectId, "GameObjectReference id mismatch");
   ensure((propertyValue(componentReferenceSet) as JsonObject).id === componentId, "ComponentReference id mismatch");
 
@@ -559,6 +565,9 @@ async function runMutationFixtureSmoke(
       angles: propertyValue(anglesSet),
       transform: propertyValue(transformSet),
       color: propertyValue(colorSet),
+      model: propertyValue(modelSet),
+      material: propertyValue(materialSet),
+      texture: propertyValue(textureSet),
       gameObjectReference: propertyValue(gameObjectReferenceSet),
       componentReference: propertyValue(componentReferenceSet)
     }
@@ -624,6 +633,9 @@ function assertFixtureSchemas(properties: ComponentPropertiesResult): Record<str
   const vector3Property = requireProperty(properties, "Vector3Value");
   const rotationProperty = requireProperty(properties, "RotationValue");
   const transformProperty = requireProperty(properties, "TransformValue");
+  const modelProperty = requireProperty(properties, "ModelValue");
+  const materialProperty = requireProperty(properties, "MaterialValue");
+  const textureProperty = requireProperty(properties, "TextureValue");
   const gameObjectProperty = requireProperty(properties, "GameObjectReference");
   const componentProperty = requireProperty(properties, "ComponentReference");
 
@@ -634,8 +646,14 @@ function assertFixtureSchemas(properties: ComponentPropertiesResult): Record<str
   ensureSchema(vector3Property, "vector3", "object { x: number, y: number, z: number }");
   ensureSchema(rotationProperty, "rotation", "object { pitch?: number, yaw?: number, roll?: number }");
   ensureSchema(transformProperty, "transform", "object { position?: Vector3, rotation?: Rotation, scale?: Vector3 }");
+  ensureSchema(modelProperty, "resourceReference", "string resource path");
+  ensureSchema(materialProperty, "resourceReference", "string resource path");
+  ensureSchema(textureProperty, "resourceReference", "string resource path");
   ensureSchema(gameObjectProperty, "gameObjectReference", "string GameObject id");
   ensureSchema(componentProperty, "componentReference", "string Component id");
+  ensure(modelProperty.metadata.schema.reference?.kind === "Resource", "ModelValue schema did not describe a Resource reference");
+  ensure(materialProperty.metadata.schema.reference?.kind === "Resource", "MaterialValue schema did not describe a Resource reference");
+  ensure(textureProperty.metadata.schema.reference?.kind === "Resource", "TextureValue schema did not describe a Resource reference");
   ensure(gameObjectProperty.metadata.schema.reference?.kind === "GameObject", "GameObjectReference schema did not describe a GameObject reference");
   ensure(componentProperty.metadata.schema.reference?.kind === "Component", "ComponentReference schema did not describe a Component reference");
 
@@ -646,6 +664,9 @@ function assertFixtureSchemas(properties: ComponentPropertiesResult): Record<str
     vector3AcceptedJson: vector3Property.metadata.schema.acceptedJson,
     rotationAcceptedJson: rotationProperty.metadata.schema.acceptedJson,
     transformAcceptedJson: transformProperty.metadata.schema.acceptedJson,
+    modelResource: modelProperty.metadata.schema.reference,
+    materialResource: materialProperty.metadata.schema.reference,
+    textureResource: textureProperty.metadata.schema.reference,
     gameObjectReference: gameObjectProperty.metadata.schema.reference,
     componentReference: componentProperty.metadata.schema.reference
   };
@@ -710,4 +731,12 @@ function ensureVector(actual: unknown, expected: Record<string, number>, label: 
 
 function ensureColor(actual: unknown, expected: Record<string, number>, label: string): void {
   ensureVector(actual, expected, label);
+}
+
+function ensureResourcePath(actual: unknown, expectedPath: string, label: string): void {
+  ensure(typeof actual === "object" && actual !== null, `${label} did not read back as a resource object`);
+  const value = actual as Record<string, unknown>;
+  ensure(typeof value.path === "string", `${label}.path did not read back as a string`);
+  ensure(value.path.toLowerCase() === expectedPath.toLowerCase(), `${label} expected ${expectedPath}, got ${value.path}`);
+  ensure(value.isValid === true, `${label} did not read back as a valid resource`);
 }

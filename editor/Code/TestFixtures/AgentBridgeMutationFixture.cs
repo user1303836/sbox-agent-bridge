@@ -25,6 +25,10 @@ public sealed class AgentBridgeMutationFixture : Component
 	[Property] public Angles AnglesValue { get; set; }
 	[Property] public Transform TransformValue { get; set; }
 	[Property] public Color ColorValue { get; set; } = new( 1f, 1f, 1f, 1f );
+	[Property] public Model ModelValue { get; set; }
+	[Property] public Material MaterialValue { get; set; }
+	[Property] public Texture TextureValue { get; set; }
+	[Property] public SoundEvent SoundEventValue { get; set; }
 	[Property] public GameObject GameObjectReference { get; set; }
 	[Property] public Component ComponentReference { get; set; }
 }

@@ -88,7 +88,14 @@ Mutations should return a `verified` object read back from the editor after the 
 - `mutationApplied: false`.
 - `valid: true`.
 
-Property metadata includes `typeConversionSupported`, `setPropertySupported`, and a `schema` block with kind, nullability, accepted JSON shapes, an example value, enum values, reference target, support status, and unsupported reason where applicable.
+Property metadata includes `typeConversionSupported`, `setPropertySupported`, reflected attribute type names, and a `schema` block with kind, nullability, accepted JSON shapes, an example value, enum values, reference target, support status, and unsupported reason where applicable.
+
+Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.Resource` subclasses. They accept a string asset path, `{ "path": "..." }`, or `{ "resourcePath": "..." }`. Resource read-back includes:
+
+- `path`: resource path reported by s&box.
+- `name`: resource name.
+- `id`: resource id.
+- `isValid`: whether s&box loaded a valid resource.
 
 ## Feedback Actions
 

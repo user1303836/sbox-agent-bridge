@@ -14,7 +14,7 @@ Ask an agent to:
 - inspect the current selection
 - search the scene for GameObjects by name or component
 - create, rename, move, duplicate, reparent, or delete GameObjects
-- inspect components and editable properties
+- inspect components, editable properties, and resource-backed fields
 - add, remove, enable, disable, or update components
 - validate component property values before writing them
 - start/stop play mode and inspect play state
@@ -168,7 +168,7 @@ The bridge currently exposes four MCP tools: `editor`, `scene`, `gameobject`, an
 - `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, validate property
 
-Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it. Property writes can also be dry-run validated without mutating the scene.
+Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it, including resource references that can be set from asset paths. Property writes can also be dry-run validated without mutating the scene.
 
 For the detailed implementation status, see [docs/status.md](docs/status.md) and [docs/capability-matrix.md](docs/capability-matrix.md).
 
