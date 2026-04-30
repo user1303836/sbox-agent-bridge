@@ -26,6 +26,11 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `editor.save_scene` reports before/after save state, source path, skipped reason, and whether a save was verified. Direct IPC verified dry-run, safe no-source skip behavior, and an actual disk write against the sourced `scenes/minimal.scene` test scene.
 - `editor.open_scene` opens sourced scene resources and supports `forceReload` for recovering an already-open scene after play/stop session staleness.
 - `scene.batch` runs a bounded list of existing bridge actions with `$ref` aliases. Direct IPC verified a parent/child create, component add, model/material property writes, save-state check, and details read-back.
+- `scene.batch` now composes broader authoring actions. The ARPG fixture pass verified object create/reparent/duplicate/rename/enable, selection/focus, model/material assignment, sound assignment, collider/rigidbody/joint creation, material-property mutation, and raycast read-back in batches.
+- Asset/material helpers are live-verified: `asset.search`, `asset.get_info`, `asset.assign_model`, `asset.create_material`, `asset.assign_material`, and `asset.set_material_property`.
+- Sound helpers are live-verified: `sound.list`, `sound.get_info`, `sound.create_event`, `sound.assign`, and `sound.preview`.
+- Physics helpers are live-verified for colliders, rigidbodies, and raycasts. Joint component creation works, but target assignment remains limited.
+- Prefab helpers are live-verified: `prefab.create`, `prefab.list`, `prefab.get_info`, and `prefab.instantiate`.
 - Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, and combined feedback.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
 
@@ -36,15 +41,19 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - CI does not run a real s&box editor, so live editor behavior is verified with local smoke tests.
 - Actual `editor.save_scene` disk-write verification still needs a scene that already has a source path; untitled scenes are guarded to avoid surprise save-as UI.
 - `gameobject.duplicate` is currently shallow: it copies name, enabled state, transform, and parent, but not components or children.
-- `component.set_property` does not yet support collection/list editing. Resource reference support is implemented for `Sandbox.Resource` subclasses, with live coverage so far on model and material properties.
+- `component.add` can add built-in/editor-visible component types, but cannot currently add local game components by C# type name from the editor bridge. Existing local component instances can be inspected.
+- `component.set_property` does not yet support collection/list editing. Resource reference support is implemented for `Sandbox.Resource` subclasses, with live coverage so far on model, material, and sound-event properties.
+- `physics.add_joint` creates joint components, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. It does not yet support a timestamp/cursor, so stale errors can appear in current feedback.
 - Runtime/game-session inspection is not reliable yet. The ARPG POC showed that scene reads can target a stale editor session during or after play mode until the sourced scene is force-reloaded.
-- `AgentBridgeMutationFixture` is not visible through `Game.TypeLibrary` in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set.
+- Local game component types, including `AgentBridgeMutationFixture`, are not visible through editor-side `Game.TypeLibrary` string lookup in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set.
 - The full live smoke is currently blocked in this editor session by the `gameobject.destroy` delete/undo null reference. Direct feedback-loop actions were verified separately.
+- The current Windows shell cannot run the available `node.exe` shim (`Access is denied`) and `npm` is not on PATH, so the latest TypeScript build/test could not be rerun locally in this pass. `mcp-server/dist` was manually updated alongside `src`.
 
 ## Next Larger Milestones
 
 - Continue the minimal ARPG POC and use it to discover the next practical editor gaps.
 - Editor feedback loop refinements: wait-for-compile, structured live log events, and runtime/game-session inspection.
-- Asset and prefab discovery/instantiation workflows.
+- Resolve local game component type creation from the editor bridge.
+- Continue asset, prefab, sound, physics, and runtime-feedback workflows through the ARPG POC.

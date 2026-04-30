@@ -41,7 +41,16 @@ internal static class SceneHandlers
 		"component.add",
 		"component.set_enabled",
 		"component.set_property",
-		"component.validate_property"
+		"component.validate_property",
+		"asset.assign_model",
+		"asset.assign_material",
+		"asset.set_material_property",
+		"sound.assign",
+		"physics.add_physics",
+		"physics.add_collider",
+		"physics.add_joint",
+		"physics.raycast",
+		"prefab.instantiate"
 	};
 
 	public static BridgeResponse Summary( BridgeRequest request )

@@ -12,6 +12,8 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         .enum([
           "status",
           "context",
+          "tabs",
+          "activate_tab",
           "open_scene",
           "get_selection",
           "set_selection",
@@ -28,6 +30,8 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         ])
         .describe("The editor action to run."),
       id: z.string().optional().describe("Target GameObject id for frame_object."),
+      index: z.number().int().min(0).optional().describe("Editor tab index for activate_tab."),
+      scene: z.string().optional().describe("Scene/tab name selector for activate_tab."),
       path: z.string().optional().describe("Scene resource path for open_scene, such as scenes/minimal.scene."),
       bringToFront: z.boolean().optional().describe("Bring the opened scene editor tab to front for open_scene."),
       forceReload: z.boolean().optional().describe("For open_scene, reload an already-open sourced scene if it has no unsaved changes."),

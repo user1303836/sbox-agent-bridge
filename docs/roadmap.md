@@ -46,12 +46,14 @@ Acceptance criteria:
 
 Goal: give agents basic editor hands for GameObjects.
 
-Status: in progress. Verified so far: selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, save-state reporting, undo/redo, reparent, shallow duplicate, and batch scene v0. `gameobject.destroy` was previously verified but is currently blocked in this editor session.
+Status: in progress. Verified so far: tab/session listing and activation, selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, save-state reporting, undo/redo, reparent, shallow duplicate, and batch scene v0. `gameobject.destroy` was previously verified but is currently blocked in this editor session.
 
 Candidate actions:
 
+- `editor.tabs` - verified
+- `editor.activate_tab` - verified by source path while an unsaved untitled scene tab was also open
 - `editor.save_scene` - verified for save-state reporting and no-source guard; actual disk-write verification needs a sourced scene
-- `editor.open_scene` - verified for opening sourced scenes and force-reloading stale open sessions
+- `editor.open_scene` - verified for opening sourced scenes, resolving scenes through editor assets when needed, and force-reloading stale open sessions
 - `editor.undo` - verified
 - `editor.redo` - verified
 - `editor.frame_object` - verified
@@ -69,6 +71,7 @@ Candidate actions:
 Acceptance criteria:
 
 - All mutations use undo scopes where applicable.
+- Agents can list open editor scene tabs/sessions and explicitly activate the intended one before reading or mutating scene state.
 - Actions prefer ids/GUIDs over names.
 - Every mutation has a read-back verification payload.
 - Batches expose each operation result and stop on the first failure by default.
@@ -78,7 +81,7 @@ Acceptance criteria:
 
 Goal: let agents add and configure the behavior/rendering/physics building blocks that make scene editing useful.
 
-Status: in progress. Verified so far: component type discovery, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove, enabled-state mutation, typed property mutation, and resource-backed property mutation.
+Status: in progress. Verified so far: component type discovery for built-in/editor-visible components, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove for visible component types, enabled-state mutation, typed property mutation, and resource-backed property mutation.
 
 Candidate actions:
 
@@ -103,6 +106,7 @@ Acceptance criteria:
 
 Remaining gaps:
 
+- Local game component creation by C# type name. The ARPG fixture pass showed that existing local components can be inspected, but `component.add` cannot currently resolve local game component names such as `ArpgDemoController` or a newly created `AgentBridgeArpgFixture` through editor-side `Game.TypeLibrary` string lookup.
 - Collection/list property editing.
 - Full component/child cloning for `gameobject.duplicate`.
 
@@ -110,14 +114,32 @@ Remaining gaps:
 
 Goal: connect scene operations to actual project content.
 
+Status: in progress. Verified so far: asset search/info, model assignment, material creation/assignment/property mutation, sound list/info/create/assign/preview, collider/rigidbody/raycast helpers, prefab create/list/info/instantiate, and scene batches that compose these actions.
+
 Candidate actions:
 
-- `asset.search`
+- `asset.search` - verified
+- `asset.get_info` - verified
+- `asset.assign_model` - verified
+- `asset.create_material` - verified
+- `asset.assign_material` - verified
+- `asset.set_material_property` - verified
+- `sound.list` - verified
+- `sound.get_info` - verified
+- `sound.create_event` - verified
+- `sound.assign` - verified
+- `sound.preview` - verified
+- `physics.add_collider` - verified
+- `physics.add_physics` - verified
+- `physics.add_joint` - partial; target assignment is blocked by read-only `Joint.Object2`
+- `physics.raycast` - verified
+- `prefab.create` - verified
+- `prefab.list` - verified
+- `prefab.get_info` - verified
+- `prefab.instantiate` - verified
 - `asset.browse`
 - `asset.open`
 - `asset.dependencies`
-- `prefab.instantiate`
-- `prefab.inspect`
 - `prefab.break_link`
 - `prefab.save_overrides`
 
@@ -126,6 +148,7 @@ Acceptance criteria:
 - Agents can discover valid asset paths before using them.
 - Prefab instantiation returns created object ids.
 - Asset actions do not guess filesystem paths when editor asset APIs can resolve them.
+- Generated project assets are re-discovered through `AssetSystem` before use.
 
 ## Milestone 4.5: Minimal Game POC
 
@@ -166,6 +189,7 @@ Remaining gaps:
 - Wait/poll helper for compile completion.
 - Structured live log-event capture, if a stable editor-library hook is verified.
 - Dedicated runtime/game-session inspection while playing.
+- Stable post-transition game-session readback. The ARPG UI pass exposed `editor.play` returning a valid immediate game session while later `editor.play_state` reads reported `isPlaying: true` but no `GameSession`, leaving `scene.summary` pointed at the editor scene.
 - Timestamp/cursor-based logs so stale errors do not look current.
 - Reverify destructive scene edits after play/stop transitions. The current editor session exposed a null reference in the native GameObject delete/undo path.
 

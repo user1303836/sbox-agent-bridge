@@ -8,6 +8,8 @@ internal static class CommandDispatcher
 		{
 			"bridge.status" => EditorHandlers.Status( request ),
 			"editor.context" => EditorHandlers.Context( request ),
+			"editor.tabs" => EditorHandlers.Tabs( request ),
+			"editor.activate_tab" => EditorHandlers.ActivateTab( request ),
 			"editor.open_scene" => EditorHandlers.OpenScene( request ),
 			"editor.get_selection" => EditorHandlers.GetSelection( request ),
 			"editor.set_selection" => EditorHandlers.SetSelection( request ),
@@ -21,6 +23,28 @@ internal static class CommandDispatcher
 			"editor.logs" => EditorHandlers.Logs( request ),
 			"editor.compile_status" => EditorHandlers.CompileStatus( request ),
 			"editor.feedback" => EditorHandlers.Feedback( request ),
+			"script.create" => ScriptHandlers.Create( request ),
+			"script.edit" => ScriptHandlers.Edit( request ),
+			"script.delete" => ScriptHandlers.Delete( request ),
+			"asset.search" => AssetHandlers.Search( request ),
+			"asset.get_info" => AssetHandlers.GetInfo( request ),
+			"asset.assign_model" => AssetHandlers.AssignModel( request ),
+			"asset.assign_material" => AssetHandlers.AssignMaterial( request ),
+			"asset.create_material" => AssetHandlers.CreateMaterial( request ),
+			"asset.set_material_property" => AssetHandlers.SetMaterialProperty( request ),
+			"sound.list" => SoundHandlers.List( request ),
+			"sound.get_info" => SoundHandlers.GetInfo( request ),
+			"sound.create_event" => SoundHandlers.CreateEvent( request ),
+			"sound.assign" => SoundHandlers.Assign( request ),
+			"sound.preview" => SoundHandlers.Preview( request ),
+			"physics.add_physics" => PhysicsHandlers.AddPhysics( request ),
+			"physics.add_collider" => PhysicsHandlers.AddCollider( request ),
+			"physics.add_joint" => PhysicsHandlers.AddJoint( request ),
+			"physics.raycast" => PhysicsHandlers.Raycast( request ),
+			"prefab.create" => PrefabHandlers.Create( request ),
+			"prefab.list" => PrefabHandlers.List( request ),
+			"prefab.get_info" => PrefabHandlers.GetInfo( request ),
+			"prefab.instantiate" => PrefabHandlers.Instantiate( request ),
 			"scene.summary" => SceneHandlers.Summary( request ),
 			"scene.hierarchy" => SceneHandlers.Hierarchy( request ),
 			"scene.find" => SceneHandlers.Find( request ),
@@ -46,7 +70,7 @@ internal static class CommandDispatcher
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, editor.context, editor.open_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, scene.summary, scene.hierarchy, scene.find, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
+				"Use one of: bridge.status, editor.context, editor.tabs, editor.activate_tab, editor.open_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, asset.search, asset.get_info, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, sound.list, sound.get_info, sound.create_event, sound.assign, sound.preview, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, prefab.create, prefab.list, prefab.get_info, prefab.instantiate, scene.summary, scene.hierarchy, scene.find, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
 			)
 		};
 	}

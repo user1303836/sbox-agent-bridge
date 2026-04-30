@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using Editor;
 using Sandbox;
@@ -359,12 +360,20 @@ internal static class HandlerUtil
 	public static TypeDescription RequireComponentType( JsonElement payload, string propertyName = "type" )
 	{
 		var typeName = GetRequiredString( payload, propertyName );
-		var type = Game.TypeLibrary.GetType( typeName, true )
+		var type = Game.TypeLibrary.GetType( typeName, typeof( Component ) )
+			?? Game.TypeLibrary.GetType( typeName, true )
 			?? Game.TypeLibrary.GetTypes( typeof( Component ) ).FirstOrDefault( x =>
 				string.Equals( x.Name, typeName, StringComparison.OrdinalIgnoreCase ) ||
 				string.Equals( x.FullName, typeName, StringComparison.OrdinalIgnoreCase ) ||
 				string.Equals( x.Title, typeName, StringComparison.OrdinalIgnoreCase )
 			);
+
+		if ( type is null || !type.IsValid )
+		{
+			var runtimeType = FindComponentRuntimeType( typeName );
+			if ( runtimeType is not null )
+				type = Game.TypeLibrary.GetType( runtimeType );
+		}
 
 		if ( type is null || !type.IsValid )
 			throw new InvalidOperationException( $"No Component type found for '{typeName}'." );
@@ -379,6 +388,42 @@ internal static class HandlerUtil
 			throw new InvalidOperationException( $"Type '{type.FullName}' is not a Component." );
 
 		return type;
+	}
+
+	private static Type? FindComponentRuntimeType( string typeName )
+	{
+		foreach ( var assembly in AppDomain.CurrentDomain.GetAssemblies() )
+		{
+			foreach ( var type in GetLoadableTypes( assembly ) )
+			{
+				if ( type.IsAbstract || type.IsGenericType || !typeof( Component ).IsAssignableFrom( type ) )
+					continue;
+
+				if ( string.Equals( type.Name, typeName, StringComparison.OrdinalIgnoreCase ) ||
+					string.Equals( type.FullName, typeName, StringComparison.OrdinalIgnoreCase ) )
+				{
+					return type;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private static IEnumerable<Type> GetLoadableTypes( Assembly assembly )
+	{
+		try
+		{
+			return assembly.GetTypes();
+		}
+		catch ( ReflectionTypeLoadException ex )
+		{
+			return ex.Types.Where( x => x is not null )!;
+		}
+		catch
+		{
+			return Array.Empty<Type>();
+		}
 	}
 
 	public static object DescribeDestroyedGameObject( Scene scene, string id )
@@ -1050,6 +1095,14 @@ internal static class HandlerUtil
 	public static int GetInt( JsonElement payload, string name, int fallback )
 	{
 		if ( payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty( name, out var value ) && value.TryGetInt32( out var result ) )
+			return result;
+
+		return fallback;
+	}
+
+	public static float GetFloat( JsonElement payload, string name, float fallback )
+	{
+		if ( payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty( name, out var value ) && value.TryGetSingle( out var result ) )
 			return result;
 
 		return fallback;

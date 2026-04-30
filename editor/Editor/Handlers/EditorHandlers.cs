@@ -31,6 +31,7 @@ internal static class EditorHandlers
 	{
 		var session = HandlerUtil.RequireSession();
 		var selection = session.GetSelection().Select( HandlerUtil.DescribeSelectionItem ).ToArray();
+		var activeTab = DescribeEditorTab( session, FindSessionIndex( session ), true );
 
 		return BridgeResponse.Success( request.Id, new
 		{
@@ -40,8 +41,101 @@ internal static class EditorHandlers
 				scene = session.Scene.Name,
 				hasUnsavedChanges = session.HasUnsavedChanges,
 				isPlaying = session.IsPlaying,
+				activeTab,
 				selectionCount = selection.Length,
 				selection
+			}
+		} );
+	}
+
+	public static BridgeResponse Tabs( BridgeRequest request )
+	{
+		var sessions = SceneEditorSession.All.ToArray();
+		var active = SceneEditorSession.Active;
+		var tabs = sessions
+			.Select( ( session, index ) => DescribeEditorTab( session, index, ReferenceEquals( session, active ) ) )
+			.ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor tabs read",
+			verified = new
+			{
+				count = tabs.Length,
+				activeIndex = active is null ? -1 : FindSessionIndex( active, sessions ),
+				activeId = active is null ? "" : GetSessionId( active ),
+				tabs
+			}
+		} );
+	}
+
+	public static BridgeResponse ActivateTab( BridgeRequest request )
+	{
+		var sessions = SceneEditorSession.All.ToArray();
+		var before = SceneEditorSession.Active;
+		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
+		var index = HandlerUtil.GetInt( request.Payload, "index", -1 );
+		var id = HandlerUtil.GetString( request.Payload, "id" );
+		var path = NormalizeTabPath( HandlerUtil.GetString( request.Payload, "path" ) );
+		var scene = HandlerUtil.GetString( request.Payload, "scene" );
+
+		SceneEditorSession? match = null;
+		string matchMode;
+
+		if ( index >= 0 )
+		{
+			if ( index >= sessions.Length )
+				throw new InvalidOperationException( $"No editor tab exists at index {index}." );
+
+			match = sessions[index];
+			matchMode = "index";
+		}
+		else if ( !string.IsNullOrWhiteSpace( id ) )
+		{
+			match = sessions.FirstOrDefault( x => string.Equals( GetSessionId( x ), id, StringComparison.OrdinalIgnoreCase ) );
+			matchMode = "id";
+		}
+		else if ( !string.IsNullOrWhiteSpace( path ) )
+		{
+			match = sessions.FirstOrDefault( x => string.Equals( NormalizeTabPath( GetSessionSourcePath( x ) ), path, StringComparison.OrdinalIgnoreCase ) );
+			matchMode = "path";
+		}
+		else if ( !string.IsNullOrWhiteSpace( scene ) )
+		{
+			match = sessions.FirstOrDefault( x =>
+				string.Equals( x.Scene?.Name ?? "", scene, StringComparison.OrdinalIgnoreCase ) ||
+				string.Equals( x.Scene?.Source?.ResourceName ?? "", scene, StringComparison.OrdinalIgnoreCase )
+			);
+			matchMode = "scene";
+		}
+		else
+		{
+			throw new InvalidOperationException( "activate_tab requires one of: index, id, path, or scene." );
+		}
+
+		if ( match is null )
+			throw new InvalidOperationException( "No editor tab matched the requested selector." );
+
+		match.MakeActive( bringToFront );
+		var after = SceneEditorSession.Active ?? match;
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor tab activated",
+			verified = new
+			{
+				matchMode,
+				bringToFront,
+				requested = new
+				{
+					index,
+					id,
+					path,
+					scene
+				},
+				before = before is null ? null : DescribeEditorTab( before, FindSessionIndex( before, sessions ), ReferenceEquals( before, SceneEditorSession.Active ) ),
+				activated = DescribeEditorTab( match, FindSessionIndex( match, sessions ), ReferenceEquals( match, SceneEditorSession.Active ) ),
+				after = DescribeEditorTab( after, FindSessionIndex( after ), ReferenceEquals( after, SceneEditorSession.Active ) )
 			}
 		} );
 	}
@@ -52,6 +146,20 @@ internal static class EditorHandlers
 		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
 		var forceReload = HandlerUtil.GetBool( request.Payload, "forceReload", false );
 		var sceneFile = ResourceLibrary.Get<SceneFile>( path );
+		var resolution = "resource-library";
+
+		if ( sceneFile is null || !sceneFile.IsValid )
+		{
+			var asset = AssetSystem.FindByPath( path );
+			if ( asset is null && path.StartsWith( "assets/", StringComparison.OrdinalIgnoreCase ) )
+				asset = AssetSystem.FindByPath( path.Substring( "assets/".Length ) );
+
+			if ( asset is not null )
+			{
+				sceneFile = asset.LoadResource<SceneFile>();
+				resolution = $"asset-system:{asset.RelativePath}";
+			}
+		}
 
 		if ( sceneFile is null || !sceneFile.IsValid )
 			throw new InvalidOperationException( $"Could not load scene resource '{path}'." );
@@ -86,6 +194,7 @@ internal static class EditorHandlers
 				requestedPath = path,
 				bringToFront,
 				forceReload,
+				resolution,
 				scene = existing.Scene.Name,
 				hasUnsavedChanges = existing.HasUnsavedChanges,
 				source = HandlerUtil.DescribeResourceReference( existing.Scene.Source )
@@ -507,6 +616,63 @@ internal static class EditorHandlers
 			Source = HandlerUtil.DescribeResourceReference( source ),
 			ReadErrors = readErrors.ToArray()
 		};
+	}
+
+	private static object DescribeEditorTab( SceneEditorSession session, int index, bool isActive )
+	{
+		var sourcePath = GetSessionSourcePath( session );
+		var playState = DescribePlayState( session );
+
+		return new
+		{
+			index,
+			id = GetSessionId( session ),
+			isActive,
+			scene = session.Scene?.Name ?? "",
+			isPrefabSession = session.IsPrefabSession,
+			shouldUpdate = session.ShouldUpdate,
+			hasUnsavedChanges = session.HasUnsavedChanges,
+			hasSourcePath = !string.IsNullOrWhiteSpace( sourcePath ),
+			sourcePath,
+			source = HandlerUtil.DescribeResourceReference( session.Scene?.Source ),
+			playState
+		};
+	}
+
+	private static int FindSessionIndex( SceneEditorSession session )
+	{
+		return FindSessionIndex( session, SceneEditorSession.All.ToArray() );
+	}
+
+	private static int FindSessionIndex( SceneEditorSession session, SceneEditorSession[] sessions )
+	{
+		for ( var i = 0; i < sessions.Length; i++ )
+		{
+			if ( ReferenceEquals( sessions[i], session ) )
+				return i;
+		}
+
+		return -1;
+	}
+
+	private static string GetSessionId( SceneEditorSession session )
+	{
+		return session.Scene?.Id.ToString() ?? "";
+	}
+
+	private static string GetSessionSourcePath( SceneEditorSession session )
+	{
+		return session.Scene?.Source?.ResourcePath ?? "";
+	}
+
+	private static string NormalizeTabPath( string path )
+	{
+		path = (path ?? "").Replace( '\\', '/' ).Trim().TrimStart( '/' );
+
+		if ( path.StartsWith( "assets/", StringComparison.OrdinalIgnoreCase ) )
+			path = path.Substring( "assets/".Length );
+
+		return path;
 	}
 
 	private sealed class PlayStateSnapshot
