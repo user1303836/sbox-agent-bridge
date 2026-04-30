@@ -60,10 +60,12 @@ Errors use the same envelope:
 - `script.delete`
 - `asset.search`
 - `asset.get_info`
+- `asset.inspect_model`
 - `asset.assign_model`
 - `asset.assign_material`
 - `asset.create_material`
 - `asset.set_material_property`
+- `visual.capture_camera`
 - `sound.list`
 - `sound.get_info`
 - `sound.create_event`
@@ -128,6 +130,17 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 - `name`: resource name.
 - `id`: resource id.
 - `isValid`: whether s&box loaded a valid resource.
+
+## Visual And Spatial Feedback Actions
+
+`asset.inspect_model` accepts `path` or `modelPath`, plus optional `scale`, `yaw`, and `includeMaterials`. It loads the model resource and returns model/render/physics bounds, material slots, common orientation candidates, candidate ground offsets, footprints, and limitations. Bounds are geometry facts; callers should not treat them as proof of semantic uprightness.
+
+`visual.capture_camera` accepts optional `cameraComponentId` or `gameObjectId`, plus `width`, `height`, and `name`. Without a camera id, it captures the enabled main camera, or the first enabled camera. The response includes a PNG path under `%TEMP%/sbox-agent-bridge/captures`, camera metadata, byte count, and luminance statistics:
+
+- `average`: average relative luminance across the capture.
+- `min` / `max`: darkest and brightest sampled pixel luminance.
+- `darkPixelRatio`: fraction of pixels below the bridge's dark threshold.
+- `brightPixelRatio`: fraction of pixels above the bridge's bright threshold.
 
 ## Batch Actions
 

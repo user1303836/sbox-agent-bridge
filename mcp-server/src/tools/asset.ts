@@ -6,15 +6,23 @@ import { asJsonText } from "./result.js";
 export function registerAssetTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
     "asset",
-    "Search assets and assign common render assets to GameObjects in the active s&box editor scene.",
+    "Search assets, inspect model bounds/orientation hints, and assign common render assets to GameObjects in the active s&box editor scene.",
     {
       action: z
-        .enum(["search", "get_info", "assign_model", "assign_material", "create_material", "set_material_property"])
+        .enum([
+          "search",
+          "get_info",
+          "inspect_model",
+          "assign_model",
+          "assign_material",
+          "create_material",
+          "set_material_property"
+        ])
         .describe("The asset action to run."),
       query: z.string().optional().describe("Asset name/path search query."),
       type: z.string().optional().describe("Optional asset type filter, such as Model, Material, SoundEvent, vmdl, or vmat."),
-      path: z.string().optional().describe("Asset path for get_info or create_material."),
-      modelPath: z.string().optional().describe("Model resource path for assign_model."),
+      path: z.string().optional().describe("Asset path for get_info, inspect_model, or create_material."),
+      modelPath: z.string().optional().describe("Model resource path for inspect_model or assign_model."),
       materialPath: z.string().optional().describe("Material resource path for assign_material."),
       gameObjectId: z.string().optional().describe("Target GameObject id for assign_model or assign_material."),
       componentId: z.string().optional().describe("Target ModelRenderer component id for assign_material or set_material_property."),
@@ -24,6 +32,12 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
       overwrite: z.boolean().optional().describe("Allow create_material to replace an existing file."),
       property: z.string().optional().describe("Material parameter name for set_material_property."),
       value: z.any().optional().describe("Material parameter value for set_material_property."),
+      scale: z
+        .object({ x: z.number(), y: z.number(), z: z.number() })
+        .optional()
+        .describe("Optional scale to apply while inspecting model candidate bounds."),
+      yaw: z.number().optional().describe("Optional yaw angle applied to inspect_model orientation candidates."),
+      includeMaterials: z.boolean().optional().describe("Include model material slots in inspect_model output."),
       maxResults: z.number().int().min(1).max(500).optional().describe("Maximum search results.")
     },
     async ({ action, ...payload }) => {

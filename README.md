@@ -17,10 +17,11 @@ Ask an agent to:
 - inspect components, editable properties, and resource-backed fields
 - add, remove, enable, disable, or update components
 - validate component property values before writing them
-- search assets, assign models/materials, create simple materials, and set material parameters
+- search assets, inspect model bounds/orientation candidates, assign models/materials, create simple materials, and set material parameters
 - list/create/assign/preview sound events
 - add colliders, rigidbodies, simple joints, and run scene raycasts
 - create, inspect, list, and instantiate prefabs
+- capture camera screenshots with luminance stats for visual feedback
 - start/stop play mode and inspect play state
 - read compile/hotload diagnostics and recent editor logs
 - run small multi-step scene batches with read-back after each operation
@@ -186,14 +187,15 @@ Find the object named PlayerStart, inspect its components, validate any property
 
 ## Current Capabilities
 
-The bridge currently exposes these MCP tools: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `sound`, `physics`, and `prefab`.
+The bridge currently exposes these MCP tools: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `visual`, `sound`, `physics`, and `prefab`.
 
 - `editor`: bridge status, active context, open scene, selection, save verification, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
 - `scene`: summary, hierarchy, search, GameObject details, small verified batches
 - `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent; create can optionally parent the new object
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, validate property
 - `script`: create and edit C# scripts in the project `Code` directory
-- `asset`: search assets, inspect assets, assign models/materials, create simple `.vmat` materials, set material parameters
+- `asset`: search assets, inspect assets, inspect model bounds/orientation candidates, assign models/materials, create simple `.vmat` materials, set material parameters
+- `visual`: capture rendered camera PNGs with basic luminance statistics
 - `sound`: list sound assets, create `.sound` events, assign `SoundPointComponent`, preview sound events
 - `physics`: add colliders, add rigidbodies, add simple joints, raycast against the active scene
 - `prefab`: create prefabs from scene GameObjects, list/inspect prefab assets, instantiate prefab roots into the active editor scene
@@ -211,7 +213,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-The smoke test creates temporary GameObjects, verifies scene and GameObject actions, checks save-state reporting, validates component property schemas, runs a small `scene.batch`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, checks undo/redo, and attempts to clean up after itself.
+The smoke test creates temporary GameObjects, verifies scene and GameObject actions, checks save-state reporting, validates component property schemas, runs a small `scene.batch`, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, checks undo/redo, and attempts to clean up after itself.
 It also checks the editor feedback loop by reading play state, logs, compile status, and starting/stopping play mode when the editor is not already playing.
 
 To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. Do not leave duplicate fixture files in the project tree; duplicate component type definitions can break a cold compile and prevent the Agent Bridge dock from loading.

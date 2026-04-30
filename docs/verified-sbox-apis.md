@@ -110,8 +110,15 @@ Core entries were queried from `research_raw_api_schema.json` via `scripts/sbox_
 
 `BBox`:
 
+- constructor `(Vector3 mins, Vector3 maxs)`
+- `Mins`
+- `Maxs`
 - `Center`
 - `Size`
+- `Extents`
+- `Volume`
+- `Translate(Vector3 point)`
+- `Transform(Transform transform)`
 
 `Sandbox.Helpers.UndoSystem`:
 
@@ -217,6 +224,10 @@ Core entries were queried from `research_raw_api_schema.json` via `scripts/sbox_
 `Sandbox.Model`:
 
 - `Load(string filename)`
+- `Bounds`
+- `RenderBounds`
+- `PhysicsBounds`
+- `Materials`
 
 `Sandbox.Material`:
 
@@ -231,6 +242,29 @@ Core entries were queried from `research_raw_api_schema.json` via `scripts/sbox_
 
 - `Model`
 - `MaterialOverride`
+
+`Sandbox.CameraComponent`:
+
+- `IsMainCamera`
+- `FieldOfView`
+- `Orthographic`
+- `OrthographicHeight`
+- `EnablePostProcessing`
+- `RenderToBitmap(Bitmap targetBitmap)`
+
+`Sandbox.Bitmap`:
+
+- constructor `(int width, int height, bool floatingPoint)`
+- `GetPixels32()`
+- `ToPng()`
+- `Dispose()`
+
+`Color32`:
+
+- `r`
+- `g`
+- `b`
+- `a`
 
 `Sandbox.SoundEvent`:
 

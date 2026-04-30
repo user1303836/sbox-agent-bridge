@@ -172,6 +172,53 @@ interface SceneBatchResult {
   };
 }
 
+interface AssetSearchResult {
+  verified: {
+    count: number;
+    results: Array<{
+      name: string;
+      path: string;
+      assetType: string;
+      extension: string;
+    }>;
+  };
+}
+
+interface ModelInspectionResult {
+  verified: {
+    path: string;
+    bounds: {
+      render: {
+        size: { x: number; y: number; z: number };
+      };
+    };
+    orientationCandidates: Array<{
+      name: string;
+      groundOffsetZ: number;
+      footprint: {
+        x: number;
+        y: number;
+        area: number;
+      };
+    }>;
+  };
+}
+
+interface CameraCaptureResult {
+  verified: {
+    path: string;
+    width: number;
+    height: number;
+    byteCount: number;
+    luminance: {
+      sampleCount: number;
+      average: number;
+      darkPixelRatio: number;
+      brightPixelRatio: number;
+    };
+  };
+}
+
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC,
   timeoutMs: Number(process.env.SBOX_AGENT_BRIDGE_TIMEOUT_MS ?? 10_000)
@@ -247,6 +294,7 @@ try {
   const mutationFixture = await runMutationFixtureSmoke(source.id, parent.id, stamp);
   const inspectedComponent = await inspectExistingComponent();
   const batch = await runSceneBatchSmoke(stamp);
+  const visualSpatial = await runVisualSpatialSmoke(stamp);
 
   await bridge.send("gameobject.destroy", { id: duplicate.id });
   const undo = await bridge.send<{ verified: { undone: boolean } }>("editor.undo");
@@ -286,6 +334,7 @@ try {
   };
 
   summary.batch = batch;
+  summary.visualSpatial = visualSpatial;
 
   if (!keepObjects) {
     for (const id of createdIds.reverse()) {
@@ -535,6 +584,58 @@ async function runSceneBatchSmoke(stamp: string): Promise<Record<string, unknown
     rendererId: renderer.component.id,
     executedCount: result.verified.executedCount,
     saveCheck: batchVerified<SaveSceneResult["verified"]>(result, "saveCheck")
+  };
+}
+
+async function runVisualSpatialSmoke(stamp: string): Promise<Record<string, unknown>> {
+  const search = await bridge.send<AssetSearchResult>("asset.search", {
+    query: "box",
+    type: "Model",
+    maxResults: 25
+  });
+  const model = search.verified.results.find((asset) => asset.extension === "vmdl") ?? search.verified.results[0];
+
+  if (!model) {
+    return {
+      skipped: true,
+      reason: "No model asset found for visual/spatial smoke."
+    };
+  }
+
+  const inspection = await bridge.send<ModelInspectionResult>("asset.inspect_model", {
+    modelPath: model.path,
+    includeMaterials: false
+  });
+  ensure(inspection.verified.path === model.path, "asset.inspect_model returned a different path than requested");
+  ensure(inspection.verified.orientationCandidates.length > 0, "asset.inspect_model returned no orientation candidates");
+  ensure(
+    inspection.verified.orientationCandidates.some((candidate) => candidate.name === "asImported"),
+    "asset.inspect_model did not include the asImported candidate"
+  );
+  ensure(
+    inspection.verified.orientationCandidates.every((candidate) => typeof candidate.groundOffsetZ === "number"),
+    "asset.inspect_model candidate missing numeric groundOffsetZ"
+  );
+
+  const capture = await bridge.send<CameraCaptureResult>("visual.capture_camera", {
+    width: 320,
+    height: 180,
+    name: `live-smoke-${stamp}`
+  });
+  ensure(capture.verified.path.toLowerCase().endsWith(".png"), "visual.capture_camera did not return a PNG path");
+  ensure(capture.verified.width === 320, "visual.capture_camera width read-back mismatch");
+  ensure(capture.verified.height === 180, "visual.capture_camera height read-back mismatch");
+  ensure(capture.verified.byteCount > 0, "visual.capture_camera wrote an empty PNG");
+  ensure(capture.verified.luminance.sampleCount === 320 * 180, "visual.capture_camera luminance sample count mismatch");
+
+  return {
+    modelPath: model.path,
+    renderBoundsSize: inspection.verified.bounds.render.size,
+    orientationCandidateCount: inspection.verified.orientationCandidates.length,
+    firstGroundOffsetZ: inspection.verified.orientationCandidates[0]?.groundOffsetZ,
+    capturePath: capture.verified.path,
+    captureBytes: capture.verified.byteCount,
+    luminance: capture.verified.luminance
   };
 }
 

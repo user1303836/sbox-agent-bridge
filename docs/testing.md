@@ -29,6 +29,14 @@ npm test
 npm run build
 ```
 
+On Windows machines where `npm` is installed but not on PATH, direct Node execution is a usable fallback:
+
+```powershell
+& 'C:\path\to\node.exe' .\node_modules\typescript\bin\tsc -p tsconfig.json --noEmit
+& 'C:\path\to\node.exe' .\node_modules\typescript\bin\tsc -p tsconfig.json
+& 'C:\path\to\node.exe' .\node_modules\tsx\dist\cli.mjs --test .\test\bridge-client.test.ts
+```
+
 ## Opt-In Live Smoke Script
 
 When a s&box editor project is open and the bridge editor library has compiled/loaded:
@@ -157,6 +165,14 @@ For editor feedback-loop changes, verify:
 4. `editor.feedback` agrees with the individual play/log/compile actions.
 5. If the editor is not already playing, `editor.play` transitions to `isPlaying: true`.
 6. `editor.stop` transitions back to `isPlaying: false`.
+
+For visual/spatial feedback changes, verify:
+
+1. `asset.search` finds a known model asset.
+2. `asset.inspect_model` returns model/render/physics bounds, material slots, orientation candidates, and ground offsets for that model.
+3. `visual.capture_camera` captures the active camera to a PNG path under `%TEMP%/sbox-agent-bridge/captures`.
+4. The capture response includes camera metadata and luminance stats.
+5. Open or inspect the capture when visual correctness matters; luminance stats help flag visibility problems, but they do not prove composition or semantic orientation.
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 

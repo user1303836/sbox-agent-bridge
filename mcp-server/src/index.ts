@@ -10,6 +10,7 @@ import { registerPrefabTools } from "./tools/prefab.js";
 import { registerSceneTools } from "./tools/scene.js";
 import { registerScriptTools } from "./tools/script.js";
 import { registerSoundTools } from "./tools/sound.js";
+import { registerVisualTools } from "./tools/visual.js";
 
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC
@@ -26,6 +27,7 @@ registerGameObjectTools(server, bridge);
 registerComponentTools(server, bridge);
 registerScriptTools(server, bridge);
 registerAssetTools(server, bridge);
+registerVisualTools(server, bridge);
 registerSoundTools(server, bridge);
 registerPhysicsTools(server, bridge);
 registerPrefabTools(server, bridge);

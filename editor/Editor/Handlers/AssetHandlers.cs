@@ -47,6 +47,55 @@ internal static class AssetHandlers
 		} );
 	}
 
+	public static BridgeResponse InspectModel( BridgeRequest request )
+	{
+		var rawPath = HandlerUtil.GetString( request.Payload, "modelPath" );
+		if ( string.IsNullOrWhiteSpace( rawPath ) )
+			rawPath = HandlerUtil.GetString( request.Payload, "path" );
+
+		if ( string.IsNullOrWhiteSpace( rawPath ) )
+			throw new InvalidOperationException( "asset.inspect_model requires a modelPath or path payload property." );
+
+		var path = NormalizeAssetPath( rawPath );
+		var scale = HandlerUtil.GetVector3( request.Payload, "scale" ) ?? new Vector3( 1f, 1f, 1f );
+		var yaw = HandlerUtil.GetFloat( request.Payload, "yaw", 0f );
+		var includeMaterials = HandlerUtil.GetBool( request.Payload, "includeMaterials", true );
+		var model = Model.Load( path );
+
+		if ( model is null || !model.IsValid || model.IsError )
+			throw new InvalidOperationException( $"Model '{path}' could not be loaded." );
+
+		var asset = AssetSystem.FindByPath( path );
+		var candidates = GetOrientationCandidates( yaw )
+			.Select( candidate => DescribeOrientationCandidate( candidate, model.RenderBounds, scale ) )
+			.ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Model inspected",
+			verified = new
+			{
+				path,
+				asset = asset is null ? null : DescribeAssetDetails( asset ),
+				model = HandlerUtil.DescribeResourceReference( model ),
+				scale = HandlerUtil.ToJson( scale ),
+				bounds = new
+				{
+					model = DescribeBBox( model.Bounds ),
+					render = DescribeBBox( model.RenderBounds ),
+					physics = DescribeBBox( model.PhysicsBounds )
+				},
+				materials = includeMaterials ? DescribeModelMaterials( model ) : null,
+				orientationCandidates = candidates,
+				limitations = new[]
+				{
+					"Bounds describe geometry, not semantic up direction; use capture_camera or human/editor feedback to confirm final orientation.",
+					"groundOffsetZ is the local Z offset needed to put the candidate's minimum bound on the ground plane."
+				}
+			}
+		} );
+	}
+
 	public static BridgeResponse AssignModel( BridgeRequest request )
 	{
 		var session = HandlerUtil.RequireSession();
@@ -251,6 +300,113 @@ internal static class AssetHandlers
 			hasUnsavedChanges = asset.HasUnsavedChanges,
 			tags = asset.Tags.GetAll()
 		};
+	}
+
+	private sealed class OrientationCandidate
+	{
+		public string Name { get; init; } = "";
+		public float Pitch { get; init; }
+		public float Yaw { get; init; }
+		public float Roll { get; init; }
+	}
+
+	private static OrientationCandidate[] GetOrientationCandidates( float yaw )
+	{
+		return new[]
+		{
+			new OrientationCandidate { Name = "asImported", Pitch = 0f, Yaw = yaw, Roll = 0f },
+			new OrientationCandidate { Name = "pitch90", Pitch = 90f, Yaw = yaw, Roll = 0f },
+			new OrientationCandidate { Name = "pitchMinus90", Pitch = -90f, Yaw = yaw, Roll = 0f },
+			new OrientationCandidate { Name = "roll90", Pitch = 0f, Yaw = yaw, Roll = 90f },
+			new OrientationCandidate { Name = "rollMinus90", Pitch = 0f, Yaw = yaw, Roll = -90f },
+			new OrientationCandidate { Name = "roll180", Pitch = 0f, Yaw = yaw, Roll = 180f }
+		};
+	}
+
+	private static object DescribeOrientationCandidate( OrientationCandidate candidate, BBox sourceBounds, Vector3 scale )
+	{
+		var rotation = Rotation.From( candidate.Pitch, candidate.Yaw, candidate.Roll );
+		var transform = new Transform( Vector3.Zero, rotation, scale );
+		var bounds = sourceBounds.Transform( transform );
+		var groundOffset = -bounds.Mins.z;
+		var groundedBounds = bounds.Translate( Vector3.Up * groundOffset );
+		var size = bounds.Size;
+
+		return new
+		{
+			name = candidate.Name,
+			rotation = new
+			{
+				pitch = candidate.Pitch,
+				yaw = candidate.Yaw,
+				roll = candidate.Roll,
+				quaternion = HandlerUtil.ToJson( rotation )
+			},
+			bounds = DescribeBBox( bounds ),
+			groundedBounds = DescribeBBox( groundedBounds ),
+			groundOffsetZ = groundOffset,
+			height = size.z,
+			footprint = new
+			{
+				x = size.x,
+				y = size.y,
+				area = size.x * size.y
+			},
+			spatialHeuristic = new
+			{
+				tallestAxisAfterRotation = GetTallestAxis( size ),
+				likelyStandingCandidate = size.z >= size.x && size.z >= size.y
+			}
+		};
+	}
+
+	private static string GetTallestAxis( Vector3 size )
+	{
+		if ( size.z >= size.x && size.z >= size.y )
+			return "z";
+
+		if ( size.x >= size.y )
+			return "x";
+
+		return "y";
+	}
+
+	private static object DescribeBBox( BBox bounds )
+	{
+		return new
+		{
+			mins = HandlerUtil.ToJson( bounds.Mins ),
+			maxs = HandlerUtil.ToJson( bounds.Maxs ),
+			center = HandlerUtil.ToJson( bounds.Center ),
+			size = HandlerUtil.ToJson( bounds.Size ),
+			extents = HandlerUtil.ToJson( bounds.Extents ),
+			volume = bounds.Volume
+		};
+	}
+
+	private static object DescribeModelMaterials( Model model )
+	{
+		try
+		{
+			var materials = model.Materials
+				.Select( HandlerUtil.DescribeResourceReference )
+				.ToArray();
+
+			return new
+			{
+				count = materials.Length,
+				items = materials
+			};
+		}
+		catch ( Exception ex )
+		{
+			return new
+			{
+				count = 0,
+				items = Array.Empty<object>(),
+				error = ex.Message
+			};
+		}
 	}
 
 	private static string SafePath( Func<string> getter )

@@ -89,7 +89,7 @@ Status meanings:
 |---|---|---|---|---|
 | Search assets | `asset.search` | `asset` / `search` | Verified | Live IPC found built-in models/materials and newly created ARPG materials. |
 | Inspect asset | `asset.get_info` | `asset` / `get_info` | Verified | Live IPC inspected built-in material metadata and project-created assets. |
-| Inspect model orientation/bounds | TBD | TBD | Planned | Needed after the ARPG prop pass showed that `ModelRenderer.Bounds` can verify ground contact but cannot infer semantic up/down orientation. See `docs/spatial-reasoning.md`. |
+| Inspect model orientation/bounds | `asset.inspect_model` | `asset` / `inspect_model` | Verified | Live IPC inspected `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`, returning asset/model metadata, model/render/physics bounds, material slots, common orientation candidates, ground offsets, footprints, and explicit semantic-orientation limitations. |
 | Assign model | `asset.assign_model` | `asset` / `assign_model` | Verified | Live IPC assigned `models/dev/box.vmdl` to ARPG fixture objects with read-back. |
 | Create material | `asset.create_material` | `asset` / `create_material` | Verified | Writes a simple `.vmat` source, registers it, and compiles it. Verified four project materials under `materials/agent_bridge/`. |
 | Assign material | `asset.assign_material` | `asset` / `assign_material` | Verified | Live IPC assigned project-created materials to `ModelRenderer.MaterialOverride`. |
@@ -119,12 +119,13 @@ Status meanings:
 | Post-process components | `component.add`, `component.set_property` | `component` | Verified | Live IPC configured `FilmGrain`, `Tonemapping`, `Bloom`, `PostProcessVolume`, `Vignette`, and `ColorAdjustments` for the ARPG visual pass. |
 | DecalRenderer material assignment | `component.set_property` with `includeAll: true` | `component` | Verified | `DecalRenderer.Material` is public/non-inspector; setting it works when callers opt into all readable properties. Verified with blood/gold/void/bone decal materials. |
 | Basic particle stack setup | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Partial | Live IPC created `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` and set basic bool/number/color properties. Complex particle wrapper types remain unsupported. |
+| Camera capture feedback | `visual.capture_camera` | `visual` / `capture_camera` | Verified | Live IPC rendered the active main `CameraComponent` to a PNG under `%TEMP%/sbox-agent-bridge/captures` and returned camera metadata plus luminance stats. First ARPG smoke capture at 640x360 reported average luminance `0.1332` and dark pixel ratio `0.3145`. |
 
 ## Testing And CI
 
 | Capability | Status | Notes |
 |---|---|---|
-| MCP TypeScript build | Blocked in current shell | Previously verified, but this Windows shell currently returns `Access is denied` for the available `node.exe` shim and `npm` is not on PATH. `dist/` was manually kept in sync with `src/` for the new MCP tools. |
+| MCP TypeScript build | Verified | `npm` is not on PATH in the current shell and `npm run check` hits an `Access is denied` shim issue, but direct execution through the installed Node runtime works: `node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit` and `node node_modules/typescript/bin/tsc -p tsconfig.json` both passed. |
 | MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
