@@ -112,6 +112,7 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
+| Ambient fill light | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | Live IPC created an `AmbientLight` readability fill and set its `Color` during the ARPG lighting pass. |
 | Directional light tuning | `component.set_property` | `component` / `set_property` | Verified | Live IPC set `DirectionalLight.LightColor`, `SkyColor`, `FogMode`, `FogStrength`, `Shadows`, `ShadowBias`, and `ShadowHardness` on the scene Sun. |
 | Point light authoring | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | Live IPC created a warm brazier point light and set radius, attenuation, fog, color, and shadow properties. |
 | Spot light authoring | `gameobject.create`, `gameobject.set_transform`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | Live IPC created an obelisk spot light and set cone, radius, attenuation, fog, color, and shadow properties. |

@@ -33,7 +33,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - Physics helpers are live-verified for colliders, rigidbodies, and raycasts. Joint component creation works, but target assignment remains limited.
 - Prefab helpers are live-verified: `prefab.create`, `prefab.list`, `prefab.get_info`, and `prefab.instantiate`.
 - Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, and combined feedback. `editor.play_state` now reports `gameSessionDetails` when `SceneEditorSession.GameSession` is available, including runtime session type and scene object/component counts.
-- Rendering-oriented component mutation is live-verified through the ARPG visual pass: PointLight, SpotLight, DirectionalLight, DecalRenderer, PostProcessVolume, FilmGrain, Tonemapping, Bloom, Vignette, ColorAdjustments, and basic ParticleEffect/ParticleEmitter/ParticleRenderer settings.
+- Rendering-oriented component mutation is live-verified through the ARPG visual pass: AmbientLight, PointLight, SpotLight, DirectionalLight, DecalRenderer, PostProcessVolume, FilmGrain, Tonemapping, Bloom, Vignette, ColorAdjustments, and basic ParticleEffect/ParticleEmitter/ParticleRenderer settings.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
 
 ## Current Limitations
