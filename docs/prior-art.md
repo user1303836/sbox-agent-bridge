@@ -13,7 +13,7 @@ Useful neutral takeaways:
 - File IPC is a practical first transport for s&box editor integration.
 - The bridge belongs in a project-local `Libraries/` editor library during development.
 - Scene/editor APIs need main-thread editor processing.
-- The dock/widget must be open for frame-driven processing.
+- Frame-driven processing must be owned by editor code that has compiled and loaded. This repo now auto-starts the bridge from an editor-frame pump; the dock remains useful as a status/control surface.
 - IPC writes should avoid UTF-8 BOMs, and clients should defensively strip BOMs.
 - Broad capability matrices are useful, but each action should still be verified against the local s&box API schema and a live editor.
 - Type-discovery/reflection tools are a good future direction because they help agents look up real component/property/method shapes instead of guessing.

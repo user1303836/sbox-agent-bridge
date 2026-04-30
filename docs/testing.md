@@ -31,14 +31,14 @@ npm run build
 
 ## Opt-In Live Smoke Script
 
-When a s&box editor project is open and the **Agent Bridge** dock is running:
+When a s&box editor project is open and the bridge editor library has compiled/loaded:
 
 ```bash
 cd mcp-server
 npm run smoke:live
 ```
 
-This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, reads a component from the active scene when one exists, and then cleans up the temporary objects.
+This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture` when it is addable by the editor, reads a component from the active scene when one exists, and then attempts to clean up the temporary objects.
 
 Useful environment variables:
 
@@ -58,9 +58,9 @@ Use these when bridge code changes.
 YourSboxProject/Libraries/sbox_agent_bridge
 ```
 
-2. Open the project in s&box.
-3. Open the **Agent Bridge** dock.
-4. Confirm the dock says `Status: running`.
+2. Open the project in s&box and let it compile.
+3. Optionally open the **Agent Bridge** dock to view status and controls.
+4. Confirm the bridge is running through the dock or a `bridge.status` request.
 5. Send a direct request:
 
 ```json
@@ -102,17 +102,22 @@ For batch scene changes, verify:
 3. The batch can add `ModelRenderer`, set `Model` and `MaterialOverride`, and read `scene.details` for the child.
 4. A failed operation is captured in `verified.results`; with default `stopOnError`, later operations are skipped.
 
-For extended core scene editing changes, verify:
+For extended core scene editing changes, verify the non-destructive path first:
 
 1. `gameobject.duplicate`
 2. `gameobject.reparent` to another GameObject
 3. `gameobject.reparent` back to scene root
 4. `editor.frame_object`
-5. `gameobject.destroy`
-6. `editor.undo`
-7. `gameobject.get` on the restored object
-8. `editor.redo`
-9. `scene.find` to confirm the object is gone again
+5. `editor.undo`
+6. `editor.redo`
+
+In a fresh editor session, separately reverify the destructive path before relying on it:
+
+1. `gameobject.destroy`
+2. `editor.undo`
+3. `gameobject.get` on the restored object
+4. `editor.redo`
+5. `scene.find` to confirm the object is gone again
 
 For component discovery changes, verify:
 
@@ -134,7 +139,7 @@ For component mutation changes, verify:
 8. `editor.undo` restores the removed component
 9. `editor.redo` removes it again
 
-`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`. Some editor sessions may not expose local game components through `Game.TypeLibrary`; the bridge now has an exact-type-name fallback for `component.add`, but `component.list_types` may still not list the fixture. Use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
+`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` in this repo and should be installed as `Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFixture.cs` in a test project. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, reopen the project before running `npm run smoke:live`. Do not keep a second copy in the project's own `Code/` folder; duplicate component class definitions can break cold compilation and prevent the Agent Bridge dock from loading. Some editor sessions may not expose local game components through `Game.TypeLibrary`; the bridge now has an exact-type-name fallback for `component.add`, but `component.list_types` may still not list the fixture. Use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
 
 For resource-backed component property changes, also verify at least one built-in component with known asset paths:
 

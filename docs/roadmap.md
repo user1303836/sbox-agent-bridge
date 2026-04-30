@@ -40,7 +40,7 @@ Acceptance criteria:
 - MCP client can call `scene.summary`.
 - MCP client can create one GameObject and verify it with `scene.find`.
 - README includes a minimal MCP configuration example known to work.
-- Troubleshooting notes cover the dock-open requirement and IPC path.
+- Troubleshooting notes cover editor-library compile/load failures, dock visibility, and IPC path.
 
 ## Milestone 2: Core Scene Editing
 
@@ -52,7 +52,7 @@ Candidate actions:
 
 - `editor.tabs` - verified
 - `editor.activate_tab` - verified by source path while an unsaved untitled scene tab was also open
-- `editor.save_scene` - verified for save-state reporting and no-source guard; actual disk-write verification needs a sourced scene
+- `editor.save_scene` - verified for save-state reporting, no-source guard, and actual disk-write verification against a sourced scene
 - `editor.open_scene` - verified for opening sourced scenes, resolving scenes through editor assets when needed, and force-reloading stale open sessions
 - `editor.undo` - verified
 - `editor.redo` - verified

@@ -6,7 +6,7 @@ using Sandbox;
 
 namespace SboxAgentBridge.Editor;
 
-internal static class BridgeRuntime
+public static class BridgeRuntime
 {
 	private static readonly JsonSerializerOptions JsonOptions = new()
 	{

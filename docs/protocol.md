@@ -31,7 +31,7 @@ Errors use the same envelope:
   "ok": false,
   "error": {
     "message": "No active editor scene",
-    "suggestion": "Open a scene in the s&box editor and reopen the Agent Bridge dock."
+    "suggestion": "Open a scene in the s&box editor, then confirm the bridge library compiled and the Agent Bridge dock is available."
   }
 }
 ```
@@ -40,6 +40,8 @@ Errors use the same envelope:
 
 - `bridge.status`
 - `editor.context`
+- `editor.tabs`
+- `editor.activate_tab`
 - `editor.open_scene`
 - `editor.get_selection`
 - `editor.set_selection`
@@ -53,6 +55,28 @@ Errors use the same envelope:
 - `editor.logs`
 - `editor.compile_status`
 - `editor.feedback`
+- `script.create`
+- `script.edit`
+- `script.delete`
+- `asset.search`
+- `asset.get_info`
+- `asset.assign_model`
+- `asset.assign_material`
+- `asset.create_material`
+- `asset.set_material_property`
+- `sound.list`
+- `sound.get_info`
+- `sound.create_event`
+- `sound.assign`
+- `sound.preview`
+- `physics.add_physics`
+- `physics.add_collider`
+- `physics.add_joint`
+- `physics.raycast`
+- `prefab.create`
+- `prefab.list`
+- `prefab.get_info`
+- `prefab.instantiate`
 - `scene.summary`
 - `scene.hierarchy`
 - `scene.find`
@@ -79,6 +103,8 @@ Errors use the same envelope:
 ## Mutation Rule
 
 Mutations should return a `verified` object read back from the editor after the operation. If `verified` is missing, the caller should assume the change may not have stuck.
+
+Vector payloads must be complete. For `Vector3` fields, direct protocol callers must include numeric `x`, `y`, and `z` values; partial vector objects are rejected before mutation.
 
 `editor.open_scene` accepts `path`, optional `bringToFront`, and optional `forceReload`. Use `forceReload: true` only when the scene has no unsaved changes; it reloads an already-open sourced scene from disk and is useful after play-mode transitions leave the active editor session stale.
 

@@ -10,7 +10,7 @@ Give agents a narrow, reliable way to inspect and operate the live s&box editor 
 Agent/MCP client
   <-> MCP server over stdio
     <-> bridge command files in %TEMP%/sbox-agent-bridge
-      <-> s&box editor bridge dock
+      <-> s&box editor bridge runtime/status dock
         <-> SceneEditorSession.Active
 ```
 
@@ -24,8 +24,8 @@ The pieces can split later if the bridge becomes stable.
 
 The editor bridge lives in an s&box library under `editor/`. It is editor-only code, built around:
 
-- a dock widget so the developer can see bridge status;
-- an editor-frame pump that processes queued commands;
+- a dock widget so the developer can see bridge status and manually start/stop IPC;
+- an editor-frame pump that auto-starts the runtime and processes queued commands once the editor assembly loads;
 - a dispatcher that maps command names to handlers;
 - small handler classes for editor, scene, component, and gameobject operations;
 - a feedback state helper for compile-event snapshots and recent editor logs.

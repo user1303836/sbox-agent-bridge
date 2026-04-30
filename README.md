@@ -32,7 +32,7 @@ This is the shape we are building toward: point Claude, Codex, Kimi, or any MCP-
 
 The project has two pieces:
 
-- `editor/`: an s&box library with an **Agent Bridge** editor dock.
+- `editor/`: an s&box library with the bridge runtime and an **Agent Bridge** status dock.
 - `mcp-server/`: a TypeScript MCP server that exposes agent-facing tools over stdio.
 
 The local loop looks like this:
@@ -41,11 +41,11 @@ The local loop looks like this:
 Agent / MCP client
   <-> MCP server
     <-> local bridge IPC
-      <-> Agent Bridge dock in s&box
+      <-> s&box editor bridge runtime
         <-> live editor scene
 ```
 
-The current transport is local file IPC under `%TEMP%/sbox-agent-bridge`. It is intentionally simple and inspectable, and the command envelope is designed so other transports can be added later.
+The current transport is local file IPC under `%TEMP%/sbox-agent-bridge`. It is intentionally simple and inspectable, and the command envelope is designed so other transports can be added later. The dock is the human-facing status and control surface; the editor-frame bridge pump starts automatically once the editor library compiles and loads.
 
 ## Quick Start
 
@@ -93,13 +93,13 @@ YourProject/
         ...
 ```
 
-Open the project in s&box, let it compile, then open:
+Open the project in s&box and let it compile. The bridge starts automatically once the editor bridge assembly loads. To view status and controls, open:
 
 ```text
 View -> Agent Bridge
 ```
 
-Leave the dock open while using MCP tools. If it does not show `Status: running`, click **Start Bridge**.
+If the dock does not show `Status: running`, click **Start Bridge**.
 
 ### 3. Connect Your MCP Client
 
@@ -146,6 +146,26 @@ Then try one small verified edit:
 Use the sbox-agent-bridge MCP tools to create one GameObject named Agent Bridge Test, verify that it exists, then undo the creation.
 ```
 
+## Troubleshooting
+
+### Agent Bridge Dock Is Missing
+
+If `View -> Agent Bridge` is missing, the editor bridge assembly probably did not compile or load. Check the s&box editor log:
+
+```text
+C:\Program Files (x86)\Steam\steamapps\common\sbox\logs\sbox-dev.log
+```
+
+Look for errors such as `Compile of 'local.sbox_agent_bridge' Failed` or `Broken Reference`. When the bridge assembly fails to compile, s&box cannot register the dock, menu entry, or bridge IPC loop.
+
+One common cause during smoke-test or POC work is duplicate fixture scripts. After installing the bridge library, keep exactly one copy of:
+
+```text
+YourProject/Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFixture.cs
+```
+
+Remove any extra `AgentBridgeMutationFixture.cs` copies from `YourProject/Code/` or `YourProject/Libraries/sbox_agent_bridge/Code/`. Then reopen the project so s&box can cold-compile the library cleanly.
+
 ## Example Prompts
 
 ```text
@@ -184,17 +204,17 @@ For the detailed implementation status, see [docs/status.md](docs/status.md), [d
 
 ## Live Smoke Test
 
-With a s&box project open and the Agent Bridge dock running:
+With a s&box project open and the bridge loaded:
 
 ```powershell
 cd mcp-server
 npm run smoke:live
 ```
 
-The smoke test creates temporary GameObjects, verifies scene and GameObject actions, checks save-state reporting, validates component property schemas, runs a small `scene.batch`, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, checks undo/redo, and cleans up after itself.
+The smoke test creates temporary GameObjects, verifies scene and GameObject actions, checks save-state reporting, validates component property schemas, runs a small `scene.batch`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, checks undo/redo, and attempts to clean up after itself.
 It also checks the editor feedback loop by reading play state, logs, compile status, and starting/stopping play mode when the editor is not already playing.
 
-To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.
+To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. Do not leave duplicate fixture files in the project tree; duplicate component type definitions can break a cold compile and prevent the Agent Bridge dock from loading.
 
 Current note: direct feedback-loop actions are verified, but the full smoke can be blocked by a native editor delete/undo null reference after play-mode testing in the current s&box session. See [docs/status.md](docs/status.md) before treating live smoke as fully green.
 

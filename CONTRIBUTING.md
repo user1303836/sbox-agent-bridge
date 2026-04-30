@@ -29,7 +29,7 @@ Changes to `editor/` should be smoke-tested in a real s&box project when possibl
 
 1. Copy `editor/` into `YourProject/Libraries/sbox_agent_bridge`.
 2. Open the project in s&box.
-3. Open the **Agent Bridge** dock.
+3. Let the bridge library compile; optionally open the **Agent Bridge** dock to view status.
 4. Run a direct bridge request or MCP tool.
 5. Confirm mutations are visible in the scene and can be undone.
 

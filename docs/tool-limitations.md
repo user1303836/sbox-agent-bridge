@@ -27,6 +27,10 @@ Last updated: 2026-04-30
 | `sound.get_info` | Project-created sound event inspection works. | Some built-in sound metadata fields throw before the handle/resource is loaded, so those fields are best-effort. | Add per-field error reporting instead of dropping metadata. |
 | Local MCP build/test on this Windows shell | CI and previous local runs cover TypeScript build/test. | Current shell reports `Access is denied` for the available `node.exe` shim and has no `npm` on PATH. | Fix local Node/npm availability or rely on GitHub Actions for MCP server verification. |
 
+## Operational Caveats
+
+Do not leave duplicate copies of `AgentBridgeMutationFixture.cs` in an s&box project. The canonical installed location is `Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFixture.cs`. Extra copies in the project `Code/` folder or the library root `Code/` folder can cause `local.sbox_agent_bridge` to fail cold compilation, which prevents the Agent Bridge dock and IPC loop from loading. s&box may report the duplicate error at only one of the file paths, so search the whole project tree when diagnosing this.
+
 ## Important Retired Finding
 
 Do not add local components by deserializing a modified full target `GameObject` JSON blob. Live testing showed that `GameObject.Deserialize` appended duplicate existing components on the target object. The safe fallback added on 2026-04-30 uses a temporary empty probe only to resolve the local runtime type, then adds the component to the real target through `GameObject.AddComponent<T>()`.

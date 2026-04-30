@@ -44,6 +44,9 @@ public sealed class BridgeDock : Widget
 	[Event( "tool.frame" )]
 	public static void OnToolFrame()
 	{
+		if ( !BridgeRuntime.IsRunning )
+			BridgeRuntime.Start();
+
 		BridgeRuntime.Pump();
 	}
 

@@ -13,7 +13,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 ## Verified Locally
 
 - The editor library compiles and the **Agent Bridge** dock appears in s&box.
-- The dock listens through local file IPC.
+- The bridge runtime starts automatically once the editor library loads and listens through local file IPC; the dock displays status and manual start/stop controls.
 - The MCP server can read editor status, active context, selection, scene summaries, hierarchy, GameObject details, component lists, and component properties.
 - GameObject mutations are undo-scoped and read back after the edit: create, rename, transform, enable/disable, reparent, and duplicate.
 - `gameobject.create` can optionally parent a new object by `parentId`; this was verified through `scene.batch`.
@@ -38,9 +38,10 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 ## Current Limitations
 
 - The editor bridge must be installed into each s&box project that should expose live editor access.
-- The s&box editor must be open and the Agent Bridge dock must be running.
+- The s&box editor must be open and the bridge editor library must compile/load. The dock is useful for status, but the IPC pump now starts automatically after the assembly loads.
+- If the dock is missing after restart, check `sbox-dev.log` for bridge compile failures. Duplicate fixture scripts are a known cause: keep only `Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFixture.cs`.
 - CI does not run a real s&box editor, so live editor behavior is verified with local smoke tests.
-- Actual `editor.save_scene` disk-write verification still needs a scene that already has a source path; untitled scenes are guarded to avoid surprise save-as UI.
+- `editor.save_scene` disk writes are verified for sourced scenes. Untitled scenes are guarded to avoid surprise save-as UI unless a future explicit save-as path is added.
 - `gameobject.duplicate` is currently shallow: it copies name, enabled state, transform, and parent, but not components or children.
 - `component.list_types` still does not enumerate local game component types through editor-side `Game.TypeLibrary.GetTypes(typeof(Component))`. Existing local component instances can be inspected, and `component.add` can add a local component by exact compiled type name, but type discovery needs a separate local-component source.
 - `component.set_property` does not yet support collection/list editing. Resource reference support is implemented for `Sandbox.Resource` subclasses, with live coverage so far on model, material, and sound-event properties.
@@ -48,7 +49,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. It does not yet support a timestamp/cursor, so stale errors can appear in current feedback.
 - Runtime/game-session inspection is not reliable yet. The ARPG POC showed that scene reads can target a stale editor session during or after play mode until the sourced scene is force-reloaded.
-- Local game component types, including `AgentBridgeMutationFixture`, are not visible through editor-side `Game.TypeLibrary` enumeration in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set.
+- Local game component types, including `AgentBridgeMutationFixture`, are not visible through editor-side `Game.TypeLibrary` enumeration in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set, but exact-name `component.add` can still add compiled local components in verified cases.
 - The full live smoke is currently blocked in this editor session by the `gameobject.destroy` delete/undo null reference. Direct feedback-loop actions were verified separately.
 - The current Windows shell cannot run the available `node.exe` shim (`Access is denied`) and `npm` is not on PATH, so the latest TypeScript build/test could not be rerun locally in this pass. `mcp-server/dist` was manually updated alongside `src`.
 

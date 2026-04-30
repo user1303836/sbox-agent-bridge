@@ -25,8 +25,8 @@ Status meanings:
 | Activate editor tab | `editor.activate_tab` | `editor` / `activate_tab` | Verified | Activates an existing editor scene tab by index, scene id, source path, or scene name. Live IPC verified by raising `scenes/minimal.scene` while an unsaved untitled tab was also open. |
 | Open scene | `editor.open_scene` | `editor` / `open_scene` | Verified | Opens a scene resource by path and makes its session active. Falls back through `AssetSystem.FindByPath` when direct resource lookup fails. Supports `forceReload` for reloading an already-open sourced scene when play/stop leaves the editor session stale. |
 | Save scene | `editor.save_scene` | `editor` / `save_scene` | Verified | Reports before/after dirty state and scene source path; guards untitled scenes instead of opening a save-as flow. Live IPC verified dry-run, no-source skip behavior, and disk write against `scenes/minimal.scene`. |
-| Undo | `editor.undo` | `editor` / `undo` | Verified | Verified by restoring a destroyed GameObject. |
-| Redo | `editor.redo` | `editor` / `redo` | Verified | Verified by re-applying the destroy operation after undo. |
+| Undo | `editor.undo` | `editor` / `undo` | Verified | Verified during earlier scene mutation smoke. Avoid coupling current undo checks to `gameobject.destroy` until the native delete/undo issue is reverified. |
+| Redo | `editor.redo` | `editor` / `redo` | Verified | Verified during earlier scene mutation smoke. Avoid coupling current redo checks to `gameobject.destroy` until the native delete/undo issue is reverified. |
 | Selection read | `editor.get_selection` | `editor` / `get_selection` | Verified | Returns typed selection entries; GameObject selection verified. |
 | Selection set | `editor.set_selection` | `editor` / `set_selection` | Verified | Accepts GameObject ids only; verified with read-back count. |
 | Frame/focus object | `editor.frame_object` | `editor` / `frame_object` | Verified | Calls `SceneEditorSession.FrameTo` for a target GameObject bounds. |
@@ -81,7 +81,7 @@ Status meanings:
 |---|---|---|---|---|
 | Create script | `script.create` | `script` / `create` | Verified | Live IPC created `Code/ArpgDemo/AgentBridgeArpgFixture.cs`; compile status stayed green. |
 | Edit script | `script.edit` | `script` / `edit` | Verified | Live IPC edited the same script and verified SHA/length change plus green compile. |
-| Delete script | `script.delete` | `script` / `delete` | Not run | Local file deletion requires explicit action-time confirmation; no scratch script was deleted in this pass. |
+| Delete script | `script.delete` | `script` / `delete` | Blocked | Implementation exists, but live deletion was intentionally not exercised. Add a dedicated scratch-file smoke before treating it as verified. |
 
 ## Assets, Materials, Sounds, Physics, And Prefabs
 
