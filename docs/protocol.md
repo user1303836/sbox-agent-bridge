@@ -46,6 +46,12 @@ Errors use the same envelope:
 - `editor.undo`
 - `editor.redo`
 - `editor.frame_object`
+- `editor.play_state`
+- `editor.play`
+- `editor.stop`
+- `editor.logs`
+- `editor.compile_status`
+- `editor.feedback`
 - `scene.summary`
 - `scene.hierarchy`
 - `scene.find`
@@ -83,6 +89,18 @@ Mutations should return a `verified` object read back from the editor after the 
 - `valid: true`.
 
 Property metadata includes `typeConversionSupported`, `setPropertySupported`, and a `schema` block with kind, nullability, accepted JSON shapes, an example value, enum values, reference target, support status, and unsupported reason where applicable.
+
+## Feedback Actions
+
+`editor.play_state` reads active play mode state from `SceneEditorSession.Active`.
+
+`editor.play` and `editor.stop` request play-mode transitions and return a play-state read-back. The response includes `expectedIsPlaying` and `transitionPending` because s&box may settle a play/stop transition on a later editor frame. Agents should follow with `editor.play_state` when `transitionPending` is true.
+
+`editor.compile_status` returns compile groups observed from s&box `compile.started` events. If no compile event has been observed since the bridge loaded, it returns an explicit zero-group state rather than claiming success or failure.
+
+`editor.logs` tails `sbox-dev.log`. The raw line is authoritative; the returned `level` is an inferred filter helper.
+
+`editor.feedback` combines play state, compile status, and recent logs. It accepts the same `maxDiagnostics`, `maxLines`, `contains`, and `level` payload fields used by the individual compile/log actions.
 
 ## File Handoff
 

@@ -108,6 +108,32 @@ interface ComponentValidationResult {
   };
 }
 
+interface PlayStateResult {
+  verified: {
+    scene: string;
+    isPlaying: boolean;
+    hasGameSession: boolean;
+  };
+}
+
+interface LogsResult {
+  verified: {
+    source: string;
+    exists: boolean;
+    readError: string;
+    returned: number;
+    entries: unknown[];
+  };
+}
+
+interface CompileStatusResult {
+  verified: {
+    source: string;
+    observedGroupCount: number;
+    groups: unknown[];
+  };
+}
+
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC,
   timeoutMs: Number(process.env.SBOX_AGENT_BRIDGE_TIMEOUT_MS ?? 10_000)
@@ -116,6 +142,7 @@ const bridge = new BridgeClient({
 const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
 const prefix = process.env.SBOX_AGENT_BRIDGE_SMOKE_PREFIX ?? "Agent Bridge Live Smoke";
 const keepObjects = process.env.SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS === "1";
+const requireMutationFixture = process.env.SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE === "1";
 const createdIds: string[] = [];
 const summary: Record<string, unknown> = {};
 
@@ -219,6 +246,8 @@ try {
     }
   }
 
+  summary.feedbackLoop = await runFeedbackLoopSmoke();
+
   console.log(JSON.stringify({ ok: true, summary }, null, 2));
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
@@ -232,6 +261,91 @@ async function createObject(name: string, position: { x: number; y: number; z: n
   });
 
   return result.verified;
+}
+
+async function runFeedbackLoopSmoke(): Promise<Record<string, unknown>> {
+  const before = await bridge.send<PlayStateResult>("editor.play_state");
+  const logs = await bridge.send<LogsResult>("editor.logs", {
+    maxLines: 20
+  });
+  const compileStatus = await bridge.send<CompileStatusResult>("editor.compile_status", {
+    maxDiagnostics: 10
+  });
+  const feedback = await bridge.send<{ verified: { playState: { isPlaying: boolean }; logs: LogsResult["verified"]; compileStatus: CompileStatusResult["verified"] } }>(
+    "editor.feedback",
+    {
+      maxLines: 20,
+      maxDiagnostics: 10
+    }
+  );
+
+  ensure(logs.verified.source === "sbox-dev.log", "editor.logs did not identify sbox-dev.log as its source");
+  ensure(Array.isArray(logs.verified.entries), "editor.logs entries was not an array");
+  ensure(logs.verified.readError === "", `editor.logs returned a read error: ${logs.verified.readError}`);
+  ensure(compileStatus.verified.source === "compile.started event observer", "editor.compile_status returned an unexpected source");
+  ensure(Array.isArray(compileStatus.verified.groups), "editor.compile_status groups was not an array");
+  ensure(feedback.verified.playState.isPlaying === before.verified.isPlaying, "editor.feedback play state disagreed with editor.play_state");
+  ensure(feedback.verified.logs.source === logs.verified.source, "editor.feedback logs source disagreed with editor.logs");
+  ensure(
+    feedback.verified.compileStatus.source === compileStatus.verified.source,
+    "editor.feedback compile source disagreed with editor.compile_status"
+  );
+
+  if (before.verified.isPlaying) {
+    return {
+      initialScene: before.verified.scene,
+      initialIsPlaying: before.verified.isPlaying,
+      playStopSkipped: true,
+      reason: "Editor was already playing before the smoke test.",
+      logLinesReturned: logs.verified.returned,
+      observedCompileGroups: compileStatus.verified.observedGroupCount
+    };
+  }
+
+  let startedBySmoke = false;
+
+  try {
+    await bridge.send("editor.play");
+    startedBySmoke = true;
+    const afterPlay = await waitForPlayState(true, 2_000);
+    await bridge.send("editor.stop");
+    startedBySmoke = false;
+    const afterStop = await waitForPlayState(false, 2_000);
+
+    return {
+      initialScene: before.verified.scene,
+      initialIsPlaying: before.verified.isPlaying,
+      afterPlayIsPlaying: afterPlay.verified.isPlaying,
+      afterPlayHasGameSession: afterPlay.verified.hasGameSession,
+      afterStopIsPlaying: afterStop.verified.isPlaying,
+      logLinesReturned: logs.verified.returned,
+      observedCompileGroups: compileStatus.verified.observedGroupCount
+    };
+  } finally {
+    if (startedBySmoke) {
+      await bridge.send("editor.stop");
+    }
+  }
+}
+
+async function waitForPlayState(expected: boolean, timeoutMs: number): Promise<PlayStateResult> {
+  const deadline = Date.now() + timeoutMs;
+  let last = await bridge.send<PlayStateResult>("editor.play_state");
+
+  while (Date.now() < deadline) {
+    if (last.verified.isPlaying === expected) {
+      return last;
+    }
+
+    await delay(100);
+    last = await bridge.send<PlayStateResult>("editor.play_state");
+  }
+
+  throw new Error(`Timed out waiting for editor.play_state isPlaying=${expected}; last=${last.verified.isPlaying}`);
+}
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function inspectExistingComponent(): Promise<Record<string, unknown> | null> {
@@ -288,10 +402,20 @@ async function runMutationFixtureSmoke(
     query: "AgentBridgeMutationFixture",
     maxResults: 5
   });
-  ensure(
-    fixtureTypes.verified.count >= 1,
-    "AgentBridgeMutationFixture is not available. Copy the bridge library into the project and wait for hotload."
-  );
+
+  if (fixtureTypes.verified.count < 1) {
+    ensure(
+      !requireMutationFixture,
+      "AgentBridgeMutationFixture is not available. Copy the bridge library into the project, wait for hotload, or unset SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE."
+    );
+
+    return {
+      available: false,
+      skipped: true,
+      reason:
+        "AgentBridgeMutationFixture is not visible through component.list_types in this editor session. Set SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1 to make this a hard failure."
+    };
+  }
 
   const added = await bridge.send<ComponentMutationResult>("component.add", {
     gameObjectId,

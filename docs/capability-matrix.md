@@ -9,7 +9,7 @@ Status meanings:
 
 ## Current Verification Environment
 
-- Date: 2026-04-29
+- Date: 2026-04-30
 - s&box project: fresh Minimal Game project
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
@@ -26,9 +26,12 @@ Status meanings:
 | Selection read | `editor.get_selection` | `editor` / `get_selection` | Verified | Returns typed selection entries; GameObject selection verified. |
 | Selection set | `editor.set_selection` | `editor` / `set_selection` | Verified | Accepts GameObject ids only; verified with read-back count. |
 | Frame/focus object | `editor.frame_object` | `editor` / `frame_object` | Verified | Calls `SceneEditorSession.FrameTo` for a target GameObject bounds. |
-| Play mode start | `editor.play` | TBD | Planned | Use active scene/session APIs. |
-| Play mode stop | `editor.stop` | TBD | Planned | Keep runtime/editor state separate. |
-| Recent logs | `editor.logs` | TBD | Planned | Need reliable editor log capture path. |
+| Play state | `editor.play_state` | `editor` / `play_state` | Verified | Reads active scene and play state from `SceneEditorSession.Active`; live smoke and direct IPC verified. |
+| Play mode start | `editor.play` | `editor` / `play` | Verified | Calls `SceneEditorSession.SetPlaying(...)` and returns read-back play state. |
+| Play mode stop | `editor.stop` | `editor` / `stop` | Verified | Calls `SceneEditorSession.StopPlaying()` and returns immediate read-back with `transitionPending` when the editor settles on a later frame. |
+| Recent logs | `editor.logs` | `editor` / `logs` | Verified | Tails `sbox-dev.log`; raw lines are authoritative and log level is explicitly inferred. |
+| Compile status | `editor.compile_status` | `editor` / `compile_status` | Verified | Tracks compile groups from observed `compile.started` events; live IPC returned compiler diagnostics and zero errors after the fix. |
+| Combined feedback | `editor.feedback` | `editor` / `feedback` | Verified | Returns play state, compile status, and recent logs for agent edit/test loops. |
 
 ## Scene Read
 
@@ -46,7 +49,7 @@ Status meanings:
 |---|---|---|---|---|
 | Read GameObject | `gameobject.get` | `gameobject` / `get` | Verified | Id-targeted read returning the same detail shape as `scene.details`. |
 | Create GameObject | `gameobject.create` | `gameobject` / `create` | Verified | Uses `SceneEditorSession.Active.Scene.CreateObject(true)` and verifies via read-back. |
-| Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Verified | Id-targeted, undo scoped, verified by directory lookup and undo/redo smoke test. |
+| Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Blocked | Previously verified, but the current editor session now reports a null reference in the native editor delete/undo path after play-mode testing. Needs fresh-session verification and/or a safer delete strategy before relying on it. |
 | Rename GameObject | `gameobject.rename` | `gameobject` / `rename` | Verified | Id-targeted, undo scoped, unique-name default verified by read-back. |
 | Set transform | `gameobject.set_transform` | `gameobject` / `set_transform` | Verified | World position, Euler/quaternion rotation input, and world scale; verified by read-back. |
 | Enable/disable | `gameobject.set_enabled` | `gameobject` / `set_enabled` | Verified | Verified false and true read-back on a live object. |
@@ -84,5 +87,5 @@ Status meanings:
 | MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
-| Live editor smoke script | Verified | `npm run smoke:live` verified core GameObject edits, component inspection, schema metadata, dry-run validation, and fixture-backed component mutation against an already-open editor. |
+| Live editor smoke script | Blocked | Feedback actions and compile status were directly verified, but the full smoke is currently blocked by the `gameobject.destroy` native delete/undo null reference in this editor session. Fixture-backed component mutation is skipped unless `AgentBridgeMutationFixture` is visible; use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` to require it. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

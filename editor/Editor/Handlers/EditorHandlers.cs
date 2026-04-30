@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using Editor;
 
 namespace SboxAgentBridge.Editor;
 
@@ -39,6 +41,139 @@ internal static class EditorHandlers
 				isPlaying = session.IsPlaying,
 				selectionCount = selection.Length,
 				selection
+			}
+		} );
+	}
+
+	public static BridgeResponse PlayState( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor play state read",
+			verified = DescribePlayState( session )
+		} );
+	}
+
+	public static BridgeResponse Play( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var wasPlaying = session.IsPlaying;
+		Exception transitionException = null;
+
+		if ( !session.IsPlaying )
+		{
+			try
+			{
+				session.SetPlaying( session.Scene );
+			}
+			catch ( Exception ex )
+			{
+				transitionException = ex;
+			}
+		}
+
+		var playState = DescribePlayState( session );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = wasPlaying ? "Editor was already in play mode" : "Editor play mode requested",
+			verified = new
+			{
+				wasPlaying,
+				transitionPolicy = "state-readback",
+				expectedIsPlaying = true,
+				transitionPending = !playState.IsPlaying,
+				transitionException = transitionException is null ? null : new
+				{
+					message = transitionException.Message,
+					stateChangedDespiteException = TryReadIsPlaying( session, false )
+				},
+				playState
+			}
+		} );
+	}
+
+	public static BridgeResponse Stop( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var wasPlaying = session.IsPlaying;
+		Exception transitionException = null;
+
+		if ( session.IsPlaying )
+		{
+			try
+			{
+				session.StopPlaying();
+			}
+			catch ( Exception ex )
+			{
+				transitionException = ex;
+			}
+		}
+
+		var playState = DescribePlayState( session );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = wasPlaying ? "Editor stop play mode requested" : "Editor was already stopped",
+			verified = new
+			{
+				wasPlaying,
+				transitionPolicy = "state-readback",
+				expectedIsPlaying = false,
+				transitionPending = playState.IsPlaying,
+				transitionException = transitionException is null ? null : new
+				{
+					message = transitionException.Message,
+					stateChangedDespiteException = !TryReadIsPlaying( session, true )
+				},
+				playState
+			}
+		} );
+	}
+
+	public static BridgeResponse Logs( BridgeRequest request )
+	{
+		var maxLines = HandlerUtil.GetInt( request.Payload, "maxLines", 100 );
+		var contains = HandlerUtil.GetString( request.Payload, "contains" );
+		var level = HandlerUtil.GetString( request.Payload, "level", "all" );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor logs read",
+			verified = EditorFeedbackState.DescribeLogs( maxLines, contains, level )
+		} );
+	}
+
+	public static BridgeResponse CompileStatus( BridgeRequest request )
+	{
+		var maxDiagnostics = HandlerUtil.GetInt( request.Payload, "maxDiagnostics", 20 );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor compile status read",
+			verified = EditorFeedbackState.DescribeCompileStatus( maxDiagnostics )
+		} );
+	}
+
+	public static BridgeResponse Feedback( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var maxDiagnostics = HandlerUtil.GetInt( request.Payload, "maxDiagnostics", 20 );
+		var maxLines = HandlerUtil.GetInt( request.Payload, "maxLines", 100 );
+		var contains = HandlerUtil.GetString( request.Payload, "contains" );
+		var level = HandlerUtil.GetString( request.Payload, "level", "all" );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor feedback read",
+			verified = new
+			{
+				playState = DescribePlayState( session ),
+				compileStatus = EditorFeedbackState.DescribeCompileStatus( maxDiagnostics ),
+				logs = EditorFeedbackState.DescribeLogs( maxLines, contains, level )
 			}
 		} );
 	}
@@ -154,5 +289,94 @@ internal static class EditorHandlers
 			message = "Editor framed GameObject",
 			verified = HandlerUtil.DescribeGameObject( go )
 		} );
+	}
+
+	private static PlayStateSnapshot DescribePlayState( SceneEditorSession session )
+	{
+		var readErrors = new System.Collections.Generic.List<object>();
+		var scene = "";
+		var hasUnsavedChanges = false;
+		var isPlaying = false;
+		var hasGameSession = false;
+		var gameSession = "";
+
+		try
+		{
+			scene = session.Scene?.Name ?? "";
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "scene", ex );
+		}
+
+		try
+		{
+			hasUnsavedChanges = session.HasUnsavedChanges;
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "hasUnsavedChanges", ex );
+		}
+
+		try
+		{
+			isPlaying = session.IsPlaying;
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "isPlaying", ex );
+		}
+
+		try
+		{
+			var currentGameSession = session.GameSession;
+			hasGameSession = currentGameSession is not null;
+			gameSession = currentGameSession?.ToString() ?? "";
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "gameSession", ex );
+		}
+
+		return new PlayStateSnapshot
+		{
+			Scene = scene,
+			HasUnsavedChanges = hasUnsavedChanges,
+			IsPlaying = isPlaying,
+			HasGameSession = hasGameSession,
+			GameSession = gameSession,
+			ReadErrors = readErrors.ToArray()
+		};
+	}
+
+	private static bool TryReadIsPlaying( SceneEditorSession session, bool fallback )
+	{
+		try
+		{
+			return session.IsPlaying;
+		}
+		catch
+		{
+			return fallback;
+		}
+	}
+
+	private static void AddReadError( System.Collections.Generic.List<object> readErrors, string field, Exception ex )
+	{
+		readErrors.Add( new
+		{
+			field,
+			message = ex.Message
+		} );
+	}
+
+	private sealed class PlayStateSnapshot
+	{
+		public string Scene { get; set; }
+		public bool HasUnsavedChanges { get; set; }
+		public bool IsPlaying { get; set; }
+		public bool HasGameSession { get; set; }
+		public string GameSession { get; set; }
+		public object[] ReadErrors { get; set; }
 	}
 }

@@ -129,14 +129,16 @@ Acceptance criteria:
 
 Goal: support edit-compile-play-debug loops.
 
+Status: in progress. Verified so far: authoritative play state, play start/stop with read-back, recent log tailing, compile status from observed compile events, and a combined `editor.feedback` action.
+
 Candidate actions:
 
-- `editor.play`
-- `editor.stop`
-- `editor.play_state`
-- `editor.logs`
-- `compile.status`
-- `compile.errors`
+- `editor.play` - verified
+- `editor.stop` - verified
+- `editor.play_state` - verified
+- `editor.logs` - verified
+- `editor.compile_status` - verified
+- `editor.feedback` - verified
 - `compile.wait`
 
 Acceptance criteria:
@@ -144,6 +146,13 @@ Acceptance criteria:
 - Agents can detect hotload/compile failures without relying on screenshots.
 - Play mode can be started/stopped safely.
 - Runtime state inspection is separated from editor-scene inspection.
+
+Remaining gaps:
+
+- Wait/poll helper for compile completion.
+- Structured live log-event capture, if a stable editor-library hook is verified.
+- Dedicated runtime/game-session inspection while playing.
+- Reverify destructive scene edits after play/stop transitions. The current editor session exposed a null reference in the native GameObject delete/undo path.
 
 ## Milestone 6: Rich Editor Access
 

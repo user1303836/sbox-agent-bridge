@@ -1,3 +1,4 @@
+using Editor;
 using Sandbox;
 
 namespace SboxAgentBridge.Editor;
@@ -119,17 +120,40 @@ internal static class GameObjectHandlers
 
 	public static BridgeResponse Destroy( BridgeRequest request )
 	{
+		using var scope = SceneEditorSession.Scope();
 		var session = HandlerUtil.RequireSession();
 		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
 		var id = go.Id.ToString();
-		var previous = HandlerUtil.DescribeGameObject( go );
+		object previous;
 
-		using ( session.UndoScope( "Agent Bridge: Destroy GameObject" ).WithGameObjectDestructions( go ).Push() )
+		try
 		{
-			go.Destroy();
+			previous = HandlerUtil.DescribeGameObject( go );
+		}
+		catch ( System.Exception ex )
+		{
+			throw new System.InvalidOperationException( $"Failed to describe GameObject before destroy: {ex.Message}", ex );
 		}
 
-		session.Scene.ProcessDeletes();
+		try
+		{
+			EditorScene.Selection.Clear();
+			EditorScene.Selection.Add( go );
+			SceneEditorMenus.Delete();
+		}
+		catch ( System.Exception ex )
+		{
+			throw new System.InvalidOperationException( $"Failed to destroy GameObject through editor delete command: {ex.Message}", ex );
+		}
+
+		try
+		{
+			session.Scene.ProcessDeletes();
+		}
+		catch ( System.Exception ex )
+		{
+			throw new System.InvalidOperationException( $"Destroyed GameObject but failed to process scene deletes: {ex.Message}", ex );
+		}
 
 		return BridgeResponse.Success( request.Id, new
 		{

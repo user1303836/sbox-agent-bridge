@@ -30,6 +30,7 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 
 - `Active`
 - `Scene`
+- `GameSession`
 - `Selection`
 - `GetSelection()`
 - `PushUndoSelection()`
@@ -171,3 +172,42 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 - `WithComponentDestructions(Component component)`
 - `WithComponentChanges(Component component)`
 - `Push()`
+
+`Sandbox.CompileGroup`:
+
+- `Name`
+- `Compilers`
+- `NeedsBuild`
+- `IsBuilding`
+- `BuildResult`
+
+`Sandbox.Compiler`:
+
+- `Name`
+- `IsBuilding`
+- `NeedsBuild`
+- `BuildSuccess`
+- `BuildResult`
+- `Diagnostics`
+
+`Sandbox.CompilerOutput`:
+
+- `Successful`
+- `Diagnostics`
+- `Exception`
+
+`Sandbox.LogEvent`:
+
+- `Level`
+- `Logger`
+- `Message`
+- `Exception`
+- `Time`
+
+## Local Source Checks
+
+Local installed s&box source in `C:\Program Files (x86)\Steam\steamapps\common\sbox` was used to confirm:
+
+- The scene view responds to `scene.play` / `scene.stop` events and swaps view mode based on `SceneEditorSession.IsPlaying`.
+- The editor compile toast listens to `compile.started` and reads `CompileGroup.Compilers[*].Diagnostics` for Roslyn errors and warnings.
+- The built-in console opens `Environment.CurrentDirectory + "/logs/"`, matching the bridge's `sbox-dev.log` tail source.

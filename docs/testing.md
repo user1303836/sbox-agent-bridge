@@ -38,7 +38,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-This script uses the same file IPC path as the MCP server. It creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture`, reads a component from the active scene when one exists, and then cleans up the temporary objects.
+This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, reads a component from the active scene when one exists, and then cleans up the temporary objects.
 
 Useful environment variables:
 
@@ -46,6 +46,7 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_TIMEOUT_MS`: override command timeout.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
 - `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
+- `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` is not visible to `component.list_types`.
 
 ## Live Editor Smoke Checks
 
@@ -119,9 +120,20 @@ For component mutation changes, verify:
 8. `editor.undo` restores the removed component
 9. `editor.redo` removes it again
 
-`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`.
+`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs`. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, copy the fixture into that test project's own `Code` folder or reopen the project before running `npm run smoke:live`. Some editor sessions may not expose local game components through `Game.TypeLibrary`; use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
+
+For editor feedback-loop changes, verify:
+
+1. `editor.play_state` returns the active scene name and current play state.
+2. `editor.logs` returns a `sbox-dev.log` source, raw log entries, and no read error.
+3. `editor.compile_status` returns a compile-event source and either observed compile groups or an explicit no-observed-groups note.
+4. `editor.feedback` agrees with the individual play/log/compile actions.
+5. If the editor is not already playing, `editor.play` transitions to `isPlaying: true`.
+6. `editor.stop` transitions back to `isPlaying: false`.
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
+
+Current live-test note: direct feedback-loop actions are verified in the local editor, including compile status with zero errors. The full smoke is currently blocked in this editor session by a native null reference while deleting GameObjects through the editor delete/undo path after play-mode testing. Reopen the s&box project and rerun `npm run smoke:live` before marking the full smoke green again.
 
 ## MCP End-To-End Checks
 

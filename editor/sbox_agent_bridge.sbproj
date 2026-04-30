@@ -4,7 +4,7 @@
   "Org": "local",
   "Ident": "sbox_agent_bridge",
   "Schema": 1,
-  "Description": "Tiny editor bridge for MCP-capable agents to inspect and carefully operate the s&box editor.",
+  "Description": "Editor bridge for MCP-capable agents to inspect, control, and automate live s&box editor sessions.",
   "IncludeSourceFiles": true,
   "Resources": null,
   "PackageReferences": [],
@@ -12,7 +12,7 @@
   "Mounts": null,
   "IsStandaloneOnly": false,
   "Metadata": {
-    "Summary": "Experimental local bridge for agent-assisted s&box editor workflows",
+    "Summary": "Local editor bridge for agent-assisted s&box editor workflows",
     "Public": true,
     "Tags": "ai,mcp,editor,bridge,automation,agent",
     "Compiler": {

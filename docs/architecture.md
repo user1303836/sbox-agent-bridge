@@ -27,7 +27,8 @@ The editor bridge lives in an s&box library under `editor/`. It is editor-only c
 - a dock widget so the developer can see bridge status;
 - an editor-frame pump that processes queued commands;
 - a dispatcher that maps command names to handlers;
-- small handler classes for editor, scene, and gameobject operations.
+- small handler classes for editor, scene, component, and gameobject operations;
+- a feedback state helper for compile-event snapshots and recent editor logs.
 
 The bridge should keep mutation behavior conservative:
 
@@ -57,3 +58,13 @@ The POC uses file IPC:
 - MCP server polls until timeout.
 
 HTTP/SSE can be added later behind the same `BridgeClient` interface.
+
+## Feedback Sources
+
+Editor feedback intentionally keeps sources separate:
+
+- Play state comes from `SceneEditorSession.Active`.
+- Compile status comes from observed s&box `compile.started` events and live `CompileGroup`/`Compiler` state.
+- Recent logs come from `Environment.CurrentDirectory/logs/sbox-dev.log`.
+
+The MCP-facing `editor.feedback` action combines those sources, but each nested payload still reports its own source and limitations.

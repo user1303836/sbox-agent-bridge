@@ -17,6 +17,8 @@ Ask an agent to:
 - inspect components and editable properties
 - add, remove, enable, disable, or update components
 - validate component property values before writing them
+- start/stop play mode and inspect play state
+- read compile/hotload diagnostics and recent editor logs
 - verify mutations by reading editor state back after each change
 
 This is the shape we are building toward: point Claude, Codex, Kimi, or any MCP-capable agent at your live s&box editor and ask it to help build the scene with you.
@@ -161,7 +163,7 @@ Find the object named PlayerStart, inspect its components, validate any property
 
 The bridge currently exposes four MCP tools: `editor`, `scene`, `gameobject`, and `component`.
 
-- `editor`: bridge status, active context, selection, save, undo, redo, frame object
+- `editor`: bridge status, active context, selection, save, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
 - `scene`: summary, hierarchy, search, GameObject details
 - `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, validate property
@@ -179,9 +181,12 @@ cd mcp-server
 npm run smoke:live
 ```
 
-The smoke test creates temporary GameObjects, verifies scene and GameObject actions, validates component property schemas, mutates `AgentBridgeMutationFixture`, checks undo/redo, and cleans up after itself.
+The smoke test creates temporary GameObjects, verifies scene and GameObject actions, validates component property schemas, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, checks undo/redo, and cleans up after itself.
+It also checks the editor feedback loop by reading play state, logs, compile status, and starting/stopping play mode when the editor is not already playing.
 
-If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.
+To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.
+
+Current note: direct feedback-loop actions are verified, but the full smoke can be blocked by a native editor delete/undo null reference after play-mode testing in the current s&box session. See [docs/status.md](docs/status.md) before treating live smoke as fully green.
 
 ## Development
 
@@ -204,6 +209,7 @@ Useful scripts:
 - [Roadmap](docs/roadmap.md)
 - [Capability Matrix](docs/capability-matrix.md)
 - [Testing Strategy](docs/testing.md)
+- [Editor Feedback Loop](docs/editor-feedback-loop.md)
 - [Architecture](docs/architecture.md)
 - [Protocol](docs/protocol.md)
 - [Verified s&box APIs](docs/verified-sbox-apis.md)

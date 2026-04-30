@@ -14,6 +14,12 @@ internal static class CommandDispatcher
 			"editor.undo" => EditorHandlers.Undo( request ),
 			"editor.redo" => EditorHandlers.Redo( request ),
 			"editor.frame_object" => EditorHandlers.FrameObject( request ),
+			"editor.play_state" => EditorHandlers.PlayState( request ),
+			"editor.play" => EditorHandlers.Play( request ),
+			"editor.stop" => EditorHandlers.Stop( request ),
+			"editor.logs" => EditorHandlers.Logs( request ),
+			"editor.compile_status" => EditorHandlers.CompileStatus( request ),
+			"editor.feedback" => EditorHandlers.Feedback( request ),
 			"scene.summary" => SceneHandlers.Summary( request ),
 			"scene.hierarchy" => SceneHandlers.Hierarchy( request ),
 			"scene.find" => SceneHandlers.Find( request ),
@@ -38,7 +44,7 @@ internal static class CommandDispatcher
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, scene.summary, scene.hierarchy, scene.find, scene.details, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
+				"Use one of: bridge.status, editor.context, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, scene.summary, scene.hierarchy, scene.find, scene.details, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
 			)
 		};
 	}
