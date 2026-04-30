@@ -16,12 +16,15 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - The dock listens through local file IPC.
 - The MCP server can read editor status, active context, selection, scene summaries, hierarchy, GameObject details, component lists, and component properties.
 - GameObject mutations are undo-scoped and read back after the edit: create, rename, transform, enable/disable, reparent, and duplicate.
+- `gameobject.create` can optionally parent a new object by `parentId`; this was verified through `scene.batch`.
 - `gameobject.destroy` was previously verified, but the current editor session now reports a null reference in the native delete/undo path after play-mode testing. Treat it as blocked until reverified in a fresh session or replaced with a safer delete strategy.
 - Component mutations are undo-scoped and read back after the edit: add, remove, enable/disable, and set property.
 - Component property metadata includes explicit JSON-shape hints, attributes, enum values, and reference targets for agents.
 - Component property values can be dry-run validated through `component.validate_property` or `component.set_property` with `dryRun: true`.
 - `component.set_property` is live-smoked against `AgentBridgeMutationFixture` for string, bool, integer, float/double, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject` reference, and `Component` reference values.
 - Resource-backed component properties can be validated and set from asset paths; live IPC verified `ModelRenderer.Model` with `models/dev/plane_blend.vmdl` and `ModelRenderer.MaterialOverride` with `materials/dev/reflectivity_30.vmat`.
+- `editor.save_scene` reports before/after save state, source path, skipped reason, and whether a save was verified. The current live scene is untitled, so direct IPC verified dry-run and safe no-source skip behavior rather than a disk write.
+- `scene.batch` runs a bounded list of existing bridge actions with `$ref` aliases. Direct IPC verified a parent/child create, component add, model/material property writes, save-state check, and details read-back.
 - Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, and combined feedback.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
 
@@ -30,6 +33,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - The editor bridge must be installed into each s&box project that should expose live editor access.
 - The s&box editor must be open and the Agent Bridge dock must be running.
 - CI does not run a real s&box editor, so live editor behavior is verified with local smoke tests.
+- Actual `editor.save_scene` disk-write verification still needs a scene that already has a source path; untitled scenes are guarded to avoid surprise save-as UI.
 - `gameobject.duplicate` is currently shallow: it copies name, enabled state, transform, and parent, but not components or children.
 - `component.set_property` does not yet support collection/list editing. Resource reference support is implemented for `Sandbox.Resource` subclasses, with live coverage so far on model and material properties.
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
@@ -39,6 +43,6 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 
 ## Next Larger Milestones
 
-- Batch scene operations for common create/configure/verify workflows.
+- Minimal game POC to discover the next practical editor gaps.
 - Editor feedback loop refinements: wait-for-compile, structured live log events, and runtime/game-session inspection.
 - Asset and prefab discovery/instantiation workflows.

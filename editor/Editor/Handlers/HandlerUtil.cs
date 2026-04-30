@@ -224,17 +224,7 @@ internal static class HandlerUtil
 					hex = color.Hex
 				}
 			},
-			Resource resource => new
-			{
-				type = value.GetType().FullName ?? value.GetType().Name,
-				value = new
-				{
-					path = resource.ResourcePath,
-					name = resource.ResourceName,
-					id = resource.ResourceId,
-					isValid = resource.IsValid
-				}
-			},
+			Resource resource => new { type = value.GetType().FullName ?? value.GetType().Name, value = DescribeResourceReference( resource ) },
 			GameObject go => new { type = "GameObject", value = new { id = go.Id.ToString(), name = go.Name } },
 			Component component => new { type = "Component", value = new { id = component.Id.ToString(), type = component.GetType().Name, gameObjectId = component.GameObject.Id.ToString() } },
 			Type type => new { type = "Type", value = type.FullName ?? type.Name },
@@ -244,6 +234,21 @@ internal static class HandlerUtil
 				value = value.ToString() ?? "",
 				serialized = false
 			}
+		};
+	}
+
+	public static object? DescribeResourceReference( Resource? resource )
+	{
+		if ( resource is null )
+			return null;
+
+		return new
+		{
+			type = resource.GetType().FullName ?? resource.GetType().Name,
+			path = resource.ResourcePath,
+			name = resource.ResourceName,
+			id = resource.ResourceId,
+			isValid = resource.IsValid
 		};
 	}
 

@@ -46,29 +46,31 @@ Acceptance criteria:
 
 Goal: give agents basic editor hands for GameObjects.
 
-Status: in progress. Verified so far: selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, destroy, undo/redo, reparent, and shallow duplicate.
+Status: in progress. Verified so far: selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, save-state reporting, undo/redo, reparent, shallow duplicate, and batch scene v0. `gameobject.destroy` was previously verified but is currently blocked in this editor session.
 
 Candidate actions:
 
-- `editor.save_scene` - implemented, live verification pending
+- `editor.save_scene` - verified for save-state reporting and no-source guard; actual disk-write verification needs a sourced scene
 - `editor.undo` - verified
 - `editor.redo` - verified
 - `editor.frame_object` - verified
 - `editor.get_selection` - verified
 - `editor.set_selection` - verified
-- `gameobject.destroy` - verified
+- `gameobject.destroy` - blocked pending fresh-session recheck or safer delete strategy
 - `gameobject.get` - verified
 - `gameobject.rename` - verified
 - `gameobject.set_transform` - verified
 - `gameobject.set_enabled` - verified
 - `gameobject.reparent` - verified
 - `gameobject.duplicate` - verified as a shallow scene-attached duplicate
+- `scene.batch` - verified for bounded action lists with `$ref` aliasing
 
 Acceptance criteria:
 
 - All mutations use undo scopes where applicable.
 - Actions prefer ids/GUIDs over names.
 - Every mutation has a read-back verification payload.
+- Batches expose each operation result and stop on the first failure by default.
 - Capability matrix records live verification status.
 
 ## Milestone 3: Components
@@ -123,6 +125,16 @@ Acceptance criteria:
 - Agents can discover valid asset paths before using them.
 - Prefab instantiation returns created object ids.
 - Asset actions do not guess filesystem paths when editor asset APIs can resolve them.
+
+## Milestone 4.5: Minimal Game POC
+
+Goal: build the smallest real playable scene through the bridge and use the rough edges to drive the next capability work.
+
+Candidate acceptance criteria:
+
+- The agent can inspect the scene, create/configure a minimal playable setup, save or explicitly report why save is unavailable, and read editor feedback.
+- The POC records every bridge limitation discovered while building it.
+- Missing capabilities are added to the roadmap before broad editor/tool-surface expansion.
 
 ## Milestone 5: Feedback Loop
 

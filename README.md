@@ -19,6 +19,7 @@ Ask an agent to:
 - validate component property values before writing them
 - start/stop play mode and inspect play state
 - read compile/hotload diagnostics and recent editor logs
+- run small multi-step scene batches with read-back after each operation
 - verify mutations by reading editor state back after each change
 
 This is the shape we are building toward: point Claude, Codex, Kimi, or any MCP-capable agent at your live s&box editor and ask it to help build the scene with you.
@@ -163,9 +164,9 @@ Find the object named PlayerStart, inspect its components, validate any property
 
 The bridge currently exposes four MCP tools: `editor`, `scene`, `gameobject`, and `component`.
 
-- `editor`: bridge status, active context, selection, save, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
-- `scene`: summary, hierarchy, search, GameObject details
-- `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent
+- `editor`: bridge status, active context, selection, save verification, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
+- `scene`: summary, hierarchy, search, GameObject details, small verified batches
+- `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent; create can optionally parent the new object
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, validate property
 
 Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it, including resource references that can be set from asset paths. Property writes can also be dry-run validated without mutating the scene.
@@ -181,7 +182,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-The smoke test creates temporary GameObjects, verifies scene and GameObject actions, validates component property schemas, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, checks undo/redo, and cleans up after itself.
+The smoke test creates temporary GameObjects, verifies scene and GameObject actions, checks save-state reporting, validates component property schemas, runs a small `scene.batch`, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, checks undo/redo, and cleans up after itself.
 It also checks the editor feedback loop by reading play state, logs, compile status, and starting/stopping play mode when the editor is not already playing.
 
 To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. For an already-open project that has not generated the library runtime project yet, you can temporarily copy `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` into that project's own `Code/` folder.

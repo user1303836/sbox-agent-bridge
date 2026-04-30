@@ -56,6 +56,7 @@ Errors use the same envelope:
 - `scene.hierarchy`
 - `scene.find`
 - `scene.details`
+- `scene.batch`
 - `gameobject.get`
 - `gameobject.create`
 - `gameobject.rename`
@@ -78,6 +79,8 @@ Errors use the same envelope:
 
 Mutations should return a `verified` object read back from the editor after the operation. If `verified` is missing, the caller should assume the change may not have stuck.
 
+`editor.save_scene` returns before/after save state. `dryRun: true` reads save state without writing. Untitled scenes without a source path are guarded: the bridge returns `saveAttempted: false` and a `skippedReason` instead of opening a surprise save-as flow. When a save is attempted, `saveVerified` is true only if the after-state reports no unsaved changes.
+
 `component.set_property` also accepts `dryRun: true`. In dry-run mode, the bridge resolves the component/property and converts the input value, but does not call `PropertyDescription.SetValue`.
 
 `component.validate_property` performs the same conversion check without mutation. Its verified payload includes:
@@ -96,6 +99,42 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 - `name`: resource name.
 - `id`: resource id.
 - `isValid`: whether s&box loaded a valid resource.
+
+## Batch Actions
+
+`scene.batch` runs a bounded list of existing bridge actions. It is meant for common create/configure/verify flows, not arbitrary code execution.
+
+Example:
+
+```json
+{
+  "operations": [
+    {
+      "key": "root",
+      "action": "gameobject.create",
+      "payload": { "name": "Arena Root" }
+    },
+    {
+      "key": "child",
+      "action": "gameobject.create",
+      "payload": {
+        "name": "Arena Mesh",
+        "parentId": { "$ref": "root.verified.id" }
+      }
+    },
+    {
+      "key": "renderer",
+      "action": "component.add",
+      "payload": {
+        "gameObjectId": "$child.verified.id",
+        "type": "ModelRenderer"
+      }
+    }
+  ]
+}
+```
+
+Each operation returns its own result under `verified.results`. A `key` stores that operation's result for later references. References can be object-form `{ "$ref": "alias.verified.id" }` or string-form `"$alias.verified.id"`. Batches stop on the first failure by default; set `stopOnError: false` to collect later failures too.
 
 ## Feedback Actions
 

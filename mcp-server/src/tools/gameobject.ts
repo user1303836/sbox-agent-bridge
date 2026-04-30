@@ -32,7 +32,7 @@ export function registerGameObjectTools(server: McpServer, bridge: BridgeClient)
         .enum(["get", "create", "rename", "set_transform", "set_enabled", "destroy", "duplicate", "reparent"])
         .describe("The GameObject action to run."),
       id: z.string().optional().describe("Target GameObject id for read or mutation actions."),
-      parentId: z.string().optional().describe("Parent GameObject id for reparent; omit to move to scene root."),
+      parentId: z.string().optional().describe("Parent GameObject id for create or reparent; omit during reparent to move to scene root."),
       name: z.string().optional().describe("Name for create or rename actions."),
       makeUnique: z.boolean().optional().describe("Make the final GameObject name unique when renaming."),
       keepWorldPosition: z.boolean().optional().describe("Preserve world transform when reparenting."),

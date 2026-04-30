@@ -38,7 +38,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, creates temporary GameObjects, verifies the core scene-editing actions, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, reads a component from the active scene when one exists, and then cleans up the temporary objects.
+This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, mutates `AgentBridgeMutationFixture` when it is visible to the editor type library, reads a component from the active scene when one exists, and then cleans up the temporary objects.
 
 Useful environment variables:
 
@@ -80,13 +80,27 @@ YourSboxProject/Libraries/sbox_agent_bridge
 For core scene editing changes, also verify this direct file-IPC chain:
 
 1. `gameobject.create`
-2. `gameobject.rename`
-3. `gameobject.set_transform`
-4. `gameobject.set_enabled` false, then true
-5. `editor.set_selection`
-6. `editor.get_selection`
-7. `scene.details`
-8. `gameobject.get`
+2. `gameobject.create` with `parentId`
+3. `gameobject.rename`
+4. `gameobject.set_transform`
+5. `gameobject.set_enabled` false, then true
+6. `editor.set_selection`
+7. `editor.get_selection`
+8. `scene.details`
+9. `gameobject.get`
+
+For save-scene changes, verify:
+
+1. `editor.save_scene` with `dryRun: true` returns before/after state without attempting a write.
+2. An untitled scene returns `saveAttempted: false`, `saveVerified: false`, and a clear `skippedReason` when called without `saveAs`.
+3. A scene with a source path returns `saveAttempted: true`; after a successful save, `after.hasUnsavedChanges` should be false and `saveVerified` should be true.
+
+For batch scene changes, verify:
+
+1. `scene.batch` can create a root GameObject and a child GameObject using `{ "$ref": "root.verified.id" }`.
+2. Later batch operations can use both object-form refs and string refs such as `"$renderer.verified.component.id"`.
+3. The batch can add `ModelRenderer`, set `Model` and `MaterialOverride`, and read `scene.details` for the child.
+4. A failed operation is captured in `verified.results`; with default `stopOnError`, later operations are skipped.
 
 For extended core scene editing changes, verify:
 

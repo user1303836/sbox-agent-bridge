@@ -29,6 +29,7 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
       id: z.string().optional().describe("Target GameObject id for frame_object."),
       ids: z.array(z.string()).optional().describe("GameObject ids to select when action is set_selection."),
       saveAs: z.boolean().optional().describe("Force a save-as flow when saving the active scene."),
+      dryRun: z.boolean().optional().describe("For save_scene, report save verification state without writing."),
       maxLines: z.number().int().positive().max(1000).optional().describe("Maximum editor log lines to return for logs or feedback."),
       contains: z.string().optional().describe("Case-insensitive log substring filter for logs or feedback."),
       level: z

@@ -80,6 +80,7 @@ Queried from `research_raw_api_schema.json` via `scripts/sbox_api_lookup.py`.
 `Sandbox.Scene`:
 
 - `Directory`
+- `Source`
 - `CreateObject(bool enabled)`
 - `ProcessDeletes()`
 

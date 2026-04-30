@@ -134,6 +134,43 @@ interface CompileStatusResult {
   };
 }
 
+interface SaveSceneResult {
+  verified: {
+    dryRun: boolean;
+    saveAttempted: boolean;
+    saveVerified: boolean;
+    skippedReason: string;
+    before: {
+      hasUnsavedChanges: boolean;
+      hasSourcePath: boolean;
+      sourcePath: string;
+    };
+    after: {
+      hasUnsavedChanges: boolean;
+      hasSourcePath: boolean;
+      sourcePath: string;
+    };
+  };
+}
+
+interface SceneBatchResult {
+  verified: {
+    completed: boolean;
+    executedCount: number;
+    successCount: number;
+    failureCount: number;
+    results: Array<{
+      key: string;
+      action: string;
+      ok: boolean;
+      result?: unknown;
+      error?: {
+        message: string;
+      };
+    }>;
+  };
+}
+
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC,
   timeoutMs: Number(process.env.SBOX_AGENT_BRIDGE_TIMEOUT_MS ?? 10_000)
@@ -148,6 +185,9 @@ const summary: Record<string, unknown> = {};
 
 try {
   await bridge.send("bridge.status");
+  const savePreview = await bridge.send<SaveSceneResult>("editor.save_scene", { dryRun: true });
+  ensure(savePreview.verified.dryRun === true, "editor.save_scene dryRun did not report dryRun=true");
+  ensure(savePreview.verified.saveAttempted === false, "editor.save_scene dryRun attempted a save");
 
   const parent = await createObject(`${prefix} Parent ${stamp}`, { x: 80, y: 0, z: 64 });
   const source = await createObject(`${prefix} Source ${stamp}`, { x: 96, y: 0, z: 64 });
@@ -205,6 +245,7 @@ try {
 
   const mutationFixture = await runMutationFixtureSmoke(source.id, parent.id, stamp);
   const inspectedComponent = await inspectExistingComponent();
+  const batch = await runSceneBatchSmoke(stamp);
 
   await bridge.send("gameobject.destroy", { id: duplicate.id });
   const undo = await bridge.send<{ verified: { undone: boolean } }>("editor.undo");
@@ -235,6 +276,15 @@ try {
     mutationFixture,
     inspectedExistingComponent: inspectedComponent
   };
+
+  summary.saveScene = {
+    dryRunChecked: true,
+    hasSourcePath: savePreview.verified.before.hasSourcePath,
+    sourcePath: savePreview.verified.before.sourcePath,
+    hasUnsavedChanges: savePreview.verified.before.hasUnsavedChanges
+  };
+
+  summary.batch = batch;
 
   if (!keepObjects) {
     for (const id of createdIds.reverse()) {
@@ -390,6 +440,100 @@ async function inspectExistingComponent(): Promise<Record<string, unknown> | nul
     componentId: firstComponent.id,
     componentType: firstComponent.type,
     propertyCount: properties.verified.count
+  };
+}
+
+async function runSceneBatchSmoke(stamp: string): Promise<Record<string, unknown>> {
+  const result = await bridge.send<SceneBatchResult>("scene.batch", {
+    operations: [
+      {
+        key: "root",
+        action: "gameobject.create",
+        payload: {
+          name: `${prefix} Batch Root ${stamp}`,
+          position: { x: 128, y: 0, z: 64 }
+        }
+      },
+      {
+        key: "child",
+        action: "gameobject.create",
+        payload: {
+          name: `${prefix} Batch Child ${stamp}`,
+          parentId: { $ref: "root.verified.id" },
+          position: { x: 144, y: 0, z: 64 }
+        }
+      },
+      {
+        key: "renderer",
+        action: "component.add",
+        payload: {
+          gameObjectId: { $ref: "child.verified.id" },
+          type: "ModelRenderer"
+        }
+      },
+      {
+        key: "model",
+        action: "component.set_property",
+        payload: {
+          id: { $ref: "renderer.verified.component.id" },
+          property: "Model",
+          value: "models/dev/plane_blend.vmdl"
+        }
+      },
+      {
+        key: "material",
+        action: "component.set_property",
+        payload: {
+          id: "$renderer.verified.component.id",
+          property: "MaterialOverride",
+          value: { path: "materials/dev/reflectivity_30.vmat" }
+        }
+      },
+      {
+        key: "saveCheck",
+        action: "editor.save_scene",
+        payload: {
+          dryRun: true
+        }
+      },
+      {
+        key: "details",
+        action: "scene.details",
+        payload: {
+          id: { $ref: "child.verified.id" }
+        }
+      }
+    ]
+  });
+
+  ensure(result.verified.completed, `scene.batch failed: ${JSON.stringify(result.verified.results)}`);
+  ensure(result.verified.executedCount === 7, "scene.batch did not execute all operations");
+  ensure(result.verified.successCount === 7, "scene.batch did not report seven successful operations");
+  ensure(result.verified.failureCount === 0, "scene.batch reported failures");
+
+  const root = batchVerified<GameObjectSummary>(result, "root");
+  const child = batchVerified<GameObjectSummary>(result, "child");
+  const renderer = batchVerified<{ component: { id: string; type: string } }>(result, "renderer");
+  const model = batchVerified<ComponentMutationResult["verified"]>(result, "model");
+  const material = batchVerified<ComponentMutationResult["verified"]>(result, "material");
+  const details = batchVerified<GameObjectSummary>(result, "details");
+
+  createdIds.push(root.id, child.id);
+  ensure(details.parent?.id === root.id, "scene.batch child was not parented to root");
+  ensure(renderer.component.type === "ModelRenderer", "scene.batch did not add ModelRenderer");
+  ensureResourcePath(model.property?.value?.value, "models/dev/plane_blend.vmdl", "scene.batch ModelRenderer.Model");
+  ensureResourcePath(
+    material.property?.value?.value,
+    "materials/dev/reflectivity_30.vmat",
+    "scene.batch ModelRenderer.MaterialOverride"
+  );
+
+  return {
+    rootId: root.id,
+    childId: child.id,
+    rendererId: renderer.component.id,
+    executedCount: result.verified.executedCount,
+    saveCheck: batchVerified<SaveSceneResult["verified"]>(result, "saveCheck")
   };
 }
 
@@ -709,6 +853,16 @@ function ensure(condition: boolean, message: string): asserts condition {
 
 function propertyValue(result: ComponentMutationResult): unknown {
   return result.verified.property?.value?.value;
+}
+
+function batchVerified<T>(batch: SceneBatchResult, key: string): T {
+  const entry = batch.verified.results.find((item) => item.key === key);
+  ensure(entry !== undefined, `scene.batch did not return entry for ${key}`);
+  ensure(entry.ok, `scene.batch entry ${key} failed: ${entry.error?.message ?? "unknown error"}`);
+  ensure(typeof entry.result === "object" && entry.result !== null, `scene.batch entry ${key} returned no result object`);
+  const result = entry.result as { verified?: unknown };
+  ensure(result.verified !== undefined, `scene.batch entry ${key} returned no verified payload`);
+  return result.verified as T;
 }
 
 interface JsonObject {

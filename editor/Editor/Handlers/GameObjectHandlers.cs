@@ -22,10 +22,17 @@ internal static class GameObjectHandlers
 		var session = HandlerUtil.RequireSession();
 		var name = HandlerUtil.GetString( request.Payload, "name", "Agent Object" );
 		var position = HandlerUtil.GetVector3( request.Payload, "position" );
+		var parent = HandlerUtil.GetOptionalGameObject( session.Scene, request.Payload );
+		var keepWorldPosition = HandlerUtil.GetBool( request.Payload, "keepWorldPosition", true );
 
 		GameObject go;
 
-		using ( session.UndoScope( "Agent Bridge: Create GameObject" ).WithGameObjectCreations().Push() )
+		var undo = session.UndoScope( "Agent Bridge: Create GameObject" ).WithGameObjectCreations();
+
+		if ( parent is not null )
+			undo.WithGameObjectChanges( parent, GameObjectUndoFlags.Children );
+
+		using ( undo.Push() )
 		{
 			go = session.Scene.CreateObject( true );
 			go.Name = name;
@@ -33,6 +40,9 @@ internal static class GameObjectHandlers
 
 			if ( position.HasValue )
 				go.WorldPosition = position.Value;
+
+			if ( parent is not null )
+				go.SetParent( parent, keepWorldPosition );
 		}
 
 		return BridgeResponse.Success( request.Id, new

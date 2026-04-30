@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Editor;
+using Sandbox;
 
 namespace SboxAgentBridge.Editor;
 
@@ -230,17 +231,60 @@ internal static class EditorHandlers
 	{
 		var session = HandlerUtil.RequireSession();
 		var saveAs = HandlerUtil.GetBool( request.Payload, "saveAs", false );
+		var dryRun = HandlerUtil.GetBool( request.Payload, "dryRun", false );
+		var before = DescribeSaveState( session );
+
+		if ( dryRun )
+		{
+			return BridgeResponse.Success( request.Id, new
+			{
+				message = "Editor scene save checked",
+				verified = new
+				{
+					dryRun,
+					saveAs,
+					saveAttempted = false,
+					saveVerified = false,
+					skippedReason = "dryRun was true",
+					before,
+					after = before
+				}
+			} );
+		}
+
+		if ( !saveAs && !before.HasSourcePath )
+		{
+			return BridgeResponse.Success( request.Id, new
+			{
+				message = "Editor scene save skipped",
+				verified = new
+				{
+					dryRun,
+					saveAs,
+					saveAttempted = false,
+					saveVerified = false,
+					skippedReason = "Active scene has no source path. Save the scene once in the editor, or call with saveAs:true for a human-visible save-as flow.",
+					before,
+					after = before
+				}
+			} );
+		}
 
 		session.Save( saveAs );
+		var after = DescribeSaveState( session );
 
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = "Editor scene save requested",
 			verified = new
 			{
-				scene = session.Scene.Name,
+				dryRun,
 				saveAs,
-				hasUnsavedChanges = session.HasUnsavedChanges
+				saveAttempted = true,
+				saveVerified = !after.HasUnsavedChanges,
+				skippedReason = "",
+				before,
+				after
 			}
 		} );
 	}
@@ -370,6 +414,54 @@ internal static class EditorHandlers
 		} );
 	}
 
+	private static SaveStateSnapshot DescribeSaveState( SceneEditorSession session )
+	{
+		var readErrors = new System.Collections.Generic.List<object>();
+		var scene = "";
+		var hasUnsavedChanges = false;
+		Resource? source = null;
+
+		try
+		{
+			scene = session.Scene?.Name ?? "";
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "scene", ex );
+		}
+
+		try
+		{
+			hasUnsavedChanges = session.HasUnsavedChanges;
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "hasUnsavedChanges", ex );
+		}
+
+		try
+		{
+			source = session.Scene?.Source;
+		}
+		catch ( Exception ex )
+		{
+			AddReadError( readErrors, "source", ex );
+		}
+
+		var sourcePath = source?.ResourcePath ?? "";
+
+		return new SaveStateSnapshot
+		{
+			Scene = scene,
+			HasUnsavedChanges = hasUnsavedChanges,
+			HasSource = source is not null,
+			HasSourcePath = !string.IsNullOrWhiteSpace( sourcePath ),
+			SourcePath = sourcePath,
+			Source = HandlerUtil.DescribeResourceReference( source ),
+			ReadErrors = readErrors.ToArray()
+		};
+	}
+
 	private sealed class PlayStateSnapshot
 	{
 		public string Scene { get; set; }
@@ -377,6 +469,17 @@ internal static class EditorHandlers
 		public bool IsPlaying { get; set; }
 		public bool HasGameSession { get; set; }
 		public string GameSession { get; set; }
+		public object[] ReadErrors { get; set; }
+	}
+
+	private sealed class SaveStateSnapshot
+	{
+		public string Scene { get; set; }
+		public bool HasUnsavedChanges { get; set; }
+		public bool HasSource { get; set; }
+		public bool HasSourcePath { get; set; }
+		public string SourcePath { get; set; }
+		public object? Source { get; set; }
 		public object[] ReadErrors { get; set; }
 	}
 }
