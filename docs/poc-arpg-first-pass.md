@@ -145,16 +145,16 @@ Verification:
 - `visual.capture_camera` succeeded after the lazy runtime build fix and wrote `20260501-150633-arpg-feature-slice-citizen-graph-854f95651641455fac8c592ba20f7f42.png` under `%TEMP%/sbox-agent-bridge/captures`.
 - A final post-attachment smoke wrote `20260501-151835-arpg-sword-attachment-smoke-d0d752a2eef143e1990b3281034dab23.png` under `%TEMP%/sbox-agent-bridge/captures` with nonzero byte count and average luminance `0.1415`.
 - The capture verified a nonblank runtime scene with visible elevation changes. Camera capture does not include the screen UI overlay, so the orb fill, inventory grid, equipment drag/drop, and item tooltips still need human/editor visual verification or a future UI/runtime inspection bridge.
-- Runtime log verification remains weak because `editor.logs` has no cursor/timestamp filter and returned stale compile errors even after current compile status was green.
+- Runtime log verification was initially weak because `editor.logs` returned stale compile errors even after current compile status was green. The bridge now supports `afterIndex` cursor reads; callers should establish a baseline before each change and inspect only newer lines.
 
 ## Bridge Lessons
 
 - `editor.open_scene` needed a `forceReload` mode. After play/stop, the active editor session can remain present but expose an empty scene to bridge reads until the sourced scene is reopened from disk.
 - `editor.open_scene` also needs editor-asset resolution, not only resource-library resolution. In the live ARPG iteration, `ResourceLibrary.Get<SceneFile>("scenes/minimal.scene")` failed from the bridge context while `AssetSystem.FindByPath("scenes/minimal.scene").LoadResource<SceneFile>()` succeeded.
-- The current play feedback loop is not enough for runtime inspection. `editor.play` can report play mode started, but follow-up scene reads may target a stale editor session instead of the live game session. This is a blocker for agent confidence during game POCs.
-- In the 2026-04-30 UI pass, `editor.play` reported `hasGameSession: true` immediately, but subsequent `editor.play_state` reads reported `isPlaying: true` with `hasGameSession: false`, and `scene.summary` only saw the saved editor scene. Runtime-scene targeting needs to be made explicit before agents can verify HUD/zombie objects that are created during play.
+- The initial play feedback loop was not enough for runtime inspection. `editor.play` could report play mode started, but follow-up scene reads sometimes targeted a stale editor session instead of the live game session. The bridge now supports explicit `targetSession: "runtime"` reads and `editor.stop stopAll`; post-transition stale-tab restoration is still needed.
+- In the 2026-04-30 UI pass, `editor.play` reported `hasGameSession: true` immediately, but subsequent `editor.play_state` reads reported `isPlaying: true` with `hasGameSession: false`, and `scene.summary` only saw the saved editor scene. Explicit runtime targeting addresses the core read-path issue; generic viewport/HUD capture remains open.
 - In the 2026-05-01 ARPG feature slice, runtime camera capture only worked after fixing the game component to lazily build the world once play mode is active. This was a game-code bug, but it also reinforced the need for a runtime self-report or game-session object query.
-- `editor.logs` needs cursor/timestamp support. Right now it tails the file and can surface stale compile/runtime errors as if they are current unless the caller uses very specific filters.
+- `editor.logs` now supports `afterIndex` cursor reads, which avoids treating older compile/runtime errors as current when callers establish a baseline first. Structured log-event capture is still future work.
 - `ModelRenderer` should be created disabled until a valid model is assigned, then enabled. Creating it enabled with no model can assert in s&box.
 - `AssetSystem.CreateResource("material", ...)` returned null for `.vmat` creation on this install. The bridge now writes a minimal `.vmat` source file, registers it, and compiles it.
 - `SoundEvent` read-back needs defensive metadata access. Some built-in sound files throw when reading duration/channel/rate before load; the bridge now reports those fields best-effort.
@@ -171,14 +171,14 @@ Verification:
 - Sound hooks exist as component properties, but defaults are empty because the local project does not yet include reliable ambient/zombie/weapon sound events. A proper sound asset import/use path is still needed.
 - Local game-component type discovery remains unresolved. Agents can add a known compiled type by exact name, but they cannot yet ask the bridge to list all local project component types.
 - Joint creation works, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
-- The bridge cannot yet inspect runtime-only objects created during play. For the next POC iteration, add a runtime feedback channel or play-session scene targeting so an agent can verify the warrior, zombies, HUD, loot, and gore state directly.
-- `visual.capture_camera` verifies the world camera but not the screen UI overlay. The orb/inventory/equipment work needs either direct human verification in the editor viewport or a bridge capability that captures/composes UI panels.
+- The bridge can now inspect the live `GameSession` with `targetSession: "runtime"` and component-authored runtime test actions. Generic runtime-only object queries and panel hierarchy inspection are still limited to what the bridge can resolve through normal scene/component reads or explicit self-report hooks.
+- `visual.capture_camera` verifies the world camera but not the screen UI overlay. The ARPG runtime self-report can verify logical orb/inventory/equipment state, but pixel/viewport HUD capture or generic panel hierarchy inspection is still needed for visual verification.
 - Combat has simple state/visuals rather than animation graph integration. Animation graph/property support should come after runtime feedback is trustworthy.
 
 ## Recommended Next Bridge Work
 
 1. Seed human-verified orientation overrides for the rest of the generated ARPG prop kit.
-2. Add play-session-aware scene reads, or a separate runtime snapshot command that can inspect the live game session.
-3. Add timestamp/cursor-based log reads so feedback ignores stale errors.
-4. Add a small runtime self-report component/tool path for gameplay state: player health, energy, position, zombie count, loot count, and last event.
+2. Expand runtime inspection beyond the verified `targetSession: "runtime"` reads and component-authored self-report hooks, especially generic panel hierarchy and runtime-only object queries.
+3. Add structured log-event capture if a stable editor-library hook is verified.
+4. Standardize reusable runtime self-report hooks for gameplay state: player health, energy, position, zombie count, loot count, and last event.
 5. Add resource/asset import and selection helpers for models, decals, particles, and sounds.

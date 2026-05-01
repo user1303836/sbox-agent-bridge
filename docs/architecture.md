@@ -9,9 +9,9 @@ Give agents a narrow, reliable way to inspect and operate the live s&box editor 
 ```text
 Agent/MCP client
   <-> MCP server over stdio
-    <-> bridge command files in %TEMP%/sbox-agent-bridge
-      <-> s&box editor bridge runtime/status dock
-        <-> SceneEditorSession.Active
+      <-> bridge command files in %TEMP%/sbox-agent-bridge
+        <-> s&box editor bridge runtime/status dock
+        <-> SceneEditorSession.Active / All / GameSession
 ```
 
 ## Why One Repo
@@ -63,7 +63,7 @@ HTTP/SSE can be added later behind the same `BridgeClient` interface.
 
 Editor feedback intentionally keeps sources separate:
 
-- Play state comes from `SceneEditorSession.Active`.
+- Play state comes from the resolved `SceneEditorSession`; runtime-aware reads can target the live `GameSession`.
 - Compile status comes from observed s&box `compile.started` events and live `CompileGroup`/`Compiler` state.
 - Recent logs come from `Environment.CurrentDirectory/logs/sbox-dev.log`.
 

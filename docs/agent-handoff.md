@@ -50,7 +50,7 @@ Agent / MCP client
   <-> TypeScript MCP server over stdio
     <-> file IPC under %TEMP%/sbox-agent-bridge
       <-> s&box editor bridge runtime and Agent Bridge dock
-        <-> live SceneEditorSession.Active
+        <-> live SceneEditorSession.Active / All / GameSession
 ```
 
 The bridge runtime lives in `editor/`. It is installed into an s&box project as `Libraries/sbox_agent_bridge`. It auto-starts on editor frames once the editor assembly compiles and loads. The dock is visible at `View -> Agent Bridge` when the editor library is healthy.
@@ -175,21 +175,26 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Agent bridge commands need active tab awareness. The bridge now has `editor.tabs` and `editor.activate_tab`.
 - Direct IPC callers need schema validation too. Partial vectors such as `{ "z": 0 }` are now rejected because they previously zeroed omitted axes.
 - `gameobject.destroy` was once verified but became unsafe in the current editor session after play-mode testing due to a native editor delete/undo null reference.
-- Play mode and editor scene inspection are not fully aligned yet. `editor.play` may start play mode, while scene reads still target the editor scene or stale session.
+- Play mode and editor scene inspection require explicit targeting. Use `targetSession: "runtime"` for live game reads; default editor reads can still hit stale editor sessions after transitions.
 - Runtime world construction in `ArpgDemoController` now also happens lazily from `OnUpdate` once `Game.IsPlaying` is true. This fixed a case where `OnStart` ran in the editor, returned early, and never built the runtime ARPG world after entering play mode.
 - Citizen weapon attachment is better handled through model attachments. The current test project enables attachments for the player renderer and parents the sword to `hold_R`, falling back to `hand_R` or the old body-relative pose.
 - `editor.open_scene` with `forceReload: true` recovers sourced scenes after stale/empty session states.
 - Local compiled game components can be added by exact C# type name, but `component.list_types` still does not reliably enumerate local project components.
 - Bounds help with geometry but do not prove semantic orientation. A prop can have sensible bounds while upside down.
 - `visual.capture_camera` gives the agent an actual rendered feedback channel and brightness stats, but visual composition and semantic orientation still need human or vision-model confirmation.
-- `visual.capture_camera` captures the world camera but not the screen UI overlay, so HUD/orb/inventory verification still needs human/editor visual checking or a future UI capture/inspection bridge.
+- `visual.capture_camera` captures the world camera but not the screen UI overlay. Runtime UI state can now be verified through component-authored test actions, but generic panel hierarchy/pixel capture is still future work.
+- 2026-05-01 ARPG UI/input pass clarified the project goal: ARPG feature work is only a bridge test harness. When a game feature is hard to verify, record and prioritize the missing bridge capability instead of polishing the game around the limitation.
+- `editor.logs` and `editor.feedback` now support `afterIndex` cursor reads. Use `verified.logs.nextAfterIndex` from a baseline read before making a change, then pass it back to see only new log lines.
+- Runtime reads now support `targetSession: "runtime"` for live `GameSession` targeting. `editor.stop` also supports `stopAll: true` for smoke-test cleanup. Duplicate/stale editor tabs can still remain after transitions, so future work should add wait helpers and post-stop scene restoration.
+- Shell-driven OS keypresses were not reliable enough to verify runtime input. Use `runtime.run_test_action` for deterministic component-authored verification; focused viewport input injection remains future work.
+- The ARPG controller now exposes Agent Bridge runtime test actions for logical UI/gameplay state. The runtime smoke verified inventory open, damage, restore, skill list, and zombie count. It also exposed that the current ScreenPanel child panels are not built (`hud.root=false`), which is a testbed/UI implementation issue now visible through bridge read-back.
 
 ## Known Blockers And Caveats
 
 - `gameobject.destroy`: blocked pending fresh editor recheck or safer delete strategy.
 - `script.delete`: implemented but not live-smoked; use a scratch-file smoke before marking verified.
-- Runtime inspection: not reliable yet; needs play-session-aware scene reads or a runtime snapshot/self-report path.
-- Logs: no cursor/timestamp reads yet, so stale errors can pollute feedback.
+- Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, and runtime test actions are verified, but duplicate stale tab restoration and generic runtime queries still need work.
+- Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
 - Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
 - Joint target assignment: blocked because verified `Joint.Object2` is read-only.
@@ -200,8 +205,9 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 The next best bridge tasks are:
 
 - seed human-verified orientation overrides for the generated ARPG prop kit and add isolated asset preview captures for ambiguous rotations;
-- runtime/game-session inspection or a gameplay self-report component;
-- log cursor/timestamp support;
+- post-transition stale-tab restoration and wait-for-runtime-session helpers;
+- viewport/HUD capture or generic panel hierarchy inspection;
+- focused viewport input injection;
 - fresh-session destructive edit verification;
 - local component discovery.
 

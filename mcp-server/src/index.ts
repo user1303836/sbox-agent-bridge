@@ -7,6 +7,7 @@ import { registerEditorTools } from "./tools/editor.js";
 import { registerGameObjectTools } from "./tools/gameobject.js";
 import { registerPhysicsTools } from "./tools/physics.js";
 import { registerPrefabTools } from "./tools/prefab.js";
+import { registerRuntimeTools } from "./tools/runtime.js";
 import { registerSceneTools } from "./tools/scene.js";
 import { registerScriptTools } from "./tools/script.js";
 import { registerSoundTools } from "./tools/sound.js";
@@ -31,5 +32,6 @@ registerVisualTools(server, bridge);
 registerSoundTools(server, bridge);
 registerPhysicsTools(server, bridge);
 registerPrefabTools(server, bridge);
+registerRuntimeTools(server, bridge);
 
 await server.connect(new StdioServerTransport());

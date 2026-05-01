@@ -18,6 +18,33 @@ internal static class HandlerUtil
 		return ActiveSession ?? throw new InvalidOperationException( "No active editor scene session." );
 	}
 
+	public static SessionResolution RequireSessionResolution( JsonElement payload, string defaultTarget = "active" )
+	{
+		var sessions = SceneEditorSession.All.ToArray();
+		var active = SceneEditorSession.Active;
+		var selected = ResolveSelectedSession( payload, sessions );
+		var requestedTarget = GetString( payload, "targetSession", defaultTarget );
+
+		if ( string.IsNullOrWhiteSpace( requestedTarget ) )
+			requestedTarget = defaultTarget;
+
+		requestedTarget = requestedTarget.Trim();
+		var normalizedTarget = requestedTarget.ToLowerInvariant();
+
+		return normalizedTarget switch
+		{
+			"active" => BuildSessionResolution( selected ?? active, selected is null ? "active" : "selector", requestedTarget, "editor", selected ),
+			"editor" => ResolveEditorSession( selected ?? active, requestedTarget, selected ),
+			"playing" or "runtime" or "game" or "gamesession" or "game_session" => ResolvePlayingSession( selected, sessions, active, requestedTarget ),
+			_ => throw new InvalidOperationException( $"Unsupported targetSession '{requestedTarget}'. Use active, editor, playing, runtime, or game." )
+		};
+	}
+
+	public static SceneEditorSession RequireTargetSession( JsonElement payload, string defaultTarget = "active" )
+	{
+		return RequireSessionResolution( payload, defaultTarget ).Session;
+	}
+
 	public static IEnumerable<GameObject> WalkSceneObjects( Scene scene )
 	{
 		foreach ( var child in scene.Children )
@@ -40,6 +67,33 @@ internal static class HandlerUtil
 				yield return item;
 			}
 		}
+	}
+
+	public static object DescribeSessionResolution( SessionResolution resolution )
+	{
+		return new
+		{
+			requestedTarget = resolution.RequestedTarget,
+			resolvedTarget = resolution.ResolvedTarget,
+			resolutionMode = resolution.ResolutionMode,
+			session = DescribeSession( resolution.Session ),
+			sourceSession = resolution.SourceSession is null ? null : DescribeSession( resolution.SourceSession )
+		};
+	}
+
+	public static object DescribeSession( SceneEditorSession session )
+	{
+		return new
+		{
+			id = GetSessionId( session ),
+			index = FindSessionIndex( session ),
+			scene = SafeRead( () => session.Scene?.Name ?? "" ),
+			sourcePath = GetSessionSourcePath( session ),
+			isActive = ReferenceEquals( session, SceneEditorSession.Active ),
+			isPlaying = TryReadIsPlaying( session, false ),
+			hasGameSession = TryGetGameSession( session ) is not null,
+			isGameSession = session is GameEditorSession
+		};
 	}
 
 	public static object DescribeGameObject( GameObject go )
@@ -1223,5 +1277,193 @@ internal static class HandlerUtil
 		var w = value.TryGetProperty( "w", out var wElement ) && wElement.TryGetSingle( out var wValue ) ? wValue : 1f;
 
 		return new Rotation( x, y, z, w );
+	}
+
+	private static SessionResolution ResolveEditorSession( SceneEditorSession session, string requestedTarget, SceneEditorSession? selected )
+	{
+		if ( session is null )
+			throw new InvalidOperationException( "No active editor scene session." );
+
+		if ( session is GameEditorSession gameEditorSession && gameEditorSession.Parent is not null )
+		{
+			return BuildSessionResolution( gameEditorSession.Parent, selected is null ? "active-parent" : "selector-parent", requestedTarget, "editor", session );
+		}
+
+		return BuildSessionResolution( session, selected is null ? "active" : "selector", requestedTarget, "editor", selected );
+	}
+
+	private static SessionResolution ResolvePlayingSession( SceneEditorSession? selected, SceneEditorSession[] sessions, SceneEditorSession? active, string requestedTarget )
+	{
+		var candidates = new List<SceneEditorSession>();
+
+		if ( selected is not null )
+		{
+			candidates.Add( selected );
+		}
+		else
+		{
+			if ( active is not null )
+				candidates.Add( active );
+
+			foreach ( var session in sessions )
+			{
+				if ( active is not null && ReferenceEquals( session, active ) )
+					continue;
+
+				candidates.Add( session );
+			}
+		}
+
+		foreach ( var session in candidates )
+		{
+			var gameSession = TryGetGameSession( session );
+			if ( gameSession is not null )
+			{
+				return BuildSessionResolution(
+					gameSession,
+					selected is null ? "playing-session-search" : "selector-game-session",
+					requestedTarget,
+					"gameSession",
+					session
+				);
+			}
+		}
+
+		var selectorSuffix = selected is null ? "" : " for the selected editor session";
+		throw new InvalidOperationException( $"No live playing GameSession was found{selectorSuffix}. Start play mode first, or use targetSession:'active' for editor-scene reads." );
+	}
+
+	private static SessionResolution BuildSessionResolution( SceneEditorSession? session, string mode, string requestedTarget, string resolvedTarget, SceneEditorSession? sourceSession )
+	{
+		if ( session is null )
+			throw new InvalidOperationException( "No active editor scene session." );
+
+		return new SessionResolution
+		{
+			Session = session,
+			SourceSession = sourceSession is not null && !ReferenceEquals( sourceSession, session ) ? sourceSession : null,
+			RequestedTarget = requestedTarget,
+			ResolvedTarget = resolvedTarget,
+			ResolutionMode = mode
+		};
+	}
+
+	private static SceneEditorSession? ResolveSelectedSession( JsonElement payload, SceneEditorSession[] sessions )
+	{
+		var sessionIndex = GetInt( payload, "sessionIndex", -1 );
+		if ( sessionIndex >= 0 )
+		{
+			if ( sessionIndex >= sessions.Length )
+				throw new InvalidOperationException( $"No editor session exists at sessionIndex {sessionIndex}." );
+
+			return sessions[sessionIndex];
+		}
+
+		var sessionId = GetString( payload, "sessionId" );
+		if ( !string.IsNullOrWhiteSpace( sessionId ) )
+		{
+			return sessions.FirstOrDefault( x => string.Equals( GetSessionId( x ), sessionId, StringComparison.OrdinalIgnoreCase ) )
+				?? throw new InvalidOperationException( $"No editor session matched sessionId '{sessionId}'." );
+		}
+
+		var sessionPath = NormalizeSessionPath( GetString( payload, "sessionPath" ) );
+		if ( !string.IsNullOrWhiteSpace( sessionPath ) )
+		{
+			return sessions.FirstOrDefault( x => string.Equals( NormalizeSessionPath( GetSessionSourcePath( x ) ), sessionPath, StringComparison.OrdinalIgnoreCase ) )
+				?? throw new InvalidOperationException( $"No editor session matched sessionPath '{sessionPath}'." );
+		}
+
+		var sessionScene = GetString( payload, "sessionScene" );
+		if ( !string.IsNullOrWhiteSpace( sessionScene ) )
+		{
+			return sessions.FirstOrDefault( x =>
+					string.Equals( SafeRead( () => x.Scene?.Name ?? "" ), sessionScene, StringComparison.OrdinalIgnoreCase ) ||
+					string.Equals( SafeRead( () => x.Scene?.Source?.ResourceName ?? "" ), sessionScene, StringComparison.OrdinalIgnoreCase )
+				)
+				?? throw new InvalidOperationException( $"No editor session matched sessionScene '{sessionScene}'." );
+		}
+
+		return null;
+	}
+
+	public static int FindSessionIndex( SceneEditorSession session )
+	{
+		return FindSessionIndex( session, SceneEditorSession.All.ToArray() );
+	}
+
+	public static int FindSessionIndex( SceneEditorSession session, SceneEditorSession[] sessions )
+	{
+		for ( var i = 0; i < sessions.Length; i++ )
+		{
+			if ( ReferenceEquals( sessions[i], session ) )
+				return i;
+		}
+
+		return -1;
+	}
+
+	public static string GetSessionId( SceneEditorSession session )
+	{
+		return SafeRead( () => session.Scene?.Id.ToString() ?? "" );
+	}
+
+	public static string GetSessionSourcePath( SceneEditorSession session )
+	{
+		return SafeRead( () => session.Scene?.Source?.ResourcePath ?? "" );
+	}
+
+	private static SceneEditorSession? TryGetGameSession( SceneEditorSession session )
+	{
+		try
+		{
+			return session.GameSession;
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	private static bool TryReadIsPlaying( SceneEditorSession session, bool fallback )
+	{
+		try
+		{
+			return session.IsPlaying;
+		}
+		catch
+		{
+			return fallback;
+		}
+	}
+
+	private static T SafeRead<T>( Func<T> read, T fallback = default )
+	{
+		try
+		{
+			return read();
+		}
+		catch
+		{
+			return fallback;
+		}
+	}
+
+	private static string NormalizeSessionPath( string path )
+	{
+		path = (path ?? "").Replace( '\\', '/' ).Trim().TrimStart( '/' );
+
+		if ( path.StartsWith( "assets/", StringComparison.OrdinalIgnoreCase ) )
+			path = path.Substring( "assets/".Length );
+
+		return path;
+	}
+
+	public sealed class SessionResolution
+	{
+		public SceneEditorSession Session { get; set; }
+		public SceneEditorSession? SourceSession { get; set; }
+		public string RequestedTarget { get; set; } = "active";
+		public string ResolvedTarget { get; set; } = "editor";
+		public string ResolutionMode { get; set; } = "active";
 	}
 }

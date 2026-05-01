@@ -32,6 +32,14 @@ export function registerGameObjectTools(server: McpServer, bridge: BridgeClient)
         .enum(["get", "create", "rename", "set_transform", "set_enabled", "destroy", "duplicate", "reparent", "place_asset"])
         .describe("The GameObject action to run."),
       id: z.string().optional().describe("Target GameObject id for read or mutation actions."),
+      targetSession: z
+        .enum(["active", "editor", "playing", "runtime", "game"])
+        .optional()
+        .describe("For get, choose which session to read from. Mutations still operate on the active editor scene."),
+      sessionId: z.string().optional().describe("Optional editor session id selector for get."),
+      sessionIndex: z.number().int().min(0).optional().describe("Optional editor session index selector for get."),
+      sessionPath: z.string().optional().describe("Optional scene source path selector for get."),
+      sessionScene: z.string().optional().describe("Optional scene name selector for get."),
       parentId: z.string().optional().describe("Parent GameObject id for create or reparent; omit during reparent to move to scene root."),
       name: z.string().optional().describe("Name for create or rename actions."),
       modelPath: z.string().optional().describe("Model path for place_asset."),

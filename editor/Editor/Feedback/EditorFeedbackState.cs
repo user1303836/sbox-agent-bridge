@@ -70,22 +70,23 @@ internal static class EditorFeedbackState
 		};
 	}
 
-	public static object DescribeLogs( int maxLines, string contains, string level )
+	public static object DescribeLogs( int maxLines, string contains, string level, int afterIndex = -1 )
 	{
 		maxLines = Clamp( maxLines, 1, 1000 );
 		contains ??= "";
 		level = string.IsNullOrWhiteSpace( level ) ? "all" : level.Trim().ToLowerInvariant();
+		afterIndex = Math.Max( -1, afterIndex );
 
 		var path = Path.Combine( Environment.CurrentDirectory, "logs", "sbox-dev.log" );
 		var exists = File.Exists( path );
 		var readError = "";
-		var rawLines = Array.Empty<string>();
+		var logRead = LogReadResult.Empty;
 
 		if ( exists )
 		{
 			try
 			{
-				rawLines = ReadTailLines( path, maxLines * 4 );
+				logRead = ReadTailLines( path, maxLines * 4, afterIndex );
 			}
 			catch ( Exception ex )
 			{
@@ -93,11 +94,14 @@ internal static class EditorFeedbackState
 			}
 		}
 
-		var entries = rawLines
-			.Select( ( line, index ) => ParseLogLine( line, index ) )
+		var entries = logRead.Lines
+			.Select( ( line, index ) => ParseLogLine( line, logRead.StartIndex + index ) )
 			.Where( x => MatchesLogFilter( x, contains, level ) )
 			.TakeLast( maxLines )
 			.ToArray();
+
+		var returnedNewestIndex = entries.Length == 0 ? (int?)null : entries.Max( x => x.Index );
+		var newestIndex = logRead.TotalLineCount <= 0 ? -1 : logRead.TotalLineCount - 1;
 
 		return new
 		{
@@ -106,6 +110,12 @@ internal static class EditorFeedbackState
 			exists,
 			readError,
 			maxLines,
+			afterIndex,
+			newestIndex,
+			returnedNewestIndex,
+			nextAfterIndex = newestIndex,
+			totalLineCount = logRead.TotalLineCount,
+			truncatedByTailLimit = logRead.TruncatedByTailLimit,
 			contains,
 			level,
 			levelSource = "inferred from log text; use raw for exact editor output",
@@ -197,23 +207,36 @@ internal static class EditorFeedbackState
 		};
 	}
 
-	private static string[] ReadTailLines( string path, int maxLines )
+	private static LogReadResult ReadTailLines( string path, int maxLines, int afterIndex )
 	{
 		maxLines = Clamp( maxLines, 1, 4000 );
-		var lines = new Queue<string>();
+		var lines = new Queue<(int Index, string Line)>();
+		var totalLineCount = 0;
+		var candidateCount = 0;
 
 		using var stream = new FileStream( path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete );
 		using var reader = new StreamReader( stream );
 
 		while ( reader.ReadLine() is { } line )
 		{
+			var index = totalLineCount++;
+			if ( index <= afterIndex )
+				continue;
+
+			candidateCount++;
 			if ( lines.Count >= maxLines )
 				lines.Dequeue();
 
-			lines.Enqueue( line );
+			lines.Enqueue( (index, line) );
 		}
 
-		return lines.ToArray();
+		return new LogReadResult
+		{
+			Lines = lines.Select( x => x.Line ).ToArray(),
+			StartIndex = lines.Count == 0 ? totalLineCount : lines.Peek().Index,
+			TotalLineCount = totalLineCount,
+			TruncatedByTailLimit = candidateCount > lines.Count
+		};
 	}
 
 	private static LogLineSnapshot ParseLogLine( string raw, int index )
@@ -364,5 +387,21 @@ internal static class EditorFeedbackState
 		public string Message { get; set; }
 		public string Raw { get; set; }
 		public bool IsContinuation { get; set; }
+	}
+
+	private sealed class LogReadResult
+	{
+		public static readonly LogReadResult Empty = new()
+		{
+			Lines = Array.Empty<string>(),
+			StartIndex = 0,
+			TotalLineCount = 0,
+			TruncatedByTailLimit = false
+		};
+
+		public string[] Lines { get; set; }
+		public int StartIndex { get; set; }
+		public int TotalLineCount { get; set; }
+		public bool TruncatedByTailLimit { get; set; }
 	}
 }

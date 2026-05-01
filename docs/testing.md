@@ -48,6 +48,15 @@ npm run smoke:live
 
 This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, verifies orientation override storage plus `gameobject.place_asset`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, reads a component from the active scene when one exists, and then attempts to clean up the temporary objects.
 
+For runtime feedback and ARPG testbed verification:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
+```
+
+This focused smoke first calls `editor.stop` with `stopAll: true`, opens `scenes/minimal.scene`, enters play mode, verifies `scene.summary` with `targetSession: runtime`, lists ARPG runtime test actions, and invokes deterministic ARPG actions for UI state, inventory open, damage, and restore. It intentionally verifies bridge/runtime feedback rather than OS-level input focus.
+
 Useful environment variables:
 
 - `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root.
@@ -55,6 +64,8 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
 - `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
 - `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` cannot be added and mutated. The fixture may be addable by exact type name even when it is not visible to `component.list_types`.
+- `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`: override the runtime feedback smoke scene path; defaults to `scenes/minimal.scene`.
+- `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1`: allow the runtime feedback smoke to recover a stale unsaved test scene with `editor.open_scene forceReload`.
 
 ## Live Editor Smoke Checks
 

@@ -11,7 +11,7 @@ internal static class GameObjectHandlers
 {
 	public static BridgeResponse Get( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var session = HandlerUtil.RequireTargetSession( request.Payload );
 		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
 
 		return BridgeResponse.Success( request.Id, new

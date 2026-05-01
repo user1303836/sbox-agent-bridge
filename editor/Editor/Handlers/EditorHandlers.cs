@@ -145,6 +145,7 @@ internal static class EditorHandlers
 		var path = HandlerUtil.GetRequiredString( request.Payload, "path" ).Replace( '\\', '/' ).TrimStart( '/' );
 		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
 		var forceReload = HandlerUtil.GetBool( request.Payload, "forceReload", false );
+		var discardUnsaved = HandlerUtil.GetBool( request.Payload, "discardUnsaved", false );
 		var sceneFile = ResourceLibrary.Get<SceneFile>( path );
 		var resolution = "resource-library";
 
@@ -173,8 +174,8 @@ internal static class EditorHandlers
 		}
 		else if ( forceReload )
 		{
-			if ( existing.HasUnsavedChanges )
-				throw new InvalidOperationException( $"Scene '{path}' has unsaved changes; refusing forceReload." );
+			if ( existing.HasUnsavedChanges && !discardUnsaved )
+				throw new InvalidOperationException( $"Scene '{path}' has unsaved changes; refusing forceReload without discardUnsaved:true." );
 
 			existing.Destroy();
 			EditorScene.OpenScene( sceneFile );
@@ -194,6 +195,7 @@ internal static class EditorHandlers
 				requestedPath = path,
 				bringToFront,
 				forceReload,
+				discardUnsaved,
 				resolution,
 				scene = existing.Scene.Name,
 				hasUnsavedChanges = existing.HasUnsavedChanges,
@@ -204,18 +206,19 @@ internal static class EditorHandlers
 
 	public static BridgeResponse PlayState( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
 
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = "Editor play state read",
-			verified = DescribePlayState( session )
+			verified = DescribePlayState( resolution.Session, resolution )
 		} );
 	}
 
 	public static BridgeResponse Play( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload, "editor" );
+		var session = resolution.Session;
 		var wasPlaying = session.IsPlaying;
 		Exception transitionException = null;
 
@@ -231,13 +234,14 @@ internal static class EditorHandlers
 			}
 		}
 
-		var playState = DescribePlayState( session );
+		var playState = DescribePlayState( session, resolution );
 
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = wasPlaying ? "Editor was already in play mode" : "Editor play mode requested",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				wasPlaying,
 				transitionPolicy = "state-readback",
 				expectedIsPlaying = true,
@@ -254,7 +258,12 @@ internal static class EditorHandlers
 
 	public static BridgeResponse Stop( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var stopAll = HandlerUtil.GetBool( request.Payload, "stopAll", false ) || HandlerUtil.GetBool( request.Payload, "all", false );
+		if ( stopAll )
+			return StopAll( request );
+
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload, "editor" );
+		var session = resolution.SourceSession ?? resolution.Session;
 		var wasPlaying = session.IsPlaying;
 		Exception transitionException = null;
 
@@ -277,6 +286,8 @@ internal static class EditorHandlers
 			message = wasPlaying ? "Editor stop play mode requested" : "Editor was already stopped",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				stopSession = HandlerUtil.DescribeSession( session ),
 				wasPlaying,
 				transitionPolicy = "state-readback",
 				expectedIsPlaying = false,
@@ -291,16 +302,91 @@ internal static class EditorHandlers
 		} );
 	}
 
+	private static BridgeResponse StopAll( BridgeRequest request )
+	{
+		var sessions = SceneEditorSession.All.ToArray();
+		var derivedGameSessionCount = sessions.Count( session => session is GameEditorSession gameSession && gameSession.Parent is not null );
+		var orphanGameSessionCount = sessions.Count( session => session is GameEditorSession gameSession && gameSession.Parent is null );
+		var stopTargets = new System.Collections.Generic.List<SceneEditorSession>();
+
+		foreach ( var session in sessions )
+		{
+			var target = session is GameEditorSession gameSession && gameSession.Parent is not null
+				? gameSession.Parent
+				: session;
+
+			if ( target is GameEditorSession )
+				continue;
+
+			if ( !TryReadIsPlaying( target, false ) )
+				continue;
+
+			if ( stopTargets.Any( existing => ReferenceEquals( existing, target ) ) )
+				continue;
+
+			stopTargets.Add( target );
+		}
+
+		var attempts = stopTargets
+			.Select( session =>
+			{
+				Exception transitionException = null;
+
+				try
+				{
+					session.StopPlaying();
+				}
+				catch ( Exception ex )
+				{
+					transitionException = ex;
+				}
+
+				var playState = DescribePlayState( session );
+
+				return new
+				{
+					session = HandlerUtil.DescribeSession( session ),
+					transitionPending = playState.IsPlaying,
+					transitionException = transitionException is null ? null : new
+					{
+						message = transitionException.Message,
+						stateChangedDespiteException = !TryReadIsPlaying( session, true )
+					},
+					playState
+				};
+			} )
+			.ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = attempts.Length > 0 ? "Editor stop all play sessions requested" : "No playing editor sessions found",
+			verified = new
+			{
+				stopAll = true,
+				transitionPolicy = "state-readback",
+				expectedIsPlaying = false,
+				sessionCount = sessions.Length,
+				derivedGameSessionCount,
+				orphanGameSessionCount,
+				attemptedCount = attempts.Length,
+				transitionPending = attempts.Any( attempt => attempt.transitionPending ),
+				sessions = attempts,
+				activePlayState = SceneEditorSession.Active is null ? null : DescribePlayState( SceneEditorSession.Active )
+			}
+		} );
+	}
+
 	public static BridgeResponse Logs( BridgeRequest request )
 	{
 		var maxLines = HandlerUtil.GetInt( request.Payload, "maxLines", 100 );
 		var contains = HandlerUtil.GetString( request.Payload, "contains" );
 		var level = HandlerUtil.GetString( request.Payload, "level", "all" );
+		var afterIndex = HandlerUtil.GetInt( request.Payload, "afterIndex", -1 );
 
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = "Editor logs read",
-			verified = EditorFeedbackState.DescribeLogs( maxLines, contains, level )
+			verified = EditorFeedbackState.DescribeLogs( maxLines, contains, level, afterIndex )
 		} );
 	}
 
@@ -317,20 +403,23 @@ internal static class EditorHandlers
 
 	public static BridgeResponse Feedback( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var maxDiagnostics = HandlerUtil.GetInt( request.Payload, "maxDiagnostics", 20 );
 		var maxLines = HandlerUtil.GetInt( request.Payload, "maxLines", 100 );
 		var contains = HandlerUtil.GetString( request.Payload, "contains" );
 		var level = HandlerUtil.GetString( request.Payload, "level", "all" );
+		var afterIndex = HandlerUtil.GetInt( request.Payload, "afterIndex", -1 );
 
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = "Editor feedback read",
 			verified = new
 			{
-				playState = DescribePlayState( session ),
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				playState = DescribePlayState( session, resolution ),
 				compileStatus = EditorFeedbackState.DescribeCompileStatus( maxDiagnostics ),
-				logs = EditorFeedbackState.DescribeLogs( maxLines, contains, level )
+				logs = EditorFeedbackState.DescribeLogs( maxLines, contains, level, afterIndex )
 			}
 		} );
 	}
@@ -491,7 +580,7 @@ internal static class EditorHandlers
 		} );
 	}
 
-	private static PlayStateSnapshot DescribePlayState( SceneEditorSession session )
+	private static PlayStateSnapshot DescribePlayState( SceneEditorSession session, HandlerUtil.SessionResolution? resolution = null )
 	{
 		var readErrors = new System.Collections.Generic.List<object>();
 		var scene = "";
@@ -548,6 +637,7 @@ internal static class EditorHandlers
 			HasGameSession = hasGameSession,
 			GameSession = gameSession,
 			GameSessionDetails = gameSessionDetails,
+			TargetSession = resolution is null ? null : HandlerUtil.DescribeSessionResolution( resolution ),
 			ReadErrors = readErrors.ToArray()
 		};
 	}
@@ -734,6 +824,7 @@ internal static class EditorHandlers
 		public bool HasGameSession { get; set; }
 		public string GameSession { get; set; }
 		public object GameSessionDetails { get; set; }
+		public object TargetSession { get; set; }
 		public object[] ReadErrors { get; set; }
 	}
 

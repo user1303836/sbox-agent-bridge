@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Sandbox;
 
 [Title( "Agent Bridge Mutation Fixture" )]
@@ -31,4 +32,68 @@ public sealed class AgentBridgeMutationFixture : Component
 	[Property] public SoundEvent SoundEventValue { get; set; }
 	[Property] public GameObject GameObjectReference { get; set; }
 	[Property] public Component ComponentReference { get; set; }
+	[Property, Group( "Agent Bridge" )] public string AgentBridgeTestActions { get; private set; } = "fixture.echo|fixture.state|fixture.set_string";
+	[Property, Group( "Agent Bridge" )] public string AgentBridgeTestPayloadJson { get; set; } = "{}";
+	[Property, Group( "Agent Bridge" )] public string AgentBridgeTestResultJson { get; private set; } = "";
+	[Property, Group( "Agent Bridge" )]
+	public string AgentBridgeTestAction
+	{
+		get => "";
+		set => AgentBridgeTestResultJson = JsonSerializer.Serialize( RunFixtureTestAction( value, AgentBridgeTestPayloadJson ) );
+	}
+
+	public string[] AgentBridgeListTestActions()
+	{
+		return new[]
+		{
+			"fixture.echo",
+			"fixture.state",
+			"fixture.set_string"
+		};
+	}
+
+	private object RunFixtureTestAction( string action, string payloadJson )
+	{
+		return action switch
+		{
+			"fixture.echo" => new
+			{
+				action,
+				payloadJson,
+				stringValue = StringValue,
+				intValue = IntValue,
+				boolValue = BoolValue
+			},
+			"fixture.state" => DescribeAgentBridgeState(),
+			"fixture.set_string" => SetStringFromPayload( payloadJson ),
+			_ => throw new System.InvalidOperationException( $"Unknown fixture test action '{action}'." )
+		};
+	}
+
+	private object DescribeAgentBridgeState()
+	{
+		return new
+		{
+			stringValue = StringValue,
+			boolValue = BoolValue,
+			intValue = IntValue,
+			floatValue = FloatValue,
+			gameObject = GameObject?.Name ?? ""
+		};
+	}
+
+	private object SetStringFromPayload( string payloadJson )
+	{
+		using var document = JsonDocument.Parse( string.IsNullOrWhiteSpace( payloadJson ) ? "{}" : payloadJson );
+		var value = document.RootElement.TryGetProperty( "value", out var valueElement ) && valueElement.ValueKind == JsonValueKind.String
+			? valueElement.GetString() ?? ""
+			: "";
+
+		StringValue = value;
+
+		return new
+		{
+			stringValue = StringValue
+		};
+	}
 }

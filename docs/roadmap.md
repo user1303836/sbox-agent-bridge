@@ -169,16 +169,18 @@ Candidate acceptance criteria:
 
 Goal: support edit-compile-play-debug loops.
 
-Status: in progress. Verified so far: authoritative play state, play start/stop with read-back, recent log tailing, compile status from observed compile events, and a combined `editor.feedback` action.
+Status: in progress. Verified so far: authoritative play state, play start/stop with read-back, `editor.stop stopAll` cleanup, target-session runtime reads, deterministic runtime test actions, recent log tailing with stable line-index cursors, compile status from observed compile events, and a combined `editor.feedback` action.
 
 Candidate actions:
 
 - `editor.play` - verified
 - `editor.stop` - verified
 - `editor.play_state` - verified
-- `editor.logs` - verified
+- `editor.logs` - verified, including `afterIndex` cursor reads
 - `editor.compile_status` - verified
 - `editor.feedback` - verified
+- `runtime.list_test_actions` - verified
+- `runtime.run_test_action` - verified
 - `compile.wait`
 
 Acceptance criteria:
@@ -186,14 +188,18 @@ Acceptance criteria:
 - Agents can detect hotload/compile failures without relying on screenshots.
 - Play mode can be started/stopped safely.
 - Runtime state inspection is separated from editor-scene inspection.
+- Log reads can establish a baseline cursor before a change and report only new lines after that change.
+- Component-authored runtime test actions can exercise gameplay/UI state without shell-level keypresses.
 
 Remaining gaps:
 
 - Wait/poll helper for compile completion.
 - Structured live log-event capture, if a stable editor-library hook is verified.
-- Dedicated runtime/game-session inspection while playing.
-- Stable post-transition game-session readback. The ARPG UI pass exposed `editor.play` returning a valid immediate game session while later `editor.play_state` reads reported `isPlaying: true` but no `GameSession`, leaving `scene.summary` pointed at the editor scene.
-- Timestamp/cursor-based logs so stale errors do not look current.
+- Generic runtime/game-session inspection beyond scene/component reads and component-authored self-report.
+- Stable post-transition game-session readback. Targeted runtime reads and runtime test actions work, but agents still need wait helpers for "play is fully ready" rather than fixed sleeps.
+- Post-stop stale-tab restoration. `editor.stop stopAll` clears playing editor sessions for smoke tests, but play/stop can still leave duplicate stale tabs and unsaved empty sessions that need `open_scene forceReload` recovery.
+- Focused viewport input injection. Component-authored runtime test actions work, but shell-driven OS keypresses were not reliable enough to verify game input focus.
+- Viewport/HUD capture. `visual.capture_camera` captures world cameras, but not the editor/game viewport UI overlay. Runtime UI self-report works for instrumented components; generic HUD verification needs viewport/window capture or panel hierarchy inspection.
 - Reverify destructive scene edits after play/stop transitions. The current editor session exposed a null reference in the native GameObject delete/undo path.
 
 ## Milestone 6: Rich Editor Access
@@ -205,6 +211,8 @@ Status: in progress. Verified so far: `asset.inspect_model` for model bounds/ori
 Candidate areas:
 
 - visual captures, annotated screenshots, and capture comparison;
+- viewport/HUD capture and runtime UI inspection;
+- runtime test hooks and deterministic input/action injection;
 - asset orientation metadata, bounds previews, orientation overrides, and high-level grounded placement helpers;
 - model/material/light/audio helpers;
 - project settings and input bindings;

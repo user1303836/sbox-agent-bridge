@@ -23,6 +23,14 @@ export function registerComponentTools(server: McpServer, bridge: BridgeClient):
         .describe("The component action to run."),
       id: z.string().optional().describe("Target Component id for get, get_properties, set_property, or validate_property."),
       gameObjectId: z.string().optional().describe("Target GameObject id for list_on_gameobject."),
+      targetSession: z
+        .enum(["active", "editor", "playing", "runtime", "game"])
+        .optional()
+        .describe("For list_on_gameobject, get, and get_properties, choose which session to read from. Mutations still operate on the active editor scene."),
+      sessionId: z.string().optional().describe("Optional editor session id selector for read actions."),
+      sessionIndex: z.number().int().min(0).optional().describe("Optional editor session index selector for read actions."),
+      sessionPath: z.string().optional().describe("Optional scene source path selector for read actions."),
+      sessionScene: z.string().optional().describe("Optional scene name selector for read actions."),
       type: z
         .string()
         .optional()

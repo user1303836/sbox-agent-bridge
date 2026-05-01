@@ -55,6 +55,8 @@ Errors use the same envelope:
 - `editor.logs`
 - `editor.compile_status`
 - `editor.feedback`
+- `runtime.list_test_actions`
+- `runtime.run_test_action`
 - `script.create`
 - `script.edit`
 - `script.delete`
@@ -111,7 +113,7 @@ Mutations should return a `verified` object read back from the editor after the 
 
 Vector payloads must be complete. For `Vector3` fields, direct protocol callers must include numeric `x`, `y`, and `z` values; partial vector objects are rejected before mutation.
 
-`editor.open_scene` accepts `path`, optional `bringToFront`, and optional `forceReload`. Use `forceReload: true` only when the scene has no unsaved changes; it reloads an already-open sourced scene from disk and is useful after play-mode transitions leave the active editor session stale.
+`editor.open_scene` accepts `path`, optional `bringToFront`, optional `forceReload`, and optional `discardUnsaved`. Use `forceReload: true` to reload an already-open sourced scene from disk after play-mode transitions leave the active editor session stale. If the open session has unsaved changes, the bridge refuses to reload unless `discardUnsaved: true` is also provided; reserve that for scratch/test scenes.
 
 `editor.save_scene` returns before/after save state. `dryRun: true` reads save state without writing. Untitled scenes without a source path are guarded: the bridge returns `saveAttempted: false` and a `skippedReason` instead of opening a surprise save-as flow. When a save is attempted, `saveVerified` is true only if the after-state reports no unsaved changes.
 
@@ -144,7 +146,7 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 
 `gameobject.place_asset` accepts `modelPath`, optional `materialPath`, `name`, `parentId`, `position`, `yaw`, `scale`, `baseRotation`, `alignToGround`, and `requireOrientationOverride`. It creates a GameObject, adds a disabled `ModelRenderer`, assigns the model/material, applies the stored orientation override plus yaw, optionally lifts the object so transformed render bounds sit on the requested ground position, enables the renderer, and returns GameObject/component/bounds read-back. If `requireOrientationOverride` is true, missing orientation metadata is an error; otherwise the bridge falls back to the imported orientation and reports `orientationSource`.
 
-`visual.capture_camera` accepts optional `cameraComponentId` or `gameObjectId`, plus `width`, `height`, and `name`. Without a camera id, it captures the enabled main camera, or the first enabled camera. The response includes a PNG path under `%TEMP%/sbox-agent-bridge/captures`, camera metadata, byte count, and luminance statistics:
+`visual.capture_camera` accepts optional `targetSession`, `sessionId`, `sessionIndex`, `sessionPath`, or `sessionScene`, plus optional `cameraComponentId` or `gameObjectId`, `width`, `height`, and `name`. Without a camera id, it captures the enabled main camera, or the first enabled camera in the resolved session. The response includes a PNG path under `%TEMP%/sbox-agent-bridge/captures`, camera metadata, byte count, and luminance statistics:
 
 - `average`: average relative luminance across the capture.
 - `min` / `max`: darkest and brightest sampled pixel luminance.
@@ -189,15 +191,28 @@ Each operation returns its own result under `verified.results`. A `key` stores t
 
 ## Feedback Actions
 
-`editor.play_state` reads active play mode state from `SceneEditorSession.Active`.
+Target-session-aware read actions accept `targetSession: "active" | "editor" | "playing" | "runtime" | "game"` and optional `sessionId`, `sessionIndex`, `sessionPath`, or `sessionScene`. Use `targetSession: "runtime"` to inspect the live `GameSession` while playing. Supported actions include `editor.play_state`, `editor.feedback`, `scene.summary`, `scene.hierarchy`, `scene.find`, `scene.details`, `gameobject.get`, component read actions, and `visual.capture_camera`.
 
-`editor.play` and `editor.stop` request play-mode transitions and return a play-state read-back. The response includes `expectedIsPlaying` and `transitionPending` because s&box may settle a play/stop transition on a later editor frame. Agents should follow with `editor.play_state` when `transitionPending` is true.
+`editor.play_state` reads active play mode state by default. With `targetSession: "runtime"` it resolves the live `GameSession` instead of assuming the active scene tab is the runtime scene.
+
+`editor.play` and `editor.stop` request play-mode transitions and return a play-state read-back. They accept the same session selectors as other target-session-aware reads; by default they resolve to the editor session so an active runtime tab controls its parent editor scene. `editor.stop` also accepts `stopAll: true` to stop every currently playing editor session. The response includes `expectedIsPlaying` and `transitionPending` because s&box may settle a play/stop transition on a later editor frame. Agents should follow with `editor.play_state` when `transitionPending` is true.
 
 `editor.compile_status` returns compile groups observed from s&box `compile.started` events. If no compile event has been observed since the bridge loaded, it returns an explicit zero-group state rather than claiming success or failure.
 
 `editor.logs` tails `sbox-dev.log`. The raw line is authoritative; the returned `level` is an inferred filter helper.
 
-`editor.feedback` combines play state, compile status, and recent logs. It accepts the same `maxDiagnostics`, `maxLines`, `contains`, and `level` payload fields used by the individual compile/log actions.
+`editor.logs` and `editor.feedback` accept `afterIndex`. Use `verified.logs.nextAfterIndex` from a baseline response as the next cursor to avoid treating old log lines as current failures.
+
+`editor.feedback` combines play state, compile status, and recent logs. It accepts the same `targetSession`, `maxDiagnostics`, `maxLines`, `afterIndex`, `contains`, and `level` payload fields used by the individual play-state/compile/log actions.
+
+`runtime.list_test_actions` resolves a target session, defaulting to `runtime`, and lists components that expose the Agent Bridge runtime test-action protocol. Components can expose a method protocol (`AgentBridgeRunTestAction` / `AgentBridgeTestAction`) when reflection supports it, or the verified property protocol:
+
+- `AgentBridgeTestActions`: readable string of action names separated by `|`, comma, whitespace, or newlines.
+- `AgentBridgeTestPayloadJson`: writable string payload.
+- `AgentBridgeTestAction`: writable string action; the setter should synchronously execute the action.
+- `AgentBridgeTestResultJson`: readable JSON string result.
+
+`runtime.run_test_action` accepts `testAction`, optional `payload`, and optional `componentId`, `gameObjectId`, or `componentType` selectors. It invokes the selected runtime component and returns the invocation mode, selected component, result JSON, and parsed result when possible.
 
 ## File Handoff
 

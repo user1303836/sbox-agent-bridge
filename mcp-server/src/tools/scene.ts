@@ -10,6 +10,14 @@ export function registerSceneTools(server: McpServer, bridge: BridgeClient): voi
     {
       action: z.enum(["summary", "hierarchy", "find", "details", "batch"]).describe("The scene action to run."),
       id: z.string().optional().describe("GameObject id for details."),
+      targetSession: z
+        .enum(["active", "editor", "playing", "runtime", "game"])
+        .optional()
+        .describe("Choose which scene session to read. Use playing/runtime/game to inspect the live GameSession while play mode is running."),
+      sessionId: z.string().optional().describe("Optional editor session id selector."),
+      sessionIndex: z.number().int().min(0).optional().describe("Optional editor session index selector."),
+      sessionPath: z.string().optional().describe("Optional scene source path selector."),
+      sessionScene: z.string().optional().describe("Optional scene name selector."),
       includeDisabled: z.boolean().optional().describe("Include disabled GameObjects where applicable."),
       maxDepth: z.number().int().min(0).max(32).optional().describe("Maximum hierarchy depth."),
       maxNodes: z.number().int().min(1).max(1000).optional().describe("Maximum hierarchy nodes."),

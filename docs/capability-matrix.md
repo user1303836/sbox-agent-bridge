@@ -32,22 +32,22 @@ Status meanings:
 | Selection read | `editor.get_selection` | `editor` / `get_selection` | Verified | Returns typed selection entries; GameObject selection verified. |
 | Selection set | `editor.set_selection` | `editor` / `set_selection` | Verified | Accepts GameObject ids only; verified with read-back count. |
 | Frame/focus object | `editor.frame_object` | `editor` / `frame_object` | Verified | Calls `SceneEditorSession.FrameTo` for a target GameObject bounds. |
-| Play state | `editor.play_state` | `editor` / `play_state` | Verified | Reads active scene and play state from `SceneEditorSession.Active`; when available, includes `gameSessionDetails` with runtime session type, scene, parent, object count, and component count. Live smoke and direct IPC verified. |
-| Play mode start | `editor.play` | `editor` / `play` | Verified | Calls `SceneEditorSession.SetPlaying(...)` and returns read-back play state. |
-| Play mode stop | `editor.stop` | `editor` / `stop` | Verified | Calls `SceneEditorSession.StopPlaying()` and returns immediate read-back with `transitionPending` when the editor settles on a later frame. |
-| Recent logs | `editor.logs` | `editor` / `logs` | Verified | Tails `sbox-dev.log`; raw lines are authoritative and log level is explicitly inferred. |
+| Play state | `editor.play_state` | `editor` / `play_state` | Verified | Reads active scene by default and supports `targetSession: runtime` to resolve the live `GameSession`; response includes target-session metadata. Live IPC verified runtime resolution after play. |
+| Play mode start | `editor.play` | `editor` / `play` | Verified | Calls `SceneEditorSession.SetPlaying(...)` on the resolved editor session and returns read-back play state. Defaults to `targetSession: editor` so an active runtime tab controls its parent editor scene. |
+| Play mode stop | `editor.stop` | `editor` / `stop` | Verified | Calls `SceneEditorSession.StopPlaying()` on the resolved editor session and returns immediate read-back with `transitionPending` when the editor settles on a later frame. Supports `stopAll: true` to clear every currently playing editor session before smoke tests. |
+| Recent logs | `editor.logs` | `editor` / `logs` | Verified | Tails `sbox-dev.log`; raw lines are authoritative, log level is explicitly inferred, and `afterIndex` cursor reads are live verified so agents can ignore stale log lines. |
 | Compile status | `editor.compile_status` | `editor` / `compile_status` | Verified | Tracks compile groups from observed `compile.started` events; live IPC returned compiler diagnostics and zero errors after the fix. |
-| Combined feedback | `editor.feedback` | `editor` / `feedback` | Verified | Returns play state, compile status, and recent logs for agent edit/test loops. |
+| Combined feedback | `editor.feedback` | `editor` / `feedback` | Verified | Returns play state, compile status, and recent logs for agent edit/test loops; supports `targetSession` and `afterIndex` for runtime-aware fresh feedback. |
 
 ## Scene Read
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| Scene summary | `scene.summary` | `scene` / `summary` | Verified | Returns object/component counts from active scene. |
-| Scene hierarchy | `scene.hierarchy` | `scene` / `hierarchy` | Verified | Live IPC read-back verified the ARPG fixture yard hierarchy after scene mutations. |
+| Scene summary | `scene.summary` | `scene` / `summary` | Verified | Returns object/component counts from the resolved session; `targetSession: runtime` was live verified against the ARPG GameSession with 219 objects. |
+| Scene hierarchy | `scene.hierarchy` | `scene` / `hierarchy` | Verified | Live IPC read-back verified the ARPG fixture yard hierarchy after scene mutations; now supports target-session selection. |
 | Scene metadata | TBD | TBD | Planned | Official docs include scene metadata; bridge reads active scene identity/path/state, but does not inspect or edit scene metadata resources. |
-| Find GameObjects | `scene.find` | `scene` / `find` | Verified | Verified by finding a created object. |
-| Object details | `scene.details` | `scene` / `details` | Verified | Includes id, parent, enabled/active state, transforms, components, child count. |
+| Find GameObjects | `scene.find` | `scene` / `find` | Verified | Verified by finding created objects and runtime-only ARPG components with `targetSession: runtime`. |
+| Object details | `scene.details` | `scene` / `details` | Verified | Includes id, parent, enabled/active state, transforms, components, child count; supports target-session selection. |
 | Batch operations | `scene.batch` | `scene` / `batch` | Verified | Runs bounded action lists with per-operation result capture and `$ref` alias substitution. Live IPC verified object create/reparent/duplicate/rename/enable/selection/focus plus asset assignment, sound assignment, physics/collider/joint, material-property, and raycast actions. |
 | Find in radius | `scene.find_in_radius` | TBD | Planned | Useful for spatial workflows. |
 
@@ -55,7 +55,7 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| Read GameObject | `gameobject.get` | `gameobject` / `get` | Verified | Id-targeted read returning the same detail shape as `scene.details`. |
+| Read GameObject | `gameobject.get` | `gameobject` / `get` | Verified | Id-targeted read returning the same detail shape as `scene.details`; supports target-session selection for runtime reads. |
 | Create GameObject | `gameobject.create` | `gameobject` / `create` | Verified | Uses `SceneEditorSession.Active.Scene.CreateObject(true)` and verifies via read-back; optional `parentId` was verified through `scene.batch`. |
 | Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Blocked | Previously verified, but the current editor session now reports a null reference in the native editor delete/undo path after play-mode testing. Needs fresh-session verification and/or a safer delete strategy before relying on it. |
 | Rename GameObject | `gameobject.rename` | `gameobject` / `rename` | Verified | Id-targeted, undo scoped, unique-name default verified by read-back. |
@@ -70,9 +70,9 @@ Status meanings:
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
 | List component types | `component.list_types` | `component` / `list_types` | Partial | Uses `Game.TypeLibrary.GetTypes(typeof(Component))`; live smoke returned built-in/editor-visible types. Local game components such as `AgentBridgeArpgFixture` are not enumerated even after instances exist. |
-| List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list. |
-| Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context. |
-| Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties and includes schema hints, attributes, enum values, and reference targets for settable JSON shapes. |
+| List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list; supports target-session selection for runtime components. |
+| Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context; supports target-session selection. |
+| Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties and includes schema hints, attributes, enum values, and reference targets for settable JSON shapes; supports runtime target sessions. |
 | Add component | `component.add` | `component` / `add` | Verified | Built-in/editor-visible components use TypeLibrary. Local compiled game components can be added by exact C# type name through a serialized-probe fallback that resolves the runtime type, then calls `GameObject.AddComponent<T>()`; live verified with `AgentBridgeArpgFixture` on ARPG fixture objects without duplicating existing components. |
 | Remove component | `component.remove` | `component` / `remove` | Verified | Undo scoped; live smoke verifies `component.get` fails after removal, undo restores, redo removes again. |
 | Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; live IPC also verified resource paths on built-in `ModelRenderer.Model`, `ModelRenderer.MaterialOverride`, and non-inspector `DecalRenderer.Material` via `includeAll: true`; local `AgentBridgeArpgFixture` enum/string/int properties are verified; supports `dryRun: true`. |
@@ -134,6 +134,7 @@ Status meanings:
 | DecalRenderer material assignment | `component.set_property` with `includeAll: true` | `component` | Verified | `DecalRenderer.Material` is public/non-inspector; setting it works when callers opt into all readable properties. Verified with blood/gold/void/bone decal materials. |
 | Basic particle stack setup | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Partial | Live IPC created `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` and set basic bool/number/color properties. Complex particle wrapper types remain unsupported. |
 | Camera capture feedback | `visual.capture_camera` | `visual` / `capture_camera` | Verified | Live IPC rendered the active main `CameraComponent` to a PNG under `%TEMP%/sbox-agent-bridge/captures` and returned camera metadata plus luminance stats. First ARPG smoke capture at 640x360 reported average luminance `0.1332` and dark pixel ratio `0.3145`. |
+| Viewport/HUD capture | TBD | TBD | Planned | `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI state can now be inspected through test actions, but pixel/viewport HUD capture is still missing. |
 | Effects, beams, tracers, and effect lifetime | TBD | TBD | Planned | Basic particle component setup is partially covered, but there are no domain helpers for effect resources, beams, tracers, animated effects, or lifetime configuration. |
 | Shader and ShaderGraph authoring | TBD | TBD | Planned | Bridge can create simple material sources and set known material params, but cannot inspect or edit custom shaders or ShaderGraph assets. |
 | Render hooks/custom rendering | TBD | TBD | Planned | No bridge action covers render hooks, command lists, custom rendering, `SceneCamera`, or render targets. |
@@ -170,7 +171,8 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| Screen UI/panel hierarchy inspection | TBD | TBD | Planned | No bridge tool inspects UI panel trees, Razor component instances, or runtime HUD state. ARPG UI can exist in game code, but bridge cannot reliably inspect runtime-only UI yet. |
+| Runtime UI state inspection | `runtime.run_test_action` | `runtime` / `run_test_action` | Verified | The ARPG controller exposes a property-protocol test action that reports logical HUD/orb/inventory/player/combat state. Live smoke verified inventory open, damage, restore, skills, and zombie count. It also reported that actual ScreenPanel child panels are not built in the current testbed. |
+| Screen UI/panel hierarchy inspection | TBD | TBD | Planned | No generic bridge tool inspects UI panel trees, Razor component instances, or resolved styles. Runtime self-report can expose component-authored UI state, but not arbitrary panel hierarchy/pixels. |
 | Razor/component authoring helpers | `script.create`, `script.edit` | `script` | Partial | Agents can edit source files, but there are no UI-specific templates, schemas, style checks, or live panel verification. |
 | HudPainter | TBD | TBD | Planned | No helpers inspect or verify immediate-mode HUD drawing. |
 | Localization | TBD | TBD | Planned | No helpers inspect localization files, translation keys, or active locale state. |
@@ -202,7 +204,8 @@ Status meanings:
 | Navigation/navmesh | TBD | TBD | Planned | No navigation mesh build/read helpers, navmesh agent inspection, area/cost/filter controls, obstacle inspection, or link diagnostics. |
 | Terrain | TBD | TBD | Planned | No terrain sculpt, paint, material, read, or placement helpers. |
 | Clutter system | TBD | TBD | Planned | No clutter authoring, inspection, or density validation helpers. |
-| Runtime gameplay state/self-report | `editor.play_state` | `editor` / `play_state` | Partial | Play-state reads include limited runtime `GameSession` metadata when available, but there is no runtime scene targeting, component query, or gameplay self-report channel. |
+| Runtime gameplay state/self-report | `runtime.list_test_actions`, `runtime.run_test_action`, `scene.* targetSession=runtime` | `runtime`, `scene` | Verified | Live-smoked against the ARPG GameSession. Runtime scene reads target the live `GameSession`; component-authored test actions provide gameplay/UI state without relying on screenshots. |
+| Runtime input/test actions | `runtime.run_test_action` | `runtime` / `run_test_action` | Verified | Deterministic component-authored test actions are verified through a property protocol. This replaces shell-level OS keypresses for agent verification; focused viewport input injection is still future work. |
 | VR gameplay | TBD | TBD | Planned | No VR gameplay/session/controller helpers. |
 
 ## Services
@@ -231,5 +234,6 @@ Status meanings:
 | MCP bridge-client tests | Verified | `npm test` covers success, bridge error, and timeout behavior with fake file IPC. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
+| Runtime feedback smoke script | Verified | `mcp-server/test/runtime-feedback-smoke.ts` verifies `targetSession: runtime`, runtime test-action listing/invocation, ARPG logical UI state, inventory open, damage, and restore. |
 | Live editor smoke script | Blocked | Feedback actions, compile status, save-state reporting, `scene.batch`, and resource-backed ModelRenderer property mutations were directly verified, but the full smoke is currently blocked by the `gameobject.destroy` native delete/undo null reference in this editor session. Fixture-backed component mutation is skipped unless `AgentBridgeMutationFixture` is visible; use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` to require it. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

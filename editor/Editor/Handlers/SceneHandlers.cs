@@ -57,7 +57,8 @@ internal static class SceneHandlers
 
 	public static BridgeResponse Summary( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var objects = HandlerUtil.WalkSceneObjects( session.Scene ).ToArray();
 		var components = objects.SelectMany( x => x.Components.GetAll() ).ToArray();
 
@@ -73,6 +74,7 @@ internal static class SceneHandlers
 			message = "Scene summary read",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				scene = session.Scene.Name,
 				rootCount = session.Scene.Children.Count,
 				objectCount = objects.Length,
@@ -86,7 +88,8 @@ internal static class SceneHandlers
 
 	public static BridgeResponse Hierarchy( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var includeDisabled = HandlerUtil.GetBool( request.Payload, "includeDisabled", true );
 		var maxDepth = HandlerUtil.GetInt( request.Payload, "maxDepth", 8 );
 		var maxNodes = HandlerUtil.GetInt( request.Payload, "maxNodes", 200 );
@@ -101,6 +104,7 @@ internal static class SceneHandlers
 			message = "Scene hierarchy read",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				scene = session.Scene.Name,
 				includeDisabled,
 				maxDepth,
@@ -112,7 +116,8 @@ internal static class SceneHandlers
 
 	public static BridgeResponse Find( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var nameContains = HandlerUtil.GetString( request.Payload, "nameContains" );
 		var componentContains = HandlerUtil.GetString( request.Payload, "componentContains" );
 		var includeDisabled = HandlerUtil.GetBool( request.Payload, "includeDisabled", true );
@@ -138,6 +143,7 @@ internal static class SceneHandlers
 			message = "Scene search complete",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				scene = session.Scene.Name,
 				count = results.Length,
 				results
@@ -147,7 +153,7 @@ internal static class SceneHandlers
 
 	public static BridgeResponse Details( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var session = HandlerUtil.RequireTargetSession( request.Payload );
 		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
 
 		return BridgeResponse.Success( request.Id, new

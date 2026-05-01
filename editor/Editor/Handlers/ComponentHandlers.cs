@@ -59,7 +59,8 @@ internal static class ComponentHandlers
 
 	public static BridgeResponse ListOnGameObject( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload, "gameObjectId" );
 		var components = go.Components.GetAll().Select( HandlerUtil.DescribeComponent ).ToArray();
 
@@ -68,6 +69,7 @@ internal static class ComponentHandlers
 			message = "GameObject components listed",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				gameObject = HandlerUtil.DescribeGameObject( go ),
 				count = components.Length,
 				components
@@ -77,7 +79,8 @@ internal static class ComponentHandlers
 
 	public static BridgeResponse Get( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var component = HandlerUtil.RequireComponent( session.Scene, request.Payload );
 
 		return BridgeResponse.Success( request.Id, new
@@ -85,6 +88,7 @@ internal static class ComponentHandlers
 			message = "Component read",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				component = HandlerUtil.DescribeComponent( component ),
 				gameObject = HandlerUtil.DescribeGameObject( component.GameObject )
 			}
@@ -93,7 +97,8 @@ internal static class ComponentHandlers
 
 	public static BridgeResponse GetProperties( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var component = HandlerUtil.RequireComponent( session.Scene, request.Payload );
 		var includeAll = HandlerUtil.GetBool( request.Payload, "includeAll", false );
 		var maxProperties = HandlerUtil.GetInt( request.Payload, "maxProperties", 100 );
@@ -133,6 +138,7 @@ internal static class ComponentHandlers
 			message = "Component properties read",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				component = HandlerUtil.DescribeComponent( component ),
 				gameObject = HandlerUtil.DescribeGameObject( component.GameObject ),
 				includeAll,

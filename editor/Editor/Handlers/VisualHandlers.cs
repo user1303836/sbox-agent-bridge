@@ -10,7 +10,8 @@ internal static class VisualHandlers
 {
 	public static BridgeResponse CaptureCamera( BridgeRequest request )
 	{
-		var session = HandlerUtil.RequireSession();
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
 		var camera = ResolveCamera( session.Scene, request.Payload );
 		var width = ClampInt( HandlerUtil.GetInt( request.Payload, "width", 1024 ), 64, 2048 );
 		var height = ClampInt( HandlerUtil.GetInt( request.Payload, "height", 576 ), 64, 2048 );
@@ -35,6 +36,7 @@ internal static class VisualHandlers
 			message = "Camera captured",
 			verified = new
 			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
 				path = filePath,
 				width,
 				height,
