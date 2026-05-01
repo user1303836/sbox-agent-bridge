@@ -159,14 +159,14 @@ Gameplay features currently include:
 - Primary and alternate melee attacks with variance and crits.
 - Shift-click hold-position attacking.
 - Health and energy orbs, inventory, action bar, tooltips, minimap, buffs/debuffs.
-- Four hotkeyed skills: Cleave, Executioner's Cut, Blood Rush, War Cry.
+- Four hotkeyed skills: Whirlwind, Executioner's Cut, Blood Rush, War Cry.
 - Zombies with wandering/chasing/attacking, health, death, loot, respawn.
 - Status effects, War Cry damage reduction/energy restore, Blood Rush stun.
 - Procedural gore chunks and blood visuals.
 - Manual 2D collision for player, zombies, and props.
 - Generated dark-fantasy prop kit imported into `Assets/models/agent_bridge/arpg_props/`.
 - Lighting/post-processing pass to make the scene brighter and more readable.
-- 2026-05-01 ARPG feature slice: bottom-filled health/energy orbs, raised terrain helpers/geometry, Whirlwind on hotkey `1`, elite zombies, item loot tables, 10x5 grid inventory, equipment slots, drag-to-equip, and item stat tooltips.
+- 2026-05-01 ARPG feature slice: bottom-filled health/energy orbs, raised terrain helpers/geometry, Whirlwind on hotkey `1`, citizen animation graph setup, sword attachment to the citizen `hold_R`/`hand_R` attachment when available, elite zombies, item loot tables, 10x5 grid inventory, equipment slots, drag-to-equip, and item stat tooltips.
 
 The ARPG is intentionally rough. Use it to test bridge capabilities, not as an end product.
 
@@ -177,6 +177,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - `gameobject.destroy` was once verified but became unsafe in the current editor session after play-mode testing due to a native editor delete/undo null reference.
 - Play mode and editor scene inspection are not fully aligned yet. `editor.play` may start play mode, while scene reads still target the editor scene or stale session.
 - Runtime world construction in `ArpgDemoController` now also happens lazily from `OnUpdate` once `Game.IsPlaying` is true. This fixed a case where `OnStart` ran in the editor, returned early, and never built the runtime ARPG world after entering play mode.
+- Citizen weapon attachment is better handled through model attachments. The current test project enables attachments for the player renderer and parents the sword to `hold_R`, falling back to `hand_R` or the old body-relative pose.
 - `editor.open_scene` with `forceReload: true` recovers sourced scenes after stale/empty session states.
 - Local compiled game components can be added by exact C# type name, but `component.list_types` still does not reliably enumerate local project components.
 - Bounds help with geometry but do not prove semantic orientation. A prop can have sensible bounds while upside down.

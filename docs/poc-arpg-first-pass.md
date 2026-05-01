@@ -128,7 +128,7 @@ The controller builds the playable slice at runtime:
 - Reworked the health and energy orbs so the visible colored fill is bottom-anchored and changes height directly from current health/energy instead of relying on a dark overlay mask.
 - Added runtime terrain elevation support through deterministic ground-height helpers plus raised terraces, ramps, and ash mounds. Actor movement now resolves back onto the computed ground height after flat 2D collision solving.
 - Changed the runtime player and zombies to use `SkinnedModelRenderer` plus `CitizenAnimationHelper`, with the citizen animation graph explicitly assigned at `models/citizen/citizen.vanmgrph`.
-- Adjusted the player weapon presentation so the sword sits closer to the hand and changes pose during attacks and Whirlwind.
+- Adjusted the player weapon presentation so the sword attaches to the citizen `hold_R`/`hand_R` attachment when available, with a body-relative fallback, and changes pose during attacks and Whirlwind.
 - Replaced the first skill with Whirlwind. Holding hotkey `1` now drains energy over time, spins the character, damages nearby zombies on a tick interval, reduces movement speed by 20%, and disables player-vs-zombie collision while the channel is active.
 - Added elite zombie variants with higher health, damage, larger collision radius, slower movement, purple tint, guaranteed coin drops, and better item-drop odds.
 - Added a Path of Exile-style grid inventory model with 10 columns by 5 rows. Items have slot sizes such as 2x3 greatswords and 1x1 amulets.
@@ -139,9 +139,11 @@ The controller builds the playable slice at runtime:
 Verification:
 
 - `editor.compile_status` after the pass reported `local.testproject` and `local.testproject.editor` with `buildSuccess: true` and `errorCount: 0`.
+- A follow-up hotload after the `hold_R` sword attachment pass reported `local.testproject` and `local.testproject.editor` with `buildSuccess: true` and `errorCount: 0`; the remaining warnings were from the installed bridge editor library.
 - `editor.open_scene` with `forceReload: true` recovered the saved scene after play/stop stale-session behavior.
 - `editor.play` reported `hasGameSession: true`.
 - `visual.capture_camera` succeeded after the lazy runtime build fix and wrote `20260501-150633-arpg-feature-slice-citizen-graph-854f95651641455fac8c592ba20f7f42.png` under `%TEMP%/sbox-agent-bridge/captures`.
+- A final post-attachment smoke wrote `20260501-151835-arpg-sword-attachment-smoke-d0d752a2eef143e1990b3281034dab23.png` under `%TEMP%/sbox-agent-bridge/captures` with nonzero byte count and average luminance `0.1415`.
 - The capture verified a nonblank runtime scene with visible elevation changes. Camera capture does not include the screen UI overlay, so the orb fill, inventory grid, equipment drag/drop, and item tooltips still need human/editor visual verification or a future UI/runtime inspection bridge.
 - Runtime log verification remains weak because `editor.logs` has no cursor/timestamp filter and returned stale compile errors even after current compile status was green.
 
