@@ -1,6 +1,6 @@
 # Verified s&box APIs
 
-This file records the local API/doc facts used for the POC scaffold.
+This file records the local API/doc facts used for the bridge and ARPG testbed.
 
 ## Official Docs
 

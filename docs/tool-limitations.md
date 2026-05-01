@@ -2,7 +2,7 @@
 
 This file records bridge tools that are blocked, partial, or easy for an agent to misuse. Keep it current when live editor testing discovers a new limitation or retires an old one.
 
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 ## Blocked
 
@@ -24,8 +24,10 @@ Last updated: 2026-04-30
 | `editor.logs` | Tails exact raw lines from `sbox-dev.log` and infers log levels. | No cursor/timestamp filter yet, so stale errors can appear beside current feedback. | Add a cursor/since-token response contract and teach `editor.feedback` to report only new log lines when requested. |
 | `editor.feedback` | Combines play state, compile status, and recent logs. | Runtime/game-session inspection is not reliable yet; scene reads can still target the editor scene rather than live play-session state. | Separate editor-scene inspection from runtime-session inspection and expose which session every read targets. |
 | `editor.play` / `editor.stop` | Direct play/stop actions return immediate read-back and have been smoke tested. | Play transitions can temporarily report inconsistent `GameSession` state. | Add wait/poll helpers for transition settle and runtime session availability. |
+| `asset.inspect_model` | Returns model/render/physics bounds, material slots, orientation candidates, footprints, and ground offsets. | Bounds and heuristics cannot prove semantic uprightness. A model can still be visually upside down. | Add project-local orientation overrides, isolated previews, and human or vision confirmation workflow. |
+| `visual.capture_camera` | Captures an enabled camera to PNG and returns camera metadata and luminance stats. | Luminance can flag darkness, but it does not prove composition, object orientation, UI readability, or gameplay correctness. | Add annotated captures, viewport/camera target controls, and optional image-analysis workflow. |
 | `sound.get_info` | Project-created sound event inspection works. | Some built-in sound metadata fields throw before the handle/resource is loaded, so those fields are best-effort. | Add per-field error reporting instead of dropping metadata. |
-| Local MCP build/test on this Windows shell | CI and previous local runs cover TypeScript build/test. | Current shell reports `Access is denied` for the available `node.exe` shim and has no `npm` on PATH. | Fix local Node/npm availability or rely on GitHub Actions for MCP server verification. |
+| Local MCP build/test on this Windows shell | TypeScript check/build and bridge-client tests pass when invoked through the installed Node runtime directly. | `npm` is not on PATH, and `npm run check` can hit an `Access is denied` shim issue in this shell. | Keep documenting the direct `node` fallback until local Node/npm PATH setup is cleaned up. |
 
 ## Operational Caveats
 

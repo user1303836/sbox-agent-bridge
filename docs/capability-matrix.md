@@ -10,8 +10,8 @@ Status meanings:
 
 ## Current Verification Environment
 
-- Date: 2026-04-30
-- s&box project: fresh Minimal Game project
+- Date: 2026-05-01
+- s&box project: Minimal Game-derived local project with the ARPG bridge testbed
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
 

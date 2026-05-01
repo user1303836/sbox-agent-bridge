@@ -1,7 +1,7 @@
 # ARPG POC First Pass
 
 Date: 2026-04-29
-Updated: 2026-04-30
+Updated: 2026-05-01
 
 This note captures the first isometric action-RPG vertical slice built through the bridge against the local test project at:
 
@@ -105,6 +105,16 @@ The controller builds the playable slice at runtime:
   - `componentCount: 21`
   - `ArpgDemoController: 1`
 - `editor.open_scene` now falls back through `AssetSystem.FindByPath` when direct `ResourceLibrary.Get<SceneFile>` fails from the bridge add-on context. This recovered `scenes/minimal.scene` after a stale/empty active editor session.
+- `asset.inspect_model` was live verified on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
+- `visual.capture_camera` was live verified against the active main camera and produced a non-empty PNG with camera metadata and luminance stats.
+
+## Lighting And Visual/Spatial Feedback Pass
+
+- Added brighter runtime and saved-scene lighting so the dark-fantasy scene remains readable: ambient fill, directional light tuning, warm point lights, spot lights, and post-process adjustments.
+- Verified rendering-oriented component mutation through AmbientLight, PointLight, SpotLight, DirectionalLight, FilmGrain, Tonemapping, Bloom, PostProcessVolume, Vignette, ColorAdjustments, decals, and basic particle components.
+- Added `asset.inspect_model` so agents can inspect model bounds, render bounds, physics bounds, material slots, orientation candidates, footprints, and ground offsets before placing assets.
+- Added `visual.capture_camera` so agents can capture the active camera to a PNG under `%TEMP%/sbox-agent-bridge/captures` and read luminance stats. The first ARPG capture reported average luminance `0.1332` and dark pixel ratio `0.3145`, which gives agents a concrete visibility signal instead of relying only on scene metadata.
+- Documented the remaining spatial reasoning gap: geometry bounds can suggest candidate rotations and ground offsets, but they cannot prove that a prop is semantically upright. Persistent orientation overrides and higher-level placement helpers are the next bridge step.
 
 ## Bridge Lessons
 
@@ -134,7 +144,8 @@ The controller builds the playable slice at runtime:
 
 ## Recommended Next Bridge Work
 
-1. Add play-session-aware scene reads, or a separate runtime snapshot command that can inspect the live game session.
-2. Add timestamp/cursor-based log reads so feedback ignores stale errors.
-3. Add a small runtime self-report component/tool path for gameplay state: player health, energy, position, zombie count, loot count, and last event.
-4. Add resource/asset import and selection helpers for models, decals, particles, and sounds.
+1. Add project-local orientation overrides and `gameobject.place_asset` so generated props can be placed upright and grounded from reusable metadata.
+2. Add play-session-aware scene reads, or a separate runtime snapshot command that can inspect the live game session.
+3. Add timestamp/cursor-based log reads so feedback ignores stale errors.
+4. Add a small runtime self-report component/tool path for gameplay state: player health, energy, position, zombie count, loot count, and last event.
+5. Add resource/asset import and selection helpers for models, decals, particles, and sounds.

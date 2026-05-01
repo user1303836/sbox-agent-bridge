@@ -4,9 +4,9 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 
 ## Current Verification Snapshot
 
-- Date: 2026-04-30
+- Date: 2026-05-01
 - Environment: Windows, local s&box editor
-- Test project: minimal s&box project
+- Test project: Minimal Game-derived local project with the ARPG bridge testbed
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
 
@@ -60,7 +60,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 
 ## Next Larger Milestones
 
-- Continue the minimal ARPG POC and use it to discover the next practical editor gaps.
-- Editor feedback loop refinements: wait-for-compile, structured live log events, and runtime/game-session inspection.
+- Add persistent asset orientation overrides and a high-level `gameobject.place_asset` workflow built on `asset.inspect_model` and `visual.capture_camera`.
+- Editor feedback loop refinements: wait-for-compile, structured live log events, visual capture review, and runtime/game-session inspection.
 - Improve local game component type discovery so agents can list project components before adding them by exact name.
 - Continue asset, prefab, sound, physics, and runtime-feedback workflows through the ARPG POC.

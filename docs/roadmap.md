@@ -197,10 +197,12 @@ Remaining gaps:
 
 Goal: expand toward high-coverage editor workflows while preserving safety and observability.
 
+Status: in progress. Verified so far: `asset.inspect_model` for model bounds/orientation candidates and `visual.capture_camera` for rendered camera PNGs with luminance stats.
+
 Candidate areas:
 
-- viewport screenshots/camera capture;
-- asset orientation metadata, bounds previews, and high-level grounded placement helpers;
+- visual captures, annotated screenshots, and capture comparison;
+- asset orientation metadata, bounds previews, orientation overrides, and high-level grounded placement helpers;
 - model/material/light/audio helpers;
 - project settings and input bindings;
 - collision rules;

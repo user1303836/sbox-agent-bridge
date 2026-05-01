@@ -44,4 +44,4 @@ The first ARPG POC showed that play-mode state and scene inspection are not yet 
 - Capture structured live `LogEvent` entries if a stable public hook is verified for editor libraries.
 - Separate runtime/game-session inspection from editor-scene inspection so agents do not confuse play-mode objects with editable scene objects.
 - Add timestamp or cursor-based log reads so stale errors do not pollute current feedback after long editor sessions.
-- Add viewport or screenshot feedback once a reliable editor capture path is verified.
+- Extend visual feedback beyond `visual.capture_camera` with annotated captures, isolated asset previews, and capture comparison workflows.

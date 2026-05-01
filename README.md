@@ -238,6 +238,7 @@ Useful scripts:
 ## Project Docs
 
 - [Status](docs/status.md)
+- [Fresh Agent Handoff](docs/agent-handoff.md)
 - [Roadmap](docs/roadmap.md)
 - [Capability Matrix](docs/capability-matrix.md)
 - [Tool Limitations](docs/tool-limitations.md)

@@ -16,7 +16,7 @@ Agent/MCP client
 
 ## Why One Repo
 
-The editor bridge and MCP server are coupled during the POC. A new bridge command needs a matching MCP tool, schema update, docs, and often a verification read-back. Keeping them together reduces drift.
+The editor bridge and MCP server are coupled during rapid development. A new bridge command needs a matching MCP tool, schema update, docs, and often a verification read-back. Keeping them together reduces drift.
 
 The pieces can split later if the bridge becomes stable.
 
@@ -27,7 +27,7 @@ The editor bridge lives in an s&box library under `editor/`. It is editor-only c
 - a dock widget so the developer can see bridge status and manually start/stop IPC;
 - an editor-frame pump that auto-starts the runtime and processes queued commands once the editor assembly loads;
 - a dispatcher that maps command names to handlers;
-- small handler classes for editor, scene, component, and gameobject operations;
+- small handler classes for editor, scene, GameObject, component, asset, visual, sound, physics, prefab, and script operations;
 - a feedback state helper for compile-event snapshots and recent editor logs.
 
 The bridge should keep mutation behavior conservative:
@@ -50,7 +50,7 @@ The server owns:
 
 ## Transport
 
-The POC uses file IPC:
+The current bridge uses file IPC:
 
 - MCP server writes `requests/request-{id}.json`.
 - Editor bridge reads the file on an editor frame.
