@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { BridgeClient } from "../bridge-client.js";
 import { asJsonText } from "./result.js";
+import { waitForCompile, waitForRuntime, waitForStopped } from "../wait-helpers.js";
 
 export function registerEditorTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
@@ -24,6 +25,9 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
           "play_state",
           "play",
           "stop",
+          "wait_compile",
+          "wait_runtime",
+          "wait_stopped",
           "logs",
           "compile_status",
           "feedback"
@@ -48,6 +52,18 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         .optional()
         .describe("For open_scene with forceReload, allow discarding unsaved changes in the open scene session. Use only for scratch/test scenes."),
       stopAll: z.boolean().optional().describe("For stop, stop every currently playing editor session before returning read-back state."),
+      timeoutMs: z.number().int().min(100).max(120_000).optional().describe("For wait_* actions, maximum time to wait."),
+      pollMs: z.number().int().min(25).max(5_000).optional().describe("For wait_* actions, polling interval."),
+      sinceSequence: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("For wait_compile, require a compile group sequence greater than this baseline before settling."),
+      requireObservedCompile: z.boolean().optional().describe("For wait_compile, require at least one observed compile group before settling."),
+      minObjects: z.number().int().min(0).optional().describe("For wait_runtime, minimum runtime scene object count required before settling."),
+      requireSceneSummary: z.boolean().optional().describe("For wait_runtime, require scene.summary targetSession=runtime to succeed before settling."),
+      requireNoGameSessions: z.boolean().optional().describe("For wait_stopped, also require derived GameSession tabs to disappear."),
       ids: z.array(z.string()).optional().describe("GameObject ids to select when action is set_selection."),
       saveAs: z.boolean().optional().describe("Force a save-as flow when saving the active scene."),
       dryRun: z.boolean().optional().describe("For save_scene, report save verification state without writing."),
@@ -72,6 +88,18 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         .describe("Maximum compiler diagnostics to return for compile_status or feedback.")
     },
     async ({ action, ...payload }) => {
+      if (action === "wait_compile") {
+        return asJsonText(await waitForCompile(bridge, payload));
+      }
+
+      if (action === "wait_runtime") {
+        return asJsonText(await waitForRuntime(bridge, payload));
+      }
+
+      if (action === "wait_stopped") {
+        return asJsonText(await waitForStopped(bridge, payload));
+      }
+
       const bridgeAction = action === "status" ? "bridge.status" : `editor.${action}`;
       return asJsonText(await bridge.send(bridgeAction, payload));
     }

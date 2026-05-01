@@ -35,8 +35,8 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - Sound helpers are live-verified: `sound.list`, `sound.get_info`, `sound.create_event`, `sound.assign`, and `sound.preview`.
 - Physics helpers are live-verified for colliders, rigidbodies, and raycasts. Joint component creation works, but target assignment remains limited.
 - Prefab helpers are live-verified: `prefab.create`, `prefab.list`, `prefab.get_info`, and `prefab.instantiate`.
-- Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, and combined feedback. `editor.logs` and `editor.feedback` support `afterIndex` cursor reads so agents can establish a baseline and then inspect only new log lines. Read actions now support `targetSession: runtime` for live `GameSession` inspection, and `editor.stop` supports `stopAll: true` for clearing stale play sessions before smoke tests.
-- Runtime feedback is live-verified through `runtime.list_test_actions` and `runtime.run_test_action`. The verified property protocol lets component-authored test hooks execute deterministic actions and return JSON read-back from the live GameSession. `mcp-server/test/runtime-feedback-smoke.ts` verifies the ARPG state, inventory, damage, and restore flow.
+- Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, combined feedback, and MCP-side wait helpers. `editor.logs` and `editor.feedback` support `afterIndex` cursor reads so agents can establish a baseline and then inspect only new log lines. Read actions now support `targetSession: runtime` for live `GameSession` inspection, and `editor.stop` supports `stopAll: true` for clearing stale play sessions before smoke tests.
+- Runtime feedback is live-verified through `runtime.list_test_actions` and `runtime.run_test_action`. The verified property protocol lets component-authored test hooks execute deterministic actions and return JSON read-back from the live GameSession. `mcp-server/test/runtime-feedback-smoke.ts` verifies wait helpers, ARPG state, inventory, damage, and restore flow.
 - Rendering-oriented component mutation is live-verified through the ARPG visual pass: AmbientLight, PointLight, SpotLight, DirectionalLight, DecalRenderer, PostProcessVolume, FilmGrain, Tonemapping, Bloom, Vignette, ColorAdjustments, and basic ParticleEffect/ParticleEmitter/ParticleRenderer settings.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
 
@@ -54,7 +54,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `physics.add_joint` creates joint components, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. Cursor indexes are file line indexes, not structured log-event ids, and large ranges can still be tail-truncated.
-- Runtime/game-session reads are now targetable, but play/stop transitions can still leave duplicate stale tabs. `editor.open_scene` supports `discardUnsaved:true` with `forceReload:true` for scratch/test-scene recovery.
+- Runtime/game-session reads are now targetable and `editor.wait_runtime` removes the need for fixed sleeps, but play/stop transitions can still leave duplicate stale tabs. `editor.open_scene` supports `discardUnsaved:true` with `forceReload:true` for scratch/test-scene recovery.
 - `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report is available through test actions, but generic viewport/HUD pixel capture and panel hierarchy inspection remain open.
 - Shell-driven OS keypresses are not reliable enough to verify game input. Deterministic runtime test actions are now available; focused viewport input injection remains future work.
 - Spatial placement now has a live-verified v1 override-backed placement path, but the override data still needs to be seeded for the full generated prop kit. Renderer bounds still cannot confirm that an asset is semantically upright without human or vision confirmation. See `docs/spatial-reasoning.md`.
@@ -65,6 +65,6 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 ## Next Larger Milestones
 
 - Seed persistent asset orientation overrides for the generated ARPG prop kit and add isolated preview captures for ambiguous assets.
-- Editor feedback loop refinements: wait-for-compile, structured live log events, viewport/HUD capture, focused viewport input injection, and post-transition stale-tab restoration.
+- Editor feedback loop refinements: structured live log events, viewport/HUD capture, focused viewport input injection, and post-transition stale-tab restoration.
 - Improve local game component type discovery so agents can list project components before adding them by exact name.
 - Continue asset, prefab, sound, physics, and runtime-feedback workflows through the ARPG POC.

@@ -1,4 +1,5 @@
 import { BridgeClient } from "../src/bridge-client.js";
+import { waitForCompile, waitForRuntime, waitForStopped } from "../src/wait-helpers.js";
 
 interface SceneSummaryResult {
   verified: {
@@ -62,7 +63,11 @@ const discardUnsaved = process.env.SBOX_AGENT_BRIDGE_DISCARD_UNSAVED === "1";
 
 try {
   await bridge.send("editor.stop", { stopAll: true });
-  await delay(500);
+  const initialStopped = await waitForStopped(bridge, { timeoutMs: 5_000 });
+  ensure(initialStopped.verified.satisfied, "editor.wait_stopped did not settle after stopAll");
+
+  const compileWait = await waitForCompile(bridge, { timeoutMs: 5_000, maxDiagnostics: 20 });
+  ensure(compileWait.verified.satisfied, "editor.wait_compile did not settle");
 
   await bridge.send("editor.open_scene", {
     path: scenePath,
@@ -75,14 +80,14 @@ try {
   ensure(editorSummary.verified.objectCount > 0, "editor scene has no objects after open_scene");
 
   await bridge.send("editor.play");
-  await delay(1_000);
+  const runtimeWait = await waitForRuntime(bridge, { timeoutMs: 10_000, minObjects: 1 });
+  ensure(runtimeWait.verified.satisfied, "editor.wait_runtime did not resolve a live GameSession");
 
-  const runtimeSummary = await bridge.send<SceneSummaryResult>("scene.summary", {
-    targetSession: "runtime"
-  });
-  ensure(runtimeSummary.verified.targetSession?.resolvedTarget === "gameSession", "runtime summary did not target a GameSession");
-  ensure(runtimeSummary.verified.targetSession?.session.isGameSession === true, "runtime summary target is not marked as a game session");
-  ensure(runtimeSummary.verified.objectCount > 0, "runtime scene has no objects");
+  const runtimeSummary = runtimeWait.verified.sceneSummary as SceneSummaryResult["verified"] | null;
+  ensure(runtimeSummary !== null, "editor.wait_runtime did not include a runtime scene summary");
+  ensure(runtimeSummary.targetSession?.resolvedTarget === "gameSession", "runtime summary did not target a GameSession");
+  ensure(runtimeSummary.targetSession?.session.isGameSession === true, "runtime summary target is not marked as a game session");
+  ensure(runtimeSummary.objectCount > 0, "runtime scene has no objects");
 
   const actions = await bridge.send<RuntimeListResult>("runtime.list_test_actions", {
     componentType: "ArpgDemoController"
@@ -107,14 +112,21 @@ try {
     "arpg.restore_player did not restore health"
   );
 
+  await bridge.send("editor.stop", { stopAll: true });
+  const finalStopped = await waitForStopped(bridge, { timeoutMs: 5_000 });
+  ensure(finalStopped.verified.satisfied, "editor.wait_stopped did not settle after final stopAll");
+
   console.log(
     JSON.stringify(
       {
         ok: true,
         scenePath,
         editorObjects: editorSummary.verified.objectCount,
-        runtimeObjects: runtimeSummary.verified.objectCount,
-        runtimeComponents: runtimeSummary.verified.componentCount,
+        compileWaitMs: compileWait.verified.elapsedMs,
+        runtimeWaitMs: runtimeWait.verified.elapsedMs,
+        stopWaitMs: finalStopped.verified.elapsedMs,
+        runtimeObjects: runtimeSummary.objectCount,
+        runtimeComponents: runtimeSummary.componentCount,
         arpgActions: actions.verified.components[0]?.actions,
         hud: restored.verified.result.hud,
         zombieCount: restored.verified.result.combat?.zombieCount
@@ -140,8 +152,4 @@ function ensure(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-async function delay(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
 }

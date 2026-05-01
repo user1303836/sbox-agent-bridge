@@ -205,6 +205,8 @@ Target-session-aware read actions accept `targetSession: "active" | "editor" | "
 
 `editor.feedback` combines play state, compile status, and recent logs. It accepts the same `targetSession`, `maxDiagnostics`, `maxLines`, `afterIndex`, `contains`, and `level` payload fields used by the individual play-state/compile/log actions.
 
+The MCP `editor` tool also exposes `wait_compile`, `wait_runtime`, and `wait_stopped`. These are MCP-side polling helpers over existing bridge actions, not raw file-IPC bridge commands; direct protocol callers should poll `editor.compile_status`, `editor.play_state`/`scene.summary`, or `editor.tabs` with the same conditions.
+
 `runtime.list_test_actions` resolves a target session, defaulting to `runtime`, and lists components that expose the Agent Bridge runtime test-action protocol. Components can expose a method protocol (`AgentBridgeRunTestAction` / `AgentBridgeTestAction`) when reflection supports it, or the verified property protocol:
 
 - `AgentBridgeTestActions`: readable string of action names separated by `|`, comma, whitespace, or newlines.

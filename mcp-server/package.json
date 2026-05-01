@@ -11,7 +11,7 @@
     "dev": "tsx src/index.ts",
     "smoke:live": "tsx test/live-smoke.ts",
     "smoke:runtime": "tsx test/runtime-feedback-smoke.ts",
-    "test": "tsx --test test/bridge-client.test.ts"
+    "test": "tsx --test test/bridge-client.test.ts test/wait-helpers.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",

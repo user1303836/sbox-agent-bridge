@@ -769,6 +769,16 @@ internal static class EditorHandlers
 			index,
 			id = GetSessionId( session ),
 			isActive,
+			isGameSession = session is GameEditorSession,
+			parent = session is GameEditorSession gameEditorSession && gameEditorSession.Parent is not null
+				? new
+				{
+					id = GetSessionId( gameEditorSession.Parent ),
+					index = FindSessionIndex( gameEditorSession.Parent ),
+					scene = gameEditorSession.Parent.Scene?.Name ?? "",
+					sourcePath = GetSessionSourcePath( gameEditorSession.Parent )
+				}
+				: null,
 			scene = session.Scene?.Name ?? "",
 			isPrefabSession = session.IsPrefabSession,
 			shouldUpdate = session.ShouldUpdate,

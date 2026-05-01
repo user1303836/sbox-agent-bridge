@@ -185,7 +185,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - `visual.capture_camera` captures the world camera but not the screen UI overlay. Runtime UI state can now be verified through component-authored test actions, but generic panel hierarchy/pixel capture is still future work.
 - 2026-05-01 ARPG UI/input pass clarified the project goal: ARPG feature work is only a bridge test harness. When a game feature is hard to verify, record and prioritize the missing bridge capability instead of polishing the game around the limitation.
 - `editor.logs` and `editor.feedback` now support `afterIndex` cursor reads. Use `verified.logs.nextAfterIndex` from a baseline read before making a change, then pass it back to see only new log lines.
-- Runtime reads now support `targetSession: "runtime"` for live `GameSession` targeting. `editor.stop` also supports `stopAll: true` for smoke-test cleanup. Duplicate/stale editor tabs can still remain after transitions, so future work should add wait helpers and post-stop scene restoration.
+- Runtime reads now support `targetSession: "runtime"` for live `GameSession` targeting. `editor.stop` also supports `stopAll: true` for smoke-test cleanup, and MCP-side `editor.wait_compile`, `editor.wait_runtime`, and `editor.wait_stopped` helpers avoid fixed sleeps while transitions settle. Duplicate/stale editor tabs can still remain after transitions, so future work should add post-stop scene restoration.
 - Shell-driven OS keypresses were not reliable enough to verify runtime input. Use `runtime.run_test_action` for deterministic component-authored verification; focused viewport input injection remains future work.
 - The ARPG controller now exposes Agent Bridge runtime test actions for logical UI/gameplay state. The runtime smoke verified inventory open, damage, restore, skill list, and zombie count. It also exposed that the current ScreenPanel child panels are not built (`hud.root=false`), which is a testbed/UI implementation issue now visible through bridge read-back.
 
@@ -193,7 +193,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 
 - `gameobject.destroy`: blocked pending fresh editor recheck or safer delete strategy.
 - `script.delete`: implemented but not live-smoked; use a scratch-file smoke before marking verified.
-- Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, and runtime test actions are verified, but duplicate stale tab restoration and generic runtime queries still need work.
+- Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, and runtime test actions are verified, but duplicate stale tab restoration and generic runtime queries still need work.
 - Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
 - Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
@@ -205,7 +205,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 The next best bridge tasks are:
 
 - seed human-verified orientation overrides for the generated ARPG prop kit and add isolated asset preview captures for ambiguous rotations;
-- post-transition stale-tab restoration and wait-for-runtime-session helpers;
+- post-transition stale-tab restoration;
 - viewport/HUD capture or generic panel hierarchy inspection;
 - focused viewport input injection;
 - fresh-session destructive edit verification;

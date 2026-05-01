@@ -13,7 +13,7 @@ GitHub Actions currently verifies:
 
 - MCP server dependencies install with `npm ci`.
 - TypeScript typecheck passes with `npm run check`.
-- Bridge-client file IPC tests pass with `npm test`.
+- Bridge-client file IPC and MCP wait-helper tests pass with `npm test`.
 - MCP server builds with `npm run build`.
 - JSON metadata and `.sbproj` files parse as valid JSON.
 
@@ -34,7 +34,7 @@ On Windows machines where `npm` is installed but not on PATH, direct Node execut
 ```powershell
 & 'C:\path\to\node.exe' .\node_modules\typescript\bin\tsc -p tsconfig.json --noEmit
 & 'C:\path\to\node.exe' .\node_modules\typescript\bin\tsc -p tsconfig.json
-& 'C:\path\to\node.exe' .\node_modules\tsx\dist\cli.mjs --test .\test\bridge-client.test.ts
+& 'C:\path\to\node.exe' .\node_modules\tsx\dist\cli.mjs --test .\test\bridge-client.test.ts .\test\wait-helpers.test.ts
 ```
 
 ## Opt-In Live Smoke Script
@@ -55,7 +55,7 @@ cd mcp-server
 SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
 ```
 
-This focused smoke first calls `editor.stop` with `stopAll: true`, opens `scenes/minimal.scene`, enters play mode, verifies `scene.summary` with `targetSession: runtime`, lists ARPG runtime test actions, and invokes deterministic ARPG actions for UI state, inventory open, damage, and restore. It intentionally verifies bridge/runtime feedback rather than OS-level input focus.
+This focused smoke first calls `editor.stop` with `stopAll: true`, waits for `editor.wait_stopped`, waits for `editor.wait_compile`, opens `scenes/minimal.scene`, enters play mode, waits for `editor.wait_runtime`, lists ARPG runtime test actions, invokes deterministic ARPG actions for UI state, inventory open, damage, and restore, then stops and waits for `editor.wait_stopped` again. It intentionally verifies bridge/runtime feedback rather than OS-level input focus.
 
 Useful environment variables:
 
