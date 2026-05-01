@@ -46,13 +46,14 @@ Acceptance criteria:
 
 Goal: make the bridge installable and diagnosable by testers who did not build the ARPG testbed.
 
-Status: in progress. Verified locally: install script, `bridge.doctor`, `editor.recover_scene`, `npm run smoke:mvp`, and `npm run walkthrough:boxing`.
+Status: in progress. Verified locally: install script, `bridge.doctor`, `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, `editor.recover_scene`, `npm run smoke:bootstrap`, `npm run smoke:mvp`, and `npm run walkthrough:boxing`.
 
 Acceptance criteria:
 
 - A tester can install the editor bridge with one PowerShell script.
 - A tester can run a readiness check before mutating the scene.
 - The MVP smoke covers the main safe workflow without relying on ARPG-specific runtime components.
+- A bootstrap smoke can create, save, reload, and verify a new scene inside a human-opened project.
 - A clean-room gameplay walkthrough can build and verify a second genre without relying on the ARPG controller.
 - Docs point testers to one quickstart instead of several overlapping engineering notes.
 
@@ -66,7 +67,10 @@ Candidate actions:
 
 - `editor.tabs` - verified
 - `editor.activate_tab` - verified by source path while an unsaved untitled scene tab was also open
+- `editor.project_info` - verified for active project metadata/path read-back
+- `editor.new_scene` - verified for blank scene creation
 - `editor.save_scene` - verified for save-state reporting, no-source guard, and actual disk-write verification against a sourced scene
+- `editor.save_scene_as` - verified for noninteractive path-based scene writes, asset registration/compile, reload, and persisted object read-back
 - `editor.open_scene` - verified for opening sourced scenes, resolving scenes through editor assets when needed, and force-reloading stale open sessions
 - `editor.recover_scene` - verified for stop-all plus sourced scene reload/reactivation after play-mode transitions
 - `editor.undo` - verified
@@ -218,7 +222,7 @@ Acceptance criteria:
 
 Remaining gaps:
 
-- Project and scene bootstrap. There is no action for creating/switching s&box projects, creating a new scene, or saving the active scene under a new path. Clean-room tests still need a human-opened project and an existing saved scene.
+- Project bootstrap. There is still no action for creating/switching s&box projects. Scene bootstrap is now covered by `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, and `smoke:bootstrap`, so clean-room tests only need a human-opened project with the bridge installed.
 - Structured source edits. `script.create` and `script.edit` replace whole files; large gameplay scripts would be safer with patch/source-aware edit helpers.
 - Structured live log-event capture, if a stable editor-library hook is verified.
 - Generic runtime/game-session inspection beyond scene/component reads and component-authored self-report.

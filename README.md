@@ -11,6 +11,8 @@ The goal is not an unsafe "do anything" bridge. The bridge exposes narrow, obser
 Ask an MCP-capable agent to:
 
 - run a bridge readiness/doctor check before editing
+- read active project metadata and paths
+- create a blank scene and save it to a project `.scene` path
 - summarize the active editor scene or the live runtime `GameSession`
 - list editor tabs/sessions and activate the scene you want to edit
 - inspect the current selection
@@ -173,7 +175,7 @@ Use the sbox-agent-bridge MCP tools to read compile status, start play mode, wai
 
 The MCP server currently registers these tools: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
 
-- `editor`: bridge status/doctor, active context, editor tabs, tab activation, open/recover scene, selection, save verification, undo, redo, frame object, play/stop, play state, compile status, recent logs, combined feedback, and MCP-side `wait_compile` / `wait_runtime` / `wait_stopped` helpers
+- `editor`: bridge status/doctor, project info, active context, editor tabs, tab activation, new/open/recover scene, selection, save/save-as verification, undo, redo, frame object, play/stop, play state, compile status, recent logs, combined feedback, and MCP-side `wait_compile` / `wait_runtime` / `wait_stopped` helpers
 - `scene`: summary, hierarchy, search, GameObject details, target-session-aware runtime reads, and small verified batches with `$ref` aliasing
 - `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent, and place assets with orientation overrides plus ground alignment; create can optionally parent the new object
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, and validate property
@@ -229,6 +231,17 @@ npm run smoke:mvp
 ```
 
 It verifies `bridge.doctor`, compile wait, scene recovery, scene read, object creation, model/material assignment, physics/sound/prefab read-back, runtime model preview capture, play/stop settle, and cleanup without relying on the ARPG-specific runtime hooks.
+
+### Bootstrap smoke
+
+To verify clean-room scene creation and save-as behavior:
+
+```powershell
+cd mcp-server
+npm run smoke:bootstrap
+```
+
+It reads active project info, creates a blank scene, creates a marker object, saves the scene to `scenes/agent_bridge/smoke/bootstrap_smoke.scene`, reopens it, verifies persisted marker read-back, and restores the previously active sourced scene.
 
 ### Boxing walkthrough
 
@@ -338,6 +351,7 @@ Useful scripts:
 - `npm run build`: compile the MCP server to `dist/`.
 - `npm run ci`: typecheck, unit test, and build.
 - `npm run walkthrough:boxing`: build and verify the clean-room boxing gameplay walkthrough.
+- `npm run smoke:bootstrap`: verify project info, blank scene creation, save-as, reload, and persisted object read-back.
 - `npm run smoke:capability-gaps`: verify scratch script delete, animation helper setup, and basic particle stack setup.
 - `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
 - `npm run smoke:mvp`: run the preferred external-tester smoke against an already-open bridge.

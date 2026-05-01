@@ -61,7 +61,7 @@ The MCP server lives in `mcp-server/`. It forwards MCP tool calls to bridge acti
 
 The bridge currently exposes MCP tools for:
 
-- `editor`: status, doctor, context, tabs, open/recover scene, selection, save, undo, redo, frame, play, stop, logs, compile status, combined feedback
+- `editor`: status, doctor, project info, context, tabs, new/open/recover scene, selection, save/save-as, undo, redo, frame, play, stop, logs, compile status, combined feedback
 - `scene`: summary, hierarchy, find, details, bounded batches
 - `gameobject`: get, create, rename, transform, enable, destroy, duplicate, reparent
 - `component`: list types, list on object, inspect, inspect properties, add, remove, enable, set property, validate property
@@ -81,6 +81,7 @@ As of 2026-05-01, direct local checks verified:
 
 - s&box bridge editor compile is green with zero errors in the live test project.
 - `bridge.doctor` and `editor.recover_scene` are live-verified. Doctor returned all-pass checks; recover_scene restored `scenes/minimal.scene` to one active tab.
+- `editor.project_info`, `editor.new_scene`, and `editor.save_scene_as` are live-verified through `mcp-server/test/bootstrap-smoke.ts`. The smoke creates a blank scene, creates a marker object, saves to `scenes/agent_bridge/smoke/bootstrap_smoke.scene`, reloads it, verifies persisted marker read-back, and restores the original sourced scene.
 - `mcp-server/test/mvp-smoke.ts` is live-verified and is the preferred external-tester smoke.
 - `asset.inspect_model` works on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
 - `asset.inspect_material`, `asset.set_material_source_property`, and `asset.preview_model` are live-verified through `mcp-server/test/asset-material-smoke.ts`. The preview path should target `runtime` after `editor.play`/`editor.wait_runtime`; stopped editor preview captures can render black on the current s&box build.
@@ -90,18 +91,18 @@ As of 2026-05-01, direct local checks verified:
 - `visual.capture_camera` captures the active main camera to PNG and returns luminance stats.
 - `mcp-server/test/capability-gap-smoke.ts` is live-verified. It creates/edits/deletes `AgentBridgeScratch/CapabilityGapSmokeFixture.cs` with new compile sequence waits, verifies controlled compile-error diagnostics and recovery, verifies `SkinnedModelRenderer` and `CitizenAnimationHelper` setup against `models/citizen/citizen.vmdl`, and verifies basic particle stack property mutation.
 - Spatial placement v1 works: `asset.set_orientation_override` and `asset.get_orientation_override` store/read `Assets/agent_bridge/orientation_overrides.json`, and `gameobject.place_asset` placed a cursed obelisk with a stored `pitch: 90` override, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`.
-- TypeScript check/build pass when invoked directly through the installed Node runtime.
+- TypeScript check/build pass. If npm shim issues recur on Windows, direct invocation through the installed Node runtime is a reliable fallback.
 - MCP bridge-client and wait-helper tests pass.
 
-The most recent pushed bridge commit before this handoff pass was:
+The most recent pushed bridge commit before the bootstrap pass was:
 
 ```text
-edb98bb Add boxing clean-room walkthrough
+df2d802 Harden capability gap smoke compile waits
 ```
 
 ## Windows Node/NPM Note
 
-This Windows shell may not have `npm` on PATH, and `npm run check` can hit an `Access is denied` shim issue. Direct Node execution works. The installed runtime path used successfully was:
+Some Windows shells may not have `npm` on PATH, and `npm run check` can hit an `Access is denied` shim issue. Direct Node execution works as a fallback. The installed runtime path used successfully was:
 
 ```text
 C:\Users\hidd3n\AppData\Local\Microsoft\WinGet\Packages\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\node-v24.15.0-win-x64\node.exe
@@ -208,7 +209,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - `gameobject.destroy`: reverified in focused smokes and `smoke:mvp`; cleanup scripts still fall back to disabling objects if native delete fails in a stale editor session.
 - `script.delete`: live-smoked with a scratch C# file in `AgentBridgeScratch/CapabilityGapSmokeFixture.cs`; create/edit/delete read-back and compile status passed.
 - Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, `editor.recover_scene`, and runtime test actions are verified; generic runtime queries still need work.
-- Clean-room project setup: there is still no bridge action to create/switch s&box projects, create a new scene, or save-as a scene. Walkthroughs need a human-opened project with an existing saved scene.
+- Clean-room project setup: there is still no bridge action to create/switch s&box projects. Once a project is open with the bridge installed, `editor.project_info`, `editor.new_scene`, and `editor.save_scene_as` cover blank scene bootstrap and persisted scene verification.
 - Script editing: `script.create`/`script.edit` are full-file replacement tools. Large gameplay scripts are possible, but structured patch/source-aware edit helpers would be safer.
 - Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
@@ -222,7 +223,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 The next best bridge tasks are:
 
 - seed human-verified orientation overrides for the generated ARPG prop kit and add contact-sheet previews for ambiguous rotations;
-- project/scene bootstrap tooling: create scene, save-as scene, and clearer fresh-project install/open workflow;
+- project bootstrap tooling: create/switch project if feasible, scene template install, and clearer fresh-project install/open workflow;
 - structured source edit helpers for large scripts;
 - viewport/HUD capture or generic panel hierarchy inspection;
 - focused viewport input injection;

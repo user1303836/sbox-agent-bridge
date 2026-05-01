@@ -57,6 +57,15 @@ SBOX_AGENT_BRIDGE_MVP_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAV
 
 This smoke is intentionally broader than the focused category smokes but narrower than the legacy live smoke. It verifies `bridge.doctor`, compile wait, `editor.recover_scene`, scene read, GameObject creation, model/material assignment, physics inspection, sound inspection, prefab instance inspection, runtime-targeted model preview, play/stop settle, and cleanup. It is the preferred smoke for new human testers.
 
+For clean-room scene bootstrap coverage:
+
+```bash
+cd mcp-server
+npm run smoke:bootstrap
+```
+
+This focused smoke stops stale play sessions, waits for compile, reads `editor.project_info`, creates a blank scene with `editor.new_scene`, creates a marker GameObject, saves the scene through `editor.save_scene_as`, reopens the saved scene, verifies the marker survived reload, and restores the previously active sourced scene when one existed.
+
 For clean-room gameplay walkthrough coverage:
 
 ```bash
@@ -124,6 +133,10 @@ Useful environment variables:
 
 - `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root.
 - `SBOX_AGENT_BRIDGE_TIMEOUT_MS`: override command timeout.
+- `SBOX_AGENT_BRIDGE_BOOTSTRAP_SCENE`: scene path written by `smoke:bootstrap`; defaults to `scenes/agent_bridge/smoke/bootstrap_smoke.scene`.
+- `SBOX_AGENT_BRIDGE_BOOTSTRAP_SCENE_NAME`: scene name used by `smoke:bootstrap`.
+- `SBOX_AGENT_BRIDGE_BOOTSTRAP_MARKER`: marker GameObject name used by `smoke:bootstrap`.
+- `SBOX_AGENT_BRIDGE_BOOTSTRAP_RESTORE=0`: leave the bootstrap scene active instead of restoring the previously active sourced scene.
 - `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
@@ -192,6 +205,14 @@ For save-scene changes, verify:
 1. `editor.save_scene` with `dryRun: true` returns before/after state without attempting a write.
 2. An untitled scene returns `saveAttempted: false`, `saveVerified: false`, and a clear `skippedReason` when called without `saveAs`.
 3. A scene with a source path returns `saveAttempted: true`; after a successful save, `after.hasUnsavedChanges` should be false and `saveVerified` should be true.
+
+For scene bootstrap changes, verify:
+
+1. `editor.project_info` returns active project paths and `bridgeInstalled: true`.
+2. `editor.new_scene` creates an unsourced editor scene and refuses to discard dirty work unless `discardUnsaved:true` is supplied.
+3. `editor.save_scene_as` writes a supplied `.scene` path with `overwrite:true`, registers/compiles it, and can activate the saved scene with `activateAfterSave:true`.
+4. `editor.open_scene` can force-reload the saved scene.
+5. `scene.find` can find an object created before the save/reload cycle.
 
 For batch scene changes, verify:
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
 using Editor;
 using Sandbox;
 
@@ -158,6 +159,15 @@ internal static class EditorHandlers
 		} );
 	}
 
+	public static BridgeResponse ProjectInfo( BridgeRequest request )
+	{
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Project info read",
+			verified = DescribeProject()
+		} );
+	}
+
 	public static BridgeResponse Tabs( BridgeRequest request )
 	{
 		return BridgeResponse.Success( request.Id, new
@@ -287,6 +297,64 @@ internal static class EditorHandlers
 				before,
 				stop = stopResult,
 				open = openResult,
+				after
+			}
+		} );
+	}
+
+	public static BridgeResponse NewScene( BridgeRequest request )
+	{
+		var before = DescribeTabsSnapshot();
+		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
+		var discardUnsaved = HandlerUtil.GetBool( request.Payload, "discardUnsaved", false );
+		var name = HandlerUtil.GetString( request.Payload, "name", "Untitled Scene" );
+		var path = HandlerUtil.GetString( request.Payload, "path" );
+		var overwrite = HandlerUtil.GetBool( request.Payload, "overwrite", false );
+		var activateAfterSave = HandlerUtil.GetBool( request.Payload, "activateAfterSave", true );
+		var active = SceneEditorSession.Active;
+
+		if ( active is not null && active.HasUnsavedChanges && !discardUnsaved )
+			throw new InvalidOperationException( "Active scene has unsaved changes; refusing to create a new scene without discardUnsaved:true." );
+
+		var session = SceneEditorSession.CreateDefault();
+		session.Scene.Name = string.IsNullOrWhiteSpace( name ) ? "Untitled Scene" : name;
+		var createdName = session.Scene.Name;
+		session.MakeActive( bringToFront );
+
+		object saveAs = null;
+		object opened = null;
+
+		if ( !string.IsNullOrWhiteSpace( path ) )
+		{
+			var saved = SaveSceneToPath( session, path, overwrite );
+			saveAs = saved;
+
+			if ( activateAfterSave )
+			{
+				opened = OpenSceneCore( saved.RelativePath, bringToFront, true, true );
+				if ( !ReferenceEquals( session, SceneEditorSession.Active ) )
+					session.Destroy();
+			}
+		}
+
+		var after = DescribeTabsSnapshot();
+		var activeAfter = SceneEditorSession.Active ?? session;
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = string.IsNullOrWhiteSpace( path ) ? "Editor scene created" : "Editor scene created and saved",
+			verified = new
+			{
+				name = createdName,
+				path = string.IsNullOrWhiteSpace( path ) ? "" : NormalizeScenePath( path ),
+				bringToFront,
+				discardUnsaved,
+				overwrite,
+				activateAfterSave,
+				before,
+				saveAs,
+				open = opened,
+				active = DescribeEditorTab( activeAfter, FindSessionIndex( activeAfter ), ReferenceEquals( activeAfter, SceneEditorSession.Active ) ),
 				after
 			}
 		} );
@@ -679,6 +747,42 @@ internal static class EditorHandlers
 		} );
 	}
 
+	public static BridgeResponse SaveSceneAs( BridgeRequest request )
+	{
+		var session = HandlerUtil.RequireSession();
+		var path = HandlerUtil.GetRequiredString( request.Payload, "path" );
+		var overwrite = HandlerUtil.GetBool( request.Payload, "overwrite", false );
+		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
+		var activateAfterSave = HandlerUtil.GetBool( request.Payload, "activateAfterSave", true );
+		var before = DescribeSaveState( session );
+		var saved = SaveSceneToPath( session, path, overwrite );
+		object opened = null;
+
+		if ( activateAfterSave )
+		{
+			opened = OpenSceneCore( saved.RelativePath, bringToFront, true, true );
+			if ( !before.HasSourcePath && !ReferenceEquals( session, SceneEditorSession.Active ) )
+				session.Destroy();
+		}
+
+		var active = SceneEditorSession.Active ?? session;
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor scene saved as",
+			verified = new
+			{
+				overwrite,
+				bringToFront,
+				activateAfterSave,
+				before,
+				saveAs = saved,
+				open = opened,
+				active = DescribeEditorTab( active, FindSessionIndex( active ), ReferenceEquals( active, SceneEditorSession.Active ) )
+			}
+		} );
+	}
+
 	public static BridgeResponse Undo( BridgeRequest request )
 	{
 		var session = HandlerUtil.RequireSession();
@@ -904,6 +1008,73 @@ internal static class EditorHandlers
 		};
 	}
 
+	private static SceneSaveAsSnapshot SaveSceneToPath( SceneEditorSession session, string path, bool overwrite )
+	{
+		var relativePath = NormalizeScenePath( path );
+		var absolutePath = ResolveAssetPath( relativePath );
+		var existedBefore = File.Exists( absolutePath );
+
+		if ( existedBefore && !overwrite )
+			throw new InvalidOperationException( $"Scene '{relativePath}' already exists. Pass overwrite:true to replace it." );
+
+		Directory.CreateDirectory( Path.GetDirectoryName( absolutePath ) ?? Project.Current.GetAssetsPath() );
+
+		var asset = existedBefore
+			? AssetSystem.FindByPath( relativePath ) ?? AssetSystem.RegisterFile( absolutePath )
+			: AssetSystem.CreateResource( "scene", absolutePath );
+
+		if ( asset is null )
+			throw new InvalidOperationException( $"Could not create or register scene asset '{relativePath}'." );
+
+		var gameObjects = session.Scene.Children
+			.Where( x => x is { IsValid: true, IsDestroyed: false } )
+			.Select( x => x.Serialize( new GameObject.SerializeOptions() ) )
+			.Where( x => x is not null )
+			.ToArray();
+		var sceneProperties = session.Scene.SerializeProperties() ?? new JsonObject();
+		var sceneFile = new SceneFile
+		{
+			Id = Guid.NewGuid(),
+			GameObjects = gameObjects,
+			SceneProperties = sceneProperties
+		};
+
+		ApplySceneMetadata( sceneProperties, Path.GetFileNameWithoutExtension( relativePath ) );
+
+		if ( !asset.SaveToDisk( sceneFile ) )
+			throw new InvalidOperationException( $"Scene '{relativePath}' could not be saved to disk." );
+
+		asset.Compile( true );
+
+		var info = new FileInfo( absolutePath );
+		var reloadedAsset = AssetSystem.FindByPath( relativePath ) ?? asset;
+		var resource = ResourceLibrary.Get<SceneFile>( relativePath ) ?? reloadedAsset.LoadResource<SceneFile>();
+
+		return new SceneSaveAsSnapshot
+		{
+			RequestedPath = path,
+			RelativePath = relativePath,
+			AbsolutePath = absolutePath,
+			ExistedBefore = existedBefore,
+			Overwrite = overwrite,
+			ExistsAfter = info.Exists,
+			Length = info.Exists ? info.Length : 0,
+			Asset = DescribeAsset( reloadedAsset ),
+			SceneFile = DescribeSceneFile( resource )
+		};
+	}
+
+	private static void ApplySceneMetadata( JsonObject sceneProperties, string title )
+	{
+		if ( !sceneProperties.TryGetPropertyValue( "Metadata", out var metadataNode ) || metadataNode is not JsonObject metadata )
+		{
+			metadata = new JsonObject();
+			sceneProperties["Metadata"] = metadata;
+		}
+
+		metadata["Title"] = title;
+	}
+
 	private static TabsSnapshot DescribeTabsSnapshot()
 	{
 		var sessions = SceneEditorSession.All.ToArray();
@@ -957,11 +1128,109 @@ internal static class EditorHandlers
 
 	private static object DescribeProject()
 	{
+		var project = Project.Current;
+		var config = project?.Config;
+		var rootPath = SafeRead( () => project?.GetRootPath() ?? "", "" );
+		var projectPath = SafeRead( () => project?.GetProjectPath() ?? "", "" );
+		var codePath = SafeRead( () => project?.GetCodePath() ?? "", "" );
+		var editorPath = SafeRead( () => project?.GetEditorPath() ?? "", "" );
+		var assetsPath = SafeRead( () => project?.GetAssetsPath() ?? "", "" );
+		var bridgeInstallPath = string.IsNullOrWhiteSpace( rootPath ) ? "" : Path.Combine( rootPath, "Libraries", "sbox_agent_bridge" );
+
 		return new
 		{
-			assetsPath = SafeRead( () => Project.Current.GetAssetsPath(), "" ),
+			title = SafeRead( () => config?.Title ?? "", "" ),
+			type = SafeRead( () => config?.Type ?? "", "" ),
+			org = SafeRead( () => config?.Org ?? "", "" ),
+			ident = SafeRead( () => config?.Ident ?? "", "" ),
+			fullIdent = SafeRead( () => config?.FullIdent ?? "", "" ),
+			packageType = SafeRead( () => config is null ? "" : config.PackageType.ToString(), "" ),
+			rootPath,
+			projectPath,
+			configFilePath = SafeRead( () => project?.ConfigFilePath ?? "", "" ),
+			assetsPath,
+			codePath,
+			editorPath,
+			hasAssetsPath = SafeRead( () => project?.HasAssetsPath() ?? false, false ),
+			hasCodePath = SafeRead( () => project?.HasCodePath() ?? false, false ),
+			hasEditorPath = SafeRead( () => project?.HasEditorPath() ?? false, false ),
+			isTransient = SafeRead( () => project?.IsTransient ?? false, false ),
+			isBuiltIn = SafeRead( () => project?.IsBuiltIn ?? false, false ),
+			isPublished = SafeRead( () => project?.IsPublished ?? false, false ),
+			isSourcePublish = SafeRead( () => project?.IsSourcePublish() ?? false, false ),
+			hasCompiler = SafeRead( () => project?.HasCompiler ?? false, false ),
+			bridgeInstallPath,
+			bridgeInstalled = !string.IsNullOrWhiteSpace( bridgeInstallPath ) && Directory.Exists( bridgeInstallPath ),
 			currentDirectory = SafeRead( () => Environment.CurrentDirectory, "" )
 		};
+	}
+
+	private static object DescribeAsset( Asset asset )
+	{
+		if ( asset is null )
+			return null;
+
+		return new
+		{
+			name = asset.Name,
+			path = asset.RelativePath,
+			absolutePath = asset.AbsolutePath,
+			assetType = asset.AssetType?.FriendlyName,
+			extension = asset.AssetType?.FileExtension,
+			resourceType = asset.AssetType?.ResourceType?.FullName,
+			isCompiled = asset.IsCompiled,
+			isCompiledAndUpToDate = asset.IsCompiledAndUpToDate,
+			isCompileFailed = asset.IsCompileFailed
+		};
+	}
+
+	private static object DescribeSceneFile( SceneFile sceneFile )
+	{
+		if ( sceneFile is null )
+			return null;
+
+		return new
+		{
+			id = sceneFile.Id.ToString(),
+			path = sceneFile.ResourcePath,
+			name = sceneFile.ResourceName,
+			isValid = sceneFile.IsValid,
+			title = sceneFile.Title,
+			description = sceneFile.Description,
+			resourceVersion = sceneFile.ResourceVersion,
+			gameObjectCount = sceneFile.GameObjects?.Length ?? 0,
+			hasSceneProperties = sceneFile.SceneProperties is not null
+		};
+	}
+
+	private static string NormalizeScenePath( string path )
+	{
+		path = (path ?? "").Replace( '\\', '/' ).Trim().TrimStart( '/' );
+
+		if ( path.StartsWith( "assets/", StringComparison.OrdinalIgnoreCase ) )
+			path = path.Substring( "assets/".Length );
+
+		if ( string.IsNullOrWhiteSpace( path ) )
+			throw new InvalidOperationException( "Scene path cannot be empty." );
+
+		if ( !path.EndsWith( ".scene", StringComparison.OrdinalIgnoreCase ) )
+			path += ".scene";
+
+		if ( path.Split( '/' ).Any( part => part == ".." ) )
+			throw new InvalidOperationException( "Scene path cannot contain '..' segments." );
+
+		return path;
+	}
+
+	private static string ResolveAssetPath( string relativePath )
+	{
+		var assetsRoot = Path.GetFullPath( Project.Current.GetAssetsPath() );
+		var absolutePath = Path.GetFullPath( Path.Combine( assetsRoot, relativePath.Replace( '/', Path.DirectorySeparatorChar ) ) );
+
+		if ( !absolutePath.StartsWith( assetsRoot, StringComparison.OrdinalIgnoreCase ) )
+			throw new InvalidOperationException( "Resolved scene path escaped the project Assets directory." );
+
+		return absolutePath;
 	}
 
 	private static IpcHealthSnapshot DescribeIpcHealth()
@@ -1117,6 +1386,19 @@ internal static class EditorHandlers
 		public string SourcePath { get; set; }
 		public object? Source { get; set; }
 		public object[] ReadErrors { get; set; }
+	}
+
+	private sealed class SceneSaveAsSnapshot
+	{
+		public string RequestedPath { get; set; }
+		public string RelativePath { get; set; }
+		public string AbsolutePath { get; set; }
+		public bool ExistedBefore { get; set; }
+		public bool Overwrite { get; set; }
+		public bool ExistsAfter { get; set; }
+		public long Length { get; set; }
+		public object Asset { get; set; }
+		public object SceneFile { get; set; }
 	}
 
 	private sealed class TabsSnapshot

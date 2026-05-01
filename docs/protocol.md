@@ -41,13 +41,16 @@ Errors use the same envelope:
 - `bridge.status`
 - `bridge.doctor`
 - `editor.context`
+- `editor.project_info`
 - `editor.tabs`
 - `editor.activate_tab`
+- `editor.new_scene`
 - `editor.open_scene`
 - `editor.recover_scene`
 - `editor.get_selection`
 - `editor.set_selection`
 - `editor.save_scene`
+- `editor.save_scene_as`
 - `editor.undo`
 - `editor.redo`
 - `editor.frame_object`
@@ -121,6 +124,10 @@ Mutations should return a `verified` object read back from the editor after the 
 
 Vector payloads must be complete. For `Vector3` fields, direct protocol callers must include numeric `x`, `y`, and `z` values; partial vector objects are rejected before mutation.
 
+`editor.project_info` reads active project metadata and paths, including project title/type/ident, root/assets/code/editor paths, compiler availability, bridge install path, and current process directory. It does not create, switch, or open projects.
+
+`editor.new_scene` creates a default editor scene tab. It accepts optional `name`, `bringToFront`, and `discardUnsaved`. If `path` is supplied, it also saves the new scene to that project path; `overwrite` allows replacing an existing scene asset and `activateAfterSave` reopens the saved scene asset after writing.
+
 `editor.open_scene` accepts `path`, optional `bringToFront`, optional `forceReload`, and optional `discardUnsaved`. Use `forceReload: true` to reload an already-open sourced scene from disk after play-mode transitions leave the active editor session stale. If the open session has unsaved changes, the bridge refuses to reload unless `discardUnsaved: true` is also provided; reserve that for scratch/test scenes.
 
 `bridge.doctor` is a read-only readiness check for testers and agents. It reports bridge/MCP version data, IPC writability, project paths, tab/session health, compile health, bridge-related logs, pass/warn/fail checks, and `nextSuggestedAction`.
@@ -128,6 +135,8 @@ Vector payloads must be complete. For `Vector3` fields, direct protocol callers 
 `editor.recover_scene` accepts optional `path`, `stopAll`, `bringToFront`, `forceReload`, and `discardUnsaved`. If `path` is omitted, it tries to infer the active sourced editor scene. It stops playing sessions by default, reloads/reactivates the sourced scene, and returns before/after tab snapshots. Use `discardUnsaved:true` only for scratch/test scenes.
 
 `editor.save_scene` returns before/after save state. `dryRun: true` reads save state without writing. Untitled scenes without a source path are guarded: the bridge returns `saveAttempted: false` and a `skippedReason` instead of opening a surprise save-as flow. When a save is attempted, `saveVerified` is true only if the after-state reports no unsaved changes.
+
+`editor.save_scene_as` saves the active editor scene to a supplied project `path` without opening the human save-as dialog. It accepts `overwrite`, `bringToFront`, and `activateAfterSave`. The bridge registers/compiles the written scene asset, returns file/resource read-back, and can reopen the saved asset so the active tab has a source path.
 
 `component.set_property` also accepts `dryRun: true`. In dry-run mode, the bridge resolves the component/property and converts the input value, but does not call `PropertyDescription.SetValue`.
 

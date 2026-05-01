@@ -16,13 +16,16 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
           "status",
           "doctor",
           "context",
+          "project_info",
           "tabs",
           "activate_tab",
+          "new_scene",
           "open_scene",
           "recover_scene",
           "get_selection",
           "set_selection",
           "save_scene",
+          "save_scene_as",
           "undo",
           "redo",
           "frame_object",
@@ -40,7 +43,8 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
       id: z.string().optional().describe("Target GameObject id for frame_object."),
       index: z.number().int().min(0).optional().describe("Editor tab index for activate_tab."),
       scene: z.string().optional().describe("Scene/tab name selector for activate_tab."),
-      path: z.string().optional().describe("Scene resource path for open_scene or recover_scene, such as scenes/minimal.scene."),
+      path: z.string().optional().describe("Scene resource path for new_scene, open_scene, recover_scene, or save_scene_as, such as scenes/minimal.scene."),
+      name: z.string().optional().describe("Scene name/title for new_scene."),
       targetSession: z
         .enum(["active", "editor", "playing", "runtime", "game"])
         .optional()
@@ -56,6 +60,8 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
         .optional()
         .describe("For open_scene/recover_scene with forceReload, allow discarding unsaved changes in the open scene session. Use only for scratch/test scenes."),
       stopAll: z.boolean().optional().describe("For stop or recover_scene, stop every currently playing editor session before returning read-back state."),
+      overwrite: z.boolean().optional().describe("For new_scene with path or save_scene_as, allow replacing an existing scene asset."),
+      activateAfterSave: z.boolean().optional().describe("For new_scene with path or save_scene_as, open the saved scene asset after writing it."),
       timeoutMs: z.number().int().min(100).max(120_000).optional().describe("For wait_* actions, maximum time to wait."),
       pollMs: z.number().int().min(25).max(5_000).optional().describe("For wait_* actions, polling interval."),
       sinceSequence: z
@@ -69,7 +75,7 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
       requireSceneSummary: z.boolean().optional().describe("For wait_runtime, require scene.summary targetSession=runtime to succeed before settling."),
       requireNoGameSessions: z.boolean().optional().describe("For wait_stopped, also require derived GameSession tabs to disappear."),
       ids: z.array(z.string()).optional().describe("GameObject ids to select when action is set_selection."),
-      saveAs: z.boolean().optional().describe("Force a save-as flow when saving the active scene."),
+      saveAs: z.boolean().optional().describe("Force the editor's human-visible save-as flow when saving the active scene. Prefer save_scene_as with path for noninteractive automation."),
       dryRun: z.boolean().optional().describe("For save_scene, report save verification state without writing."),
       maxLines: z.number().int().positive().max(1000).optional().describe("Maximum editor log lines to return for logs or feedback."),
       afterIndex: z
