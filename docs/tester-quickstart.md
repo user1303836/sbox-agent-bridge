@@ -52,6 +52,16 @@ npm run smoke:mvp
 
 The smoke verifies the main external-tester path: doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics read-back, sound event/component read-back, prefab creation/instantiation/inspection, runtime model preview capture, play/stop settle, and cleanup.
 
+For a broader gameplay walkthrough after the MVP smoke passes:
+
+```powershell
+$env:SBOX_AGENT_BRIDGE_BOXING_SCENE='scenes/minimal.scene'
+$env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
+npm run walkthrough:boxing
+```
+
+This installs and verifies a small boxing game loop in the open test project.
+
 ## 5. MCP Client Config
 
 Point your client at the built server:

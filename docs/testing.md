@@ -57,6 +57,15 @@ SBOX_AGENT_BRIDGE_MVP_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAV
 
 This smoke is intentionally broader than the focused category smokes but narrower than the legacy live smoke. It verifies `bridge.doctor`, compile wait, `editor.recover_scene`, scene read, GameObject creation, model/material assignment, physics inspection, sound inspection, prefab instance inspection, runtime-targeted model preview, play/stop settle, and cleanup. It is the preferred smoke for new human testers.
 
+For clean-room gameplay walkthrough coverage:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_BOXING_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run walkthrough:boxing
+```
+
+This walkthrough installs a reusable `BoxingDemoController` fixture through `script.create`, waits for compile, recovers the target scene, creates an isolated controller object, adds/configures the local component by exact type name, saves the scene, enters play mode, verifies runtime test actions for a boxing loop, exercises jab/block/dodge/knockdown/TKO/decision paths, captures the generated broadcast camera by GameObject id, stops play mode, and reports weak spots found during the run.
+
 For runtime feedback and ARPG testbed verification:
 
 ```bash
@@ -106,6 +115,8 @@ Useful environment variables:
 
 - `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root.
 - `SBOX_AGENT_BRIDGE_TIMEOUT_MS`: override command timeout.
+- `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
+- `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
 - `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
 - `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` cannot be added and mutated. The fixture may be addable by exact type name even when it is not visible to `component.list_types`.

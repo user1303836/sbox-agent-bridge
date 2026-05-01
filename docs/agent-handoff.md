@@ -61,7 +61,7 @@ The MCP server lives in `mcp-server/`. It forwards MCP tool calls to bridge acti
 
 The bridge currently exposes MCP tools for:
 
-- `editor`: status, context, tabs, open scene, selection, save, undo, redo, frame, play, stop, logs, compile status, combined feedback
+- `editor`: status, doctor, context, tabs, open/recover scene, selection, save, undo, redo, frame, play, stop, logs, compile status, combined feedback
 - `scene`: summary, hierarchy, find, details, bounded batches
 - `gameobject`: get, create, rename, transform, enable, destroy, duplicate, reparent
 - `component`: list types, list on object, inspect, inspect properties, add, remove, enable, set property, validate property
@@ -71,6 +71,7 @@ The bridge currently exposes MCP tools for:
 - `sound`: list, get info, inspect scene components, create event, assign, preview
 - `physics`: inspect, add collider, add rigidbody, add joint, raycast
 - `prefab`: create, list, get info, instantiate, inspect instance metadata
+- `runtime`: list and invoke component-authored runtime test actions
 
 `scene.batch` can compose existing actions with `$ref` alias substitution and per-operation results.
 
@@ -196,12 +197,17 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Prefab instances created through the bridge should preserve prefab id maps. The bridge now rewrites prefab `__guid` and `IdValue` references before deserialization instead of stripping all GUIDs, which makes `prefab.inspect_instance` useful immediately after instantiation.
 - Shell-driven OS keypresses were not reliable enough to verify runtime input. Use `runtime.run_test_action` for deterministic component-authored verification; focused viewport input injection remains future work.
 - The ARPG controller now exposes Agent Bridge runtime test actions for logical UI/gameplay state. The runtime smoke verified inventory open, damage, restore, skill list, and zombie count. It also exposed that the current ScreenPanel child panels are not built (`hud.root=false`), which is a testbed/UI implementation issue now visible through bridge read-back.
+- The clean-room boxing walkthrough (`npm run walkthrough:boxing`) builds a second genre through the bridge. It creates `Code/BoxingDemo/BoxingDemoController.cs` via `script.create`, adds/configures the local component by exact type name, saves the scene, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera by GameObject id, and ends with `bridge.doctor` passing.
+- Property-protocol test components should ignore empty `AgentBridgeTestAction` setter values. s&box scene deserialization can replay serialized empty strings; this exposed an ARPG fixture failure during the boxing walkthrough. The bridge now unwraps property-protocol target invocation failures with component/action context.
+- In multi-camera runtime scenes, pass `cameraComponentId` or `gameObjectId` to `visual.capture_camera`. The boxing walkthrough initially captured the existing scene camera until it resolved `Broadcast camera` by runtime scene search.
 
 ## Known Blockers And Caveats
 
 - `gameobject.destroy`: reverified in focused smokes and `smoke:mvp`; cleanup scripts still fall back to disabling objects if native delete fails in a stale editor session.
 - `script.delete`: implemented but not live-smoked; use a scratch-file smoke before marking verified.
 - Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, `editor.recover_scene`, and runtime test actions are verified; generic runtime queries still need work.
+- Clean-room project setup: there is still no bridge action to create/switch s&box projects, create a new scene, or save-as a scene. Walkthroughs need a human-opened project with an existing saved scene.
+- Script editing: `script.create`/`script.edit` are full-file replacement tools. Large gameplay scripts are possible, but structured patch/source-aware edit helpers would be safer.
 - Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
 - Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
@@ -214,7 +220,8 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 The next best bridge tasks are:
 
 - seed human-verified orientation overrides for the generated ARPG prop kit and add contact-sheet previews for ambiguous rotations;
-- clean-clone/fresh-project tester walkthrough;
+- project/scene bootstrap tooling: create scene, save-as scene, and clearer fresh-project install/open workflow;
+- structured source edit helpers for large scripts;
 - viewport/HUD capture or generic panel hierarchy inspection;
 - focused viewport input injection;
 - fresh-session destructive edit verification;

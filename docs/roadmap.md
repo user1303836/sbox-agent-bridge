@@ -46,13 +46,14 @@ Acceptance criteria:
 
 Goal: make the bridge installable and diagnosable by testers who did not build the ARPG testbed.
 
-Status: in progress. Verified locally: install script, `bridge.doctor`, `editor.recover_scene`, and `npm run smoke:mvp`.
+Status: in progress. Verified locally: install script, `bridge.doctor`, `editor.recover_scene`, `npm run smoke:mvp`, and `npm run walkthrough:boxing`.
 
 Acceptance criteria:
 
 - A tester can install the editor bridge with one PowerShell script.
 - A tester can run a readiness check before mutating the scene.
 - The MVP smoke covers the main safe workflow without relying on ARPG-specific runtime components.
+- A clean-room gameplay walkthrough can build and verify a second genre without relying on the ARPG controller.
 - Docs point testers to one quickstart instead of several overlapping engineering notes.
 
 ## Milestone 2: Core Scene Editing
@@ -217,11 +218,14 @@ Acceptance criteria:
 
 Remaining gaps:
 
+- Project and scene bootstrap. There is no action for creating/switching s&box projects, creating a new scene, or saving the active scene under a new path. Clean-room tests still need a human-opened project and an existing saved scene.
+- Structured source edits. `script.create` and `script.edit` replace whole files; large gameplay scripts would be safer with patch/source-aware edit helpers.
 - Structured live log-event capture, if a stable editor-library hook is verified.
 - Generic runtime/game-session inspection beyond scene/component reads and component-authored self-report.
 - Richer post-transition cleanup. `editor.recover_scene` covers the common saved-scene recovery path, but unsaved/prefab/custom editor session edge cases still need more coverage.
 - Focused viewport input injection. Component-authored runtime test actions work, but shell-driven OS keypresses were not reliable enough to verify game input focus.
 - Viewport/HUD capture. `visual.capture_camera` captures world cameras, but not the editor/game viewport UI overlay. Runtime UI self-report works for instrumented components; generic HUD verification needs viewport/window capture or panel hierarchy inspection.
+- Camera target ambiguity. Multi-camera scenes should pass `cameraComponentId` or `gameObjectId`; default runtime capture can pick an existing scene camera instead of the generated gameplay camera.
 - Reverify destructive scene edits after play/stop transitions. The current editor session exposed a null reference in the native GameObject delete/undo path.
 
 ## Milestone 6: Rich Editor Access

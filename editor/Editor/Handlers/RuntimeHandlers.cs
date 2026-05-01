@@ -256,17 +256,28 @@ internal static class RuntimeHandlers
 		if ( !protocol.CanRun )
 			throw new InvalidOperationException( $"Component '{component.GetType().Name}' does not expose a supported runtime test-action method or property protocol." );
 
-		protocol.Payload?.SetValue( component, payloadJson );
-		protocol.Action.SetValue( component, action );
-
-		var resultJson = protocol.Result?.GetValue( component ) as string ?? "";
-
-		return new RuntimeInvocationResult
+		try
 		{
-			Mode = "propertyProtocol",
-			Result = ParseResultJson( resultJson ),
-			ResultJson = resultJson
-		};
+			protocol.Payload?.SetValue( component, payloadJson );
+			protocol.Action.SetValue( component, action );
+
+			var resultJson = protocol.Result?.GetValue( component ) as string ?? "";
+
+			return new RuntimeInvocationResult
+			{
+				Mode = "propertyProtocol",
+				Result = ParseResultJson( resultJson ),
+				ResultJson = resultJson
+			};
+		}
+		catch ( TargetInvocationException ex ) when ( ex.InnerException is not null )
+		{
+			throw new InvalidOperationException( $"Runtime test-action property protocol failed on '{component.GetType().Name}' for action '{action}': {ex.InnerException.Message}", ex.InnerException );
+		}
+		catch ( Exception ex ) when ( ex is not InvalidOperationException )
+		{
+			throw new InvalidOperationException( $"Runtime test-action property protocol failed on '{component.GetType().Name}' for action '{action}': {ex.Message}", ex );
+		}
 	}
 
 	private static PropertyProtocol FindPropertyProtocol( Component component )

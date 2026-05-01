@@ -6,7 +6,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 
 - Date: 2026-05-01
 - Environment: Windows, local s&box editor
-- Test project: Minimal Game-derived local project with the ARPG bridge testbed
+- Test project: Minimal Game-derived local project with ARPG and boxing bridge testbeds
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
 
@@ -38,6 +38,8 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - Prefab helpers are live-verified: `prefab.create`, `prefab.list`, `prefab.get_info`, `prefab.instantiate`, and `prefab.inspect_instance`. Instantiation now remaps prefab GUIDs to fresh instance GUIDs so `__PrefabIdToInstanceId` and transform override patch metadata are available immediately after bridge-created instances.
 - Editor feedback-loop actions are live-smoked for play state, play/stop, compile status, recent logs, combined feedback, and MCP-side wait helpers. `editor.logs` and `editor.feedback` support `afterIndex` cursor reads so agents can establish a baseline and then inspect only new log lines. Read actions now support `targetSession: runtime` for live `GameSession` inspection, and `editor.stop` supports `stopAll: true` for clearing stale play sessions before smoke tests.
 - Runtime feedback is live-verified through `runtime.list_test_actions` and `runtime.run_test_action`. The verified property protocol lets component-authored test hooks execute deterministic actions and return JSON read-back from the live GameSession. `mcp-server/test/runtime-feedback-smoke.ts` verifies wait helpers, ARPG state, inventory, damage, and restore flow.
+- The clean-room boxing walkthrough is live-verified through `npm run walkthrough:boxing`. It creates `Code/BoxingDemo/BoxingDemoController.cs` through `script.create`, adds the local component by exact type name, saves the scene, enters play mode, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, and captures the generated broadcast camera by GameObject id.
+- Runtime property-protocol failures now unwrap target invocation exceptions with component/action context. The boxing walkthrough also confirmed that property-protocol components should ignore empty `AgentBridgeTestAction` assignments, because s&box scene deserialization can replay serialized empty property values.
 - Rendering-oriented component mutation is live-verified through the ARPG visual pass: AmbientLight, PointLight, SpotLight, DirectionalLight, DecalRenderer, PostProcessVolume, FilmGrain, Tonemapping, Bloom, Vignette, ColorAdjustments, and basic ParticleEffect/ParticleEmitter/ParticleRenderer settings.
 - GitHub Actions runs metadata validation, TypeScript typecheck, tests, and MCP server build.
 
@@ -56,8 +58,10 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. Cursor indexes are file line indexes, not structured log-event ids, and large ranges can still be tail-truncated.
 - Runtime/game-session reads are now targetable and `editor.wait_runtime` removes the need for fixed sleeps. `editor.recover_scene` stops stale play sessions and reopens/reactivates a sourced scene; `editor.open_scene` still supports `discardUnsaved:true` with `forceReload:true` for scratch/test-scene recovery.
-- `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report is available through test actions, but generic viewport/HUD pixel capture and panel hierarchy inspection remain open.
+- `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report is available through test actions, but generic viewport/HUD pixel capture and panel hierarchy inspection remain open. In multi-camera scenes, callers should pass `cameraComponentId` or `gameObjectId`; the boxing walkthrough found that default camera selection can choose an existing scene camera instead of a generated gameplay camera.
 - Shell-driven OS keypresses are not reliable enough to verify game input. Deterministic runtime test actions are now available; focused viewport input injection remains future work.
+- There is no bridge action yet for creating a brand-new s&box project, switching the open editor project, creating a new scene, or saving the active scene under a new path. The boxing walkthrough had to use the currently open project and an existing saved scene.
+- Script authoring is currently full-file create/edit. The boxing walkthrough was workable with a fixture file, but large gameplay scripts would benefit from structured patch support or source-aware edit helpers.
 - Spatial placement now has a live-verified v1 override-backed placement path, but the override data still needs to be seeded for the full generated prop kit. Renderer bounds still cannot confirm that an asset is semantically upright without human or vision confirmation.
 - Local game component types, including `AgentBridgeMutationFixture`, are not visible through editor-side `Game.TypeLibrary` enumeration in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set, but exact-name `component.add` can still add compiled local components in verified cases.
 - `npm run smoke:mvp` is the preferred external-tester smoke. The older `smoke:live` remains useful for broad regression checks but has more historical fixture assumptions.
@@ -67,6 +71,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 ## Next Larger Milestones
 
 - Run the tester quickstart from a clean clone and a fresh minimal s&box project.
+- Add first-class project/scene bootstrap tools: create/open project if feasible, create scene, save-as scene, and scene template install.
 - Seed persistent asset orientation overrides for the generated ARPG prop kit and add isolated preview captures for ambiguous assets.
 - Editor feedback loop refinements: structured live log events, viewport/HUD capture, and focused viewport input injection.
 - Improve local game component type discovery so agents can list project components before adding them by exact name.

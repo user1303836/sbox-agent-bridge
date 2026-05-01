@@ -252,6 +252,8 @@ The MCP `editor` tool also exposes `wait_compile`, `wait_runtime`, and `wait_sto
 
 `runtime.run_test_action` accepts `testAction`, optional `payload`, and optional `componentId`, `gameObjectId`, or `componentType` selectors. It invokes the selected runtime component and returns the invocation mode, selected component, result JSON, and parsed result when possible.
 
+For property-protocol components, make the `AgentBridgeTestAction` setter ignore null/empty/whitespace values. s&box scene deserialization can set serialized string properties during scene cloning, and empty action values should not execute test logic or throw. Bridge-side errors from property-protocol invocation include the component type and requested action when the underlying setter throws.
+
 ## File Handoff
 
 Writers should create request and response files through an atomic same-directory rename:

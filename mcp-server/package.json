@@ -9,6 +9,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "ci": "npm run check && npm test && npm run build",
     "dev": "tsx src/index.ts",
+    "walkthrough:boxing": "tsx test/boxing-poc-walkthrough.ts",
     "smoke:assets": "tsx test/asset-material-smoke.ts",
     "smoke:live": "tsx test/live-smoke.ts",
     "smoke:mvp": "tsx test/mvp-smoke.ts",

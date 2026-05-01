@@ -230,6 +230,19 @@ npm run smoke:mvp
 
 It verifies `bridge.doctor`, compile wait, scene recovery, scene read, object creation, model/material assignment, physics/sound/prefab read-back, runtime model preview capture, play/stop settle, and cleanup without relying on the ARPG-specific runtime hooks.
 
+### Boxing walkthrough
+
+For a clean-room gameplay build that covers a different genre:
+
+```powershell
+cd mcp-server
+$env:SBOX_AGENT_BRIDGE_BOXING_SCENE='scenes/minimal.scene'
+$env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
+npm run walkthrough:boxing
+```
+
+It installs a `BoxingDemoController` through the bridge, adds it to the scene, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera, and reports bridge gaps found during the walkthrough.
+
 ### Runtime feedback smoke
 
 For deterministic play-mode/runtime verification:
@@ -241,7 +254,7 @@ SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
 
 The runtime smoke stops stale play sessions, waits for compile/stopped/runtime transitions, opens the configured scene, enters play mode, waits for a live runtime `GameSession`, lists component-authored runtime test actions, invokes ARPG testbed actions for logical UI/gameplay state, then stops and waits for the editor to settle again.
 
-Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
+Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, `SBOX_AGENT_BRIDGE_BOXING_SCENE`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
 
 ## Current Caveats
 
@@ -324,6 +337,7 @@ Useful scripts:
 - `npm test`: run bridge-client and wait-helper unit tests.
 - `npm run build`: compile the MCP server to `dist/`.
 - `npm run ci`: typecheck, unit test, and build.
+- `npm run walkthrough:boxing`: build and verify the clean-room boxing gameplay walkthrough.
 - `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
 - `npm run smoke:mvp`: run the preferred external-tester smoke against an already-open bridge.
 - `npm run smoke:runtime`: run the focused runtime feedback smoke against an already-open bridge.

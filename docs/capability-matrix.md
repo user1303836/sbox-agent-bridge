@@ -12,7 +12,7 @@ Status meanings:
 ## Current Verification Environment
 
 - Date: 2026-05-01
-- s&box project: Minimal Game-derived local project with the ARPG bridge testbed
+- s&box project: Minimal Game-derived local project with ARPG and boxing bridge testbeds
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
 - Official docs sweep source: `https://sbox.game/dev/doc/` navigation index reviewed on 2026-05-01. Missing top-level doc areas are listed below even when the bridge has no tool support yet.
@@ -182,7 +182,7 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| Runtime UI state inspection | `runtime.run_test_action` | `runtime` / `run_test_action` | Verified | The ARPG controller exposes a property-protocol test action that reports logical HUD/orb/inventory/player/combat state. Live smoke verified inventory open, damage, restore, skills, and zombie count. It also reported that actual ScreenPanel child panels are not built in the current testbed. |
+| Runtime UI state inspection | `runtime.run_test_action` | `runtime` / `run_test_action` | Verified | The ARPG controller exposes a property-protocol test action that reports logical HUD/orb/inventory/player/combat state. Live smoke verified inventory open, damage, restore, skills, and zombie count. The boxing walkthrough verified gameplay/HUD self-report for a second genre. Generic ScreenPanel tree inspection is still missing. |
 | Screen UI/panel hierarchy inspection | TBD | TBD | Planned | No generic bridge tool inspects UI panel trees, Razor component instances, or resolved styles. Runtime self-report can expose component-authored UI state, but not arbitrary panel hierarchy/pixels. |
 | Razor/component authoring helpers | `script.create`, `script.edit` | `script` | Partial | Agents can edit source files, but there are no UI-specific templates, schemas, style checks, or live panel verification. |
 | HudPainter | TBD | TBD | Planned | No helpers inspect or verify immediate-mode HUD drawing. |
@@ -215,8 +215,8 @@ Status meanings:
 | Navigation/navmesh | TBD | TBD | Planned | No navigation mesh build/read helpers, navmesh agent inspection, area/cost/filter controls, obstacle inspection, or link diagnostics. |
 | Terrain | TBD | TBD | Planned | No terrain sculpt, paint, material, read, or placement helpers. |
 | Clutter system | TBD | TBD | Planned | No clutter authoring, inspection, or density validation helpers. |
-| Runtime gameplay state/self-report | `runtime.list_test_actions`, `runtime.run_test_action`, `scene.* targetSession=runtime` | `runtime`, `scene` | Verified | Live-smoked against the ARPG GameSession. Runtime scene reads target the live `GameSession`; component-authored test actions provide gameplay/UI state without relying on screenshots. |
-| Runtime input/test actions | `runtime.run_test_action` | `runtime` / `run_test_action` | Verified | Deterministic component-authored test actions are verified through a property protocol. This replaces shell-level OS keypresses for agent verification; focused viewport input injection is still future work. |
+| Runtime gameplay state/self-report | `runtime.list_test_actions`, `runtime.run_test_action`, `scene.* targetSession=runtime` | `runtime`, `scene` | Verified | Live-smoked against the ARPG GameSession and the boxing walkthrough. Runtime scene reads target the live `GameSession`; component-authored test actions provide gameplay/UI state without relying on screenshots. |
+| Runtime input/test actions | `runtime.run_test_action` | `runtime` / `run_test_action` | Verified | Deterministic component-authored test actions are verified through a property protocol. The bridge now unwraps property-protocol setter exceptions with component/action context. Components should ignore empty `AgentBridgeTestAction` assignments because scene deserialization can replay serialized empty values. Focused viewport input injection is still future work. |
 | VR gameplay | TBD | TBD | Planned | No VR gameplay/session/controller helpers. |
 
 ## Services
@@ -247,6 +247,7 @@ Status meanings:
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
 | Runtime feedback smoke script | Verified | `mcp-server/test/runtime-feedback-smoke.ts` verifies `wait_compile`, `wait_stopped`, `wait_runtime`, runtime test-action listing/invocation, ARPG logical UI state, inventory open, damage, and restore. |
 | MVP smoke script | Verified | `mcp-server/test/mvp-smoke.ts` verifies doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics inspection, sound inspection, prefab inspection, runtime preview capture, play/stop settle, and cleanup without ARPG-specific test actions. |
+| Boxing clean-room walkthrough | Verified | `mcp-server/test/boxing-poc-walkthrough.ts` installs a boxing controller through `script.create`, adds/configures the local component by exact type name, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera by GameObject id, and reports project/scene bootstrap, script-editing, input, and camera-targeting gaps. |
 | Asset/material smoke script | Verified | `mcp-server/test/asset-material-smoke.ts` verifies material creation, material source inspection/mutation, runtime-targeted model preview capture, and wait-helper cleanup. |
 | Prefab instance smoke script | Verified | `mcp-server/test/prefab-instance-smoke.ts` verifies prefab creation, source binding, prefab info reload, GUID-remapped instantiation, instance id maps, and transform override patch samples. |
 | Physics smoke script | Verified | `mcp-server/test/physics-smoke.ts` verifies physics body creation/read-back, box collider creation/read-back, joint creation/read-back, and a raycast hit against the temporary collider. |
