@@ -6,13 +6,16 @@ import { asJsonText } from "./result.js";
 export function registerAssetTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
     "asset",
-    "Search assets, inspect model bounds/orientation hints, and assign common render assets to GameObjects in the active s&box editor scene.",
+    "Search assets, inspect model/material metadata, preview model/material captures, and assign common render assets to GameObjects in the active s&box editor scene.",
     {
       action: z
         .enum([
           "search",
           "get_info",
           "inspect_model",
+          "inspect_material",
+          "set_material_source_property",
+          "preview_model",
           "get_orientation_override",
           "set_orientation_override",
           "assign_model",
@@ -23,22 +26,34 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
         .describe("The asset action to run."),
       query: z.string().optional().describe("Asset name/path search query."),
       type: z.string().optional().describe("Optional asset type filter, such as Model, Material, SoundEvent, vmdl, or vmat."),
-      path: z.string().optional().describe("Asset path for get_info, inspect_model, or create_material."),
-      modelPath: z.string().optional().describe("Model resource path for inspect_model or assign_model."),
-      materialPath: z.string().optional().describe("Material resource path for assign_material."),
+      path: z.string().optional().describe("Asset path for get_info, inspect_model, inspect_material, preview_model, or create_material."),
+      modelPath: z.string().optional().describe("Model resource path for inspect_model, preview_model, or assign_model."),
+      materialPath: z.string().optional().describe("Material resource path for inspect_material, preview_model, assign_material, or set_material_source_property."),
+      targetSession: z
+        .enum(["active", "editor", "playing", "runtime", "game"])
+        .optional()
+        .describe("For preview_model, choose the session where the temporary preview rig is created. Use runtime while playing for renderable captures."),
+      sessionId: z.string().optional().describe("Optional editor session id selector for preview_model."),
+      sessionIndex: z.number().int().min(0).optional().describe("Optional editor session index selector for preview_model."),
+      sessionPath: z.string().optional().describe("Optional scene source path selector for preview_model."),
+      sessionScene: z.string().optional().describe("Optional scene name selector for preview_model."),
       gameObjectId: z.string().optional().describe("Target GameObject id for assign_model or assign_material."),
       componentId: z.string().optional().describe("Target ModelRenderer component id for assign_material or set_material_property."),
       name: z.string().optional().describe("Material name for create_material."),
       shader: z.string().optional().describe("Shader path for create_material."),
       color: z.string().optional().describe("Optional material tint color for create_material, such as '#aa2222' or 'red'."),
       overwrite: z.boolean().optional().describe("Allow create_material to replace an existing file."),
-      property: z.string().optional().describe("Material parameter name for set_material_property."),
-      value: z.any().optional().describe("Material parameter value for set_material_property."),
+      property: z.string().optional().describe("Material parameter name for set_material_property or set_material_source_property."),
+      value: z.any().optional().describe("Material parameter value for set_material_property or set_material_source_property."),
+      width: z.number().int().min(64).max(2048).optional().describe("Capture width for preview_model."),
+      height: z.number().int().min(64).max(2048).optional().describe("Capture height for preview_model."),
       scale: z
         .object({ x: z.number(), y: z.number(), z: z.number() })
         .optional()
         .describe("Optional scale to apply while inspecting model candidate bounds."),
       yaw: z.number().optional().describe("Optional yaw angle applied to inspect_model orientation candidates."),
+      pitch: z.number().optional().describe("Optional pitch angle applied to preview_model."),
+      roll: z.number().optional().describe("Optional roll angle applied to preview_model."),
       baseRotation: z
         .object({
           pitch: z.number().optional(),

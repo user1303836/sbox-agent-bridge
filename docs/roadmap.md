@@ -125,13 +125,18 @@ Candidate actions:
 - `asset.set_orientation_override` - verified
 - `asset.assign_model` - verified
 - `asset.create_material` - verified
+- `asset.inspect_material` - verified
+- `asset.set_material_source_property` - verified
+- `asset.preview_model` - verified with runtime target
 - `asset.assign_material` - verified
 - `asset.set_material_property` - verified
 - `sound.list` - verified
 - `sound.get_info` - verified
+- `sound.inspect` - verified
 - `sound.create_event` - verified
 - `sound.assign` - verified
 - `sound.preview` - verified
+- `physics.inspect` - verified
 - `physics.add_collider` - verified
 - `physics.add_physics` - verified
 - `physics.add_joint` - partial; target assignment is blocked by read-only `Joint.Object2`
@@ -139,7 +144,8 @@ Candidate actions:
 - `prefab.create` - verified
 - `prefab.list` - verified
 - `prefab.get_info` - verified
-- `prefab.instantiate` - verified
+- `prefab.instantiate` - verified; remaps prefab GUIDs and preserves instance id maps
+- `prefab.inspect_instance` - verified; reads prefab path, patch counts/samples, and id maps
 - `asset.browse`
 - `asset.open`
 - `asset.dependencies`
@@ -149,7 +155,7 @@ Candidate actions:
 Acceptance criteria:
 
 - Agents can discover valid asset paths before using them.
-- Prefab instantiation returns created object ids.
+- Prefab instantiation returns created object ids and inspectable prefab instance metadata.
 - Asset actions do not guess filesystem paths when editor asset APIs can resolve them.
 - Generated project assets are re-discovered through `AssetSystem` before use.
 
@@ -208,11 +214,12 @@ Remaining gaps:
 
 Goal: expand toward high-coverage editor workflows while preserving safety and observability.
 
-Status: in progress. Verified so far: `asset.inspect_model` for model bounds/orientation candidates, `visual.capture_camera` for rendered camera PNGs with luminance stats, orientation override storage, and `gameobject.place_asset`.
+Status: in progress. Verified so far: `asset.inspect_model` for model bounds/orientation candidates, `asset.preview_model` for runtime-targeted isolated model/material PNGs with luminance stats, `visual.capture_camera` for rendered camera PNGs, orientation override storage, and `gameobject.place_asset`.
 
 Candidate areas:
 
 - visual captures, annotated screenshots, and capture comparison;
+- isolated model/material preview captures;
 - viewport/HUD capture and runtime UI inspection;
 - runtime test hooks and deterministic input/action injection;
 - asset orientation metadata, bounds previews, orientation overrides, and high-level grounded placement helpers;

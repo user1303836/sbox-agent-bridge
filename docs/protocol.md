@@ -63,6 +63,9 @@ Errors use the same envelope:
 - `asset.search`
 - `asset.get_info`
 - `asset.inspect_model`
+- `asset.inspect_material`
+- `asset.set_material_source_property`
+- `asset.preview_model`
 - `asset.get_orientation_override`
 - `asset.set_orientation_override`
 - `asset.assign_model`
@@ -72,9 +75,11 @@ Errors use the same envelope:
 - `visual.capture_camera`
 - `sound.list`
 - `sound.get_info`
+- `sound.inspect`
 - `sound.create_event`
 - `sound.assign`
 - `sound.preview`
+- `physics.inspect`
 - `physics.add_physics`
 - `physics.add_collider`
 - `physics.add_joint`
@@ -82,6 +87,7 @@ Errors use the same envelope:
 - `prefab.create`
 - `prefab.list`
 - `prefab.get_info`
+- `prefab.inspect_instance`
 - `prefab.instantiate`
 - `scene.summary`
 - `scene.hierarchy`
@@ -140,6 +146,12 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 
 `asset.inspect_model` accepts `path` or `modelPath`, plus optional `scale`, `yaw`, and `includeMaterials`. It loads the model resource and returns model/render/physics bounds, material slots, common orientation candidates, candidate ground offsets, footprints, and limitations. Bounds are geometry facts; callers should not treat them as proof of semantic uprightness.
 
+`asset.inspect_material` accepts `path` or `materialPath`. It loads the material and, when a readable `.vmat` source file exists, parses key/value properties, texture slots, color/vector values, and scalar-style params.
+
+`asset.set_material_source_property` accepts `path` or `materialPath`, `property`, and `value`. Values can be booleans, numbers, strings, numeric arrays, `{ path }` / `{ resourcePath }`, color objects `{ r, g, b, a }`, or vector objects `{ x, y, z, w }`. It updates or inserts the `.vmat` source property, recompiles the asset, and returns material inspection read-back.
+
+`asset.preview_model` accepts `path` or `modelPath`, optional `materialPath`, `targetSession`, session selectors, `width`, `height`, `name`, `scale`, `pitch`, `yaw`, and `roll`. It creates or reuses a temporary `NotSaved` preview rig in the resolved session, renders the model from a dedicated camera, and writes a PNG with luminance stats. Use `targetSession: "runtime"` while playing for reliable render output; stopped editor sessions can render black on current s&box builds.
+
 `asset.get_orientation_override` accepts `path` or `modelPath` and reads the project-local override stored at `Assets/agent_bridge/orientation_overrides.json`. Missing overrides return `found: false` instead of failing.
 
 `asset.set_orientation_override` accepts `path` or `modelPath`, `baseRotation`, optional `groundOffsetZ`, `forwardAxis`, `confidence`, `source`, and `notes`. If `groundOffsetZ` is omitted, the bridge calculates it from the model render bounds after applying the base rotation at scale 1. The file is written atomically without a UTF-8 BOM.
@@ -152,6 +164,24 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 - `min` / `max`: darkest and brightest sampled pixel luminance.
 - `darkPixelRatio`: fraction of pixels below the bridge's dark threshold.
 - `brightPixelRatio`: fraction of pixels above the bridge's bright threshold.
+
+## Prefab Actions
+
+`prefab.instantiate` deserializes the prefab root into the active editor scene, remaps prefab GUIDs to fresh instance GUIDs, writes `__Prefab`/`__PrefabIdToInstanceId` metadata, applies the requested transform, and returns the created GameObject.
+
+`prefab.inspect_instance` accepts `gameObjectId`, optional `targetSession` plus session selectors, `maxSamples`, and `includeSerialized`. It serializes the live GameObject and returns whether it is a prefab instance, its prefab path, prefab asset metadata, patch counts/samples from `__PrefabInstancePatch`, and the `__PrefabIdToInstanceId` count. Set `includeSerialized: true` only when debugging raw prefab metadata, because scene serialization can be large.
+
+## Physics Actions
+
+`physics.inspect` accepts `gameObjectId`, optional `targetSession`, and session selectors. It returns Rigidbody summaries, collider summaries with shape-specific dimensions, trigger/static flags, joint summaries, and target read-back when the editor API exposes it.
+
+`physics.raycast` accepts complete `from` and `to` vectors and optional `renderMeshes`. It returns hit state, hit positions, normal, GameObject/component/collider read-back, and distance/fraction details.
+
+## Sound Actions
+
+`sound.inspect` accepts `gameObjectId`, optional `targetSession`, and session selectors. It returns all `SoundPointComponent` instances on the GameObject with sound event metadata, play-on-start, repeat, force-2D, volume, and pitch read-back.
+
+`sound.preview` accepts `eventPath`, optional `position`, and optional `fadeIn`. It starts the sound through s&box and returns `SoundHandle` read-back such as validity, playing/stopped state, name, volume, pitch, and position.
 
 ## Batch Actions
 

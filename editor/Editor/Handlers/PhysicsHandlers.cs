@@ -1,10 +1,30 @@
 using System;
+using System.Linq;
 using Sandbox;
 
 namespace SboxAgentBridge.Editor;
 
 internal static class PhysicsHandlers
 {
+	public static BridgeResponse Inspect( BridgeRequest request )
+	{
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload, "active" );
+		var go = HandlerUtil.RequireGameObject( resolution.Session.Scene, request.Payload, "gameObjectId" );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Physics components inspected",
+			verified = new
+			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				gameObject = HandlerUtil.DescribeGameObject( go ),
+				rigidbodies = go.Components.GetAll().OfType<Rigidbody>().Select( DescribeRigidbody ).ToArray(),
+				colliders = go.Components.GetAll().OfType<Collider>().Select( DescribeCollider ).ToArray(),
+				joints = go.Components.GetAll().OfType<Joint>().Select( DescribeJoint ).ToArray()
+			}
+		} );
+	}
+
 	public static BridgeResponse AddPhysics( BridgeRequest request )
 	{
 		var session = HandlerUtil.RequireSession();
@@ -165,6 +185,70 @@ internal static class PhysicsHandlers
 		};
 	}
 
+	private static object DescribeRigidbody( Rigidbody body )
+	{
+		return new
+		{
+			component = HandlerUtil.DescribeComponent( body ),
+			gravity = body.Gravity,
+			motionEnabled = body.MotionEnabled,
+			massOverride = body.MassOverride
+		};
+	}
+
+	private static object DescribeCollider( Collider collider )
+	{
+		return new
+		{
+			component = HandlerUtil.DescribeComponent( collider ),
+			staticCollider = collider.Static,
+			isTrigger = collider.IsTrigger,
+			shape = DescribeColliderShape( collider )
+		};
+	}
+
+	private static object DescribeColliderShape( Collider collider )
+	{
+		return collider switch
+		{
+			BoxCollider box => new
+			{
+				type = "box",
+				scale = HandlerUtil.ToJson( box.Scale ),
+				center = HandlerUtil.ToJson( box.Center )
+			},
+			SphereCollider sphere => new
+			{
+				type = "sphere",
+				radius = sphere.Radius,
+				center = HandlerUtil.ToJson( sphere.Center )
+			},
+			CapsuleCollider capsule => new
+			{
+				type = "capsule",
+				radius = capsule.Radius,
+				start = HandlerUtil.ToJson( capsule.Start ),
+				end = HandlerUtil.ToJson( capsule.End )
+			},
+			_ => new
+			{
+				type = collider.GetType().Name
+			}
+		};
+	}
+
+	private static object DescribeJoint( Joint joint )
+	{
+		var target = Safe( () => joint.Object2, null );
+
+		return new
+		{
+			component = HandlerUtil.DescribeComponent( joint ),
+			enableCollision = joint.EnableCollision,
+			target = target is null ? null : HandlerUtil.DescribeGameObject( target )
+		};
+	}
+
 	private static void ConfigureRigidbody( Rigidbody body, BridgeRequest request )
 	{
 		body.Gravity = HandlerUtil.GetBool( request.Payload, "gravity", body.Gravity );
@@ -172,5 +256,17 @@ internal static class PhysicsHandlers
 		var mass = HandlerUtil.GetFloat( request.Payload, "mass", -1f );
 		if ( mass > 0f )
 			body.MassOverride = mass;
+	}
+
+	private static T Safe<T>( Func<T> getter, T fallback )
+	{
+		try
+		{
+			return getter();
+		}
+		catch
+		{
+			return fallback;
+		}
 	}
 }

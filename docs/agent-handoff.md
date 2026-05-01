@@ -66,11 +66,11 @@ The bridge currently exposes MCP tools for:
 - `gameobject`: get, create, rename, transform, enable, destroy, duplicate, reparent
 - `component`: list types, list on object, inspect, inspect properties, add, remove, enable, set property, validate property
 - `script`: create, edit, delete
-- `asset`: search, get info, inspect model, assign model, create/assign material, set material property
+- `asset`: search, get info, inspect model/material, preview model, assign model/material, create material, set material source/runtime properties
 - `visual`: capture active camera to PNG with luminance stats
-- `sound`: list, get info, create event, assign, preview
-- `physics`: add collider, add rigidbody, add joint, raycast
-- `prefab`: create, list, get info, instantiate
+- `sound`: list, get info, inspect scene components, create event, assign, preview
+- `physics`: inspect, add collider, add rigidbody, add joint, raycast
+- `prefab`: create, list, get info, instantiate, inspect instance metadata
 
 `scene.batch` can compose existing actions with `$ref` alias substitution and per-operation results.
 
@@ -80,15 +80,19 @@ As of 2026-05-01, direct local checks verified:
 
 - s&box bridge editor compile is green with zero errors in the live test project.
 - `asset.inspect_model` works on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
+- `asset.inspect_material`, `asset.set_material_source_property`, and `asset.preview_model` are live-verified through `mcp-server/test/asset-material-smoke.ts`. The preview path should target `runtime` after `editor.play`/`editor.wait_runtime`; stopped editor preview captures can render black on the current s&box build.
+- `prefab.instantiate` now remaps prefab GUIDs to fresh instance GUIDs and preserves `__PrefabIdToInstanceId`. `prefab.inspect_instance` is live-verified through `mcp-server/test/prefab-instance-smoke.ts`, including source binding, id-map count, and name/position/rotation override patch samples.
+- `physics.inspect` is live-verified through `mcp-server/test/physics-smoke.ts`, along with Rigidbody/collider/joint creation and a raycast against the temporary smoke collider.
+- `sound.inspect` is live-verified through `mcp-server/test/sound-smoke.ts`, along with sound event creation/info, SoundPointComponent assignment read-back, and a valid playing preview handle.
 - `visual.capture_camera` captures the active main camera to PNG and returns luminance stats.
 - Spatial placement v1 works: `asset.set_orientation_override` and `asset.get_orientation_override` store/read `Assets/agent_bridge/orientation_overrides.json`, and `gameobject.place_asset` placed a cursed obelisk with a stored `pitch: 90` override, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`.
 - TypeScript check/build pass when invoked directly through the installed Node runtime.
-- MCP bridge-client tests pass.
+- MCP bridge-client and wait-helper tests pass.
 
 The most recent pushed bridge commit before this handoff pass was:
 
 ```text
-4f192c6 Add visual spatial feedback tools
+3cfd460 Add feedback loop wait helpers
 ```
 
 ## Windows Node/NPM Note
@@ -186,6 +190,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - 2026-05-01 ARPG UI/input pass clarified the project goal: ARPG feature work is only a bridge test harness. When a game feature is hard to verify, record and prioritize the missing bridge capability instead of polishing the game around the limitation.
 - `editor.logs` and `editor.feedback` now support `afterIndex` cursor reads. Use `verified.logs.nextAfterIndex` from a baseline read before making a change, then pass it back to see only new log lines.
 - Runtime reads now support `targetSession: "runtime"` for live `GameSession` targeting. `editor.stop` also supports `stopAll: true` for smoke-test cleanup, and MCP-side `editor.wait_compile`, `editor.wait_runtime`, and `editor.wait_stopped` helpers avoid fixed sleeps while transitions settle. Duplicate/stale editor tabs can still remain after transitions, so future work should add post-stop scene restoration.
+- Prefab instances created through the bridge should preserve prefab id maps. The bridge now rewrites prefab `__guid` and `IdValue` references before deserialization instead of stripping all GUIDs, which makes `prefab.inspect_instance` useful immediately after instantiation.
 - Shell-driven OS keypresses were not reliable enough to verify runtime input. Use `runtime.run_test_action` for deterministic component-authored verification; focused viewport input injection remains future work.
 - The ARPG controller now exposes Agent Bridge runtime test actions for logical UI/gameplay state. The runtime smoke verified inventory open, damage, restore, skill list, and zombie count. It also exposed that the current ScreenPanel child panels are not built (`hud.root=false`), which is a testbed/UI implementation issue now visible through bridge read-back.
 
@@ -198,13 +203,14 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Local component discovery: exact-name add works, discovery is partial.
 - Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
 - Joint target assignment: blocked because verified `Joint.Object2` is read-only.
-- Spatial reasoning: v1 orientation overrides and `gameobject.place_asset` are implemented and live-verified; the full generated prop kit still needs seeded human-verified overrides and isolated preview captures.
+- Spatial reasoning: v1 orientation overrides, `gameobject.place_asset`, and runtime-targeted `asset.preview_model` captures are implemented and live-verified; the full generated prop kit still needs seeded human-verified overrides and richer contact-sheet previews.
+- Prefab override metadata is inspectable, but save/apply override and break-link mutations are still future work.
 
 ## Best Next Work
 
 The next best bridge tasks are:
 
-- seed human-verified orientation overrides for the generated ARPG prop kit and add isolated asset preview captures for ambiguous rotations;
+- seed human-verified orientation overrides for the generated ARPG prop kit and add contact-sheet previews for ambiguous rotations;
 - post-transition stale-tab restoration;
 - viewport/HUD capture or generic panel hierarchy inspection;
 - focused viewport input injection;

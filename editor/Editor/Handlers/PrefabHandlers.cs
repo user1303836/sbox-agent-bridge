@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
@@ -103,6 +104,24 @@ internal static class PrefabHandlers
 		} );
 	}
 
+	public static BridgeResponse InspectInstance( BridgeRequest request )
+	{
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload, "active" );
+		var go = HandlerUtil.RequireGameObject( resolution.Session.Scene, request.Payload, "gameObjectId" );
+		var includeSerialized = HandlerUtil.GetBool( request.Payload, "includeSerialized", false );
+		var maxSamples = Math.Clamp( HandlerUtil.GetInt( request.Payload, "maxSamples", 10 ), 0, 100 );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Prefab instance inspected",
+			verified = new
+			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				instance = DescribePrefabInstance( go, includeSerialized, maxSamples )
+			}
+		} );
+	}
+
 	public static BridgeResponse Instantiate( BridgeRequest request )
 	{
 		var session = HandlerUtil.RequireSession();
@@ -123,7 +142,7 @@ internal static class PrefabHandlers
 		if ( rootObject is null )
 			throw new InvalidOperationException( $"Prefab '{path}' root object could not be cloned for deserialization." );
 
-		StripSerializedGuids( rootObject );
+		PreparePrefabInstanceRootObject( rootObject, path );
 
 		using ( session.UndoScope( "Agent Bridge: Instantiate Prefab" ).WithGameObjectCreations().Push() )
 		{
@@ -138,7 +157,6 @@ internal static class PrefabHandlers
 
 			instance.Name = name;
 			instance.MakeNameUnique();
-			instance.SetPrefabSource( path );
 		}
 
 		return BridgeResponse.Success( request.Id, new
@@ -164,6 +182,150 @@ internal static class PrefabHandlers
 			isCompiledAndUpToDate = asset.IsCompiledAndUpToDate,
 			isCompileFailed = asset.IsCompileFailed
 		};
+	}
+
+	private static object DescribePrefabInstance( GameObject go, bool includeSerialized, int maxSamples )
+	{
+		var rootObject = SerializeGameObject( go );
+		var prefabPath = GetJsonString( rootObject, "__Prefab" );
+		var patch = rootObject["__PrefabInstancePatch"] as JsonObject;
+		var prefabIdMap = rootObject["__PrefabIdToInstanceId"] as JsonObject;
+
+		return new
+		{
+			gameObject = HandlerUtil.DescribeGameObject( go ),
+			isPrefabInstance = !string.IsNullOrWhiteSpace( prefabPath ),
+			prefabPath,
+			prefabAsset = string.IsNullOrWhiteSpace( prefabPath ) ? null : TryDescribePrefabAsset( prefabPath ),
+			patch = DescribePrefabPatch( patch, includeSerialized, maxSamples ),
+			prefabIdToInstanceId = new
+			{
+				count = prefabIdMap?.Count ?? 0,
+				json = includeSerialized && prefabIdMap is not null ? prefabIdMap.ToJsonString() : null
+			},
+			serializedJson = includeSerialized ? rootObject.ToJsonString() : null
+		};
+	}
+
+	private static JsonObject SerializeGameObject( GameObject go )
+	{
+		var serialized = go.Serialize( new GameObject.SerializeOptions { Cloning = false } );
+		var rootObject = JsonNode.Parse( serialized.ToJsonString() )?.AsObject();
+
+		if ( rootObject is null )
+			throw new InvalidOperationException( $"GameObject '{go.Name}' could not be serialized for prefab inspection." );
+
+		return rootObject;
+	}
+
+	private static object? TryDescribePrefabAsset( string path )
+	{
+		var asset = AssetSystem.FindByPath( path );
+		if ( asset is null && path.StartsWith( "assets/", StringComparison.OrdinalIgnoreCase ) )
+			asset = AssetSystem.FindByPath( path.Substring( "assets/".Length ) );
+
+		return asset is null ? null : DescribePrefabAsset( asset );
+	}
+
+	private static object DescribePrefabPatch( JsonObject? patch, bool includeSerialized, int maxSamples )
+	{
+		return new
+		{
+			exists = patch is not null,
+			addedObjectCount = CountPatchArray( patch, "AddedObjects" ),
+			removedObjectCount = CountPatchArray( patch, "RemovedObjects" ),
+			propertyOverrideCount = CountPatchArray( patch, "PropertyOverrides" ),
+			movedObjectCount = CountPatchArray( patch, "MovedObjects" ),
+			addedObjectSamples = DescribePatchObjectSamples( patch, "AddedObjects", maxSamples ),
+			removedObjectSamples = DescribePatchObjectSamples( patch, "RemovedObjects", maxSamples ),
+			propertyOverrideSamples = DescribePropertyOverrideSamples( patch, maxSamples ),
+			movedObjectSamples = DescribePatchObjectSamples( patch, "MovedObjects", maxSamples ),
+			json = includeSerialized && patch is not null ? patch.ToJsonString() : null
+		};
+	}
+
+	private static int CountPatchArray( JsonObject? patch, string propertyName )
+	{
+		return patch is not null && patch[propertyName] is JsonArray array ? array.Count : 0;
+	}
+
+	private static object[] DescribePatchObjectSamples( JsonObject? patch, string propertyName, int maxSamples )
+	{
+		if ( patch is null || patch[propertyName] is not JsonArray array || maxSamples <= 0 )
+			return Array.Empty<object>();
+
+		return array
+			.Take( maxSamples )
+			.Select( node => DescribePatchObjectSample( node ) )
+			.Cast<object>()
+			.ToArray();
+	}
+
+	private static object DescribePatchObjectSample( JsonNode? node )
+	{
+		var obj = node as JsonObject;
+		var id = obj?["Id"] as JsonObject;
+
+		return new
+		{
+			type = GetJsonString( id, "Type" ),
+			id = GetJsonString( id, "IdValue" ),
+			name = GetJsonString( obj, "Name" ),
+			guid = GetJsonString( obj, "__guid" ),
+			json = node?.ToJsonString()
+		};
+	}
+
+	private static object[] DescribePropertyOverrideSamples( JsonObject? patch, int maxSamples )
+	{
+		if ( patch is null || patch["PropertyOverrides"] is not JsonArray array || maxSamples <= 0 )
+			return Array.Empty<object>();
+
+		return array
+			.Take( maxSamples )
+			.Select( node =>
+			{
+				var obj = node as JsonObject;
+				var target = obj?["Target"] as JsonObject;
+
+				return new
+				{
+					targetType = GetJsonString( target, "Type" ),
+					targetId = GetJsonString( target, "IdValue" ),
+					property = GetJsonString( obj, "Property" ),
+					value = DescribePatchValue( obj?["Value"] )
+				};
+			} )
+			.Cast<object>()
+			.ToArray();
+	}
+
+	private static string GetJsonString( JsonObject? obj, string propertyName )
+	{
+		if ( obj is null || !obj.TryGetPropertyValue( propertyName, out var node ) || node is null )
+			return "";
+
+		return node.ToString();
+	}
+
+	private static object? DescribePatchValue( JsonNode? node )
+	{
+		if ( node is null )
+			return null;
+
+		if ( node is JsonValue value )
+		{
+			if ( value.TryGetValue<string>( out var stringValue ) )
+				return stringValue;
+
+			if ( value.TryGetValue<bool>( out var boolValue ) )
+				return boolValue;
+
+			if ( value.TryGetValue<double>( out var numberValue ) )
+				return numberValue;
+		}
+
+		return node.ToJsonString();
 	}
 
 	private static PrefabFile RequirePrefab( string path )
@@ -195,15 +357,34 @@ internal static class PrefabHandlers
 		return prefab;
 	}
 
-	private static void StripSerializedGuids( JsonNode? node )
+	private static void PreparePrefabInstanceRootObject( JsonObject rootObject, string path )
+	{
+		var idMap = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
+		CollectGuidMap( rootObject, idMap );
+		RewriteGuidReferences( rootObject, idMap );
+
+		rootObject["__Prefab"] = path;
+		rootObject["__PrefabInstancePatch"] = CreateEmptyPrefabPatch();
+
+		var mapObject = new JsonObject();
+		foreach ( var (sourceId, instanceId) in idMap )
+		{
+			mapObject[sourceId] = instanceId;
+		}
+
+		rootObject["__PrefabIdToInstanceId"] = mapObject;
+	}
+
+	private static void CollectGuidMap( JsonNode? node, Dictionary<string, string> idMap )
 	{
 		if ( node is JsonObject obj )
 		{
-			obj.Remove( "__guid" );
+			if ( obj.TryGetPropertyValue( "__guid", out var guidNode ) && TryGetJsonString( guidNode, out var guid ) && Guid.TryParse( guid, out _ ) && !idMap.ContainsKey( guid ) )
+				idMap[guid] = Guid.NewGuid().ToString();
 
 			foreach ( var child in obj.Select( x => x.Value ).ToArray() )
 			{
-				StripSerializedGuids( child );
+				CollectGuidMap( child, idMap );
 			}
 
 			return;
@@ -213,9 +394,59 @@ internal static class PrefabHandlers
 		{
 			foreach ( var child in arr.ToArray() )
 			{
-				StripSerializedGuids( child );
+				CollectGuidMap( child, idMap );
 			}
 		}
+	}
+
+	private static void RewriteGuidReferences( JsonNode? node, IReadOnlyDictionary<string, string> idMap )
+	{
+		if ( node is JsonObject obj )
+		{
+			foreach ( var property in obj.ToArray() )
+			{
+				if ( (property.Key == "__guid" || property.Key == "IdValue") && TryGetJsonString( property.Value, out var guid ) && idMap.TryGetValue( guid, out var replacement ) )
+				{
+					obj[property.Key] = replacement;
+					continue;
+				}
+
+				RewriteGuidReferences( property.Value, idMap );
+			}
+
+			return;
+		}
+
+		if ( node is JsonArray arr )
+		{
+			foreach ( var child in arr.ToArray() )
+			{
+				RewriteGuidReferences( child, idMap );
+			}
+		}
+	}
+
+	private static JsonObject CreateEmptyPrefabPatch()
+	{
+		return new JsonObject
+		{
+			["AddedObjects"] = new JsonArray(),
+			["RemovedObjects"] = new JsonArray(),
+			["PropertyOverrides"] = new JsonArray(),
+			["MovedObjects"] = new JsonArray()
+		};
+	}
+
+	private static bool TryGetJsonString( JsonNode? node, out string value )
+	{
+		if ( node is JsonValue jsonValue && jsonValue.TryGetValue<string>( out var stringValue ) )
+		{
+			value = stringValue;
+			return true;
+		}
+
+		value = "";
+		return false;
 	}
 
 	private static object DescribePrefab( PrefabFile prefab )

@@ -53,6 +53,25 @@ internal static class SoundHandlers
 		} );
 	}
 
+	public static BridgeResponse Inspect( BridgeRequest request )
+	{
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload, "active" );
+		var go = HandlerUtil.RequireGameObject( resolution.Session.Scene, request.Payload, "gameObjectId" );
+		var components = go.Components.GetAll().OfType<SoundPointComponent>().Select( DescribeSoundComponent ).ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Sound components inspected",
+			verified = new
+			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				gameObject = HandlerUtil.DescribeGameObject( go ),
+				count = components.Length,
+				components
+			}
+		} );
+	}
+
 	public static BridgeResponse CreateEvent( BridgeRequest request )
 	{
 		var relativePath = NormalizeAssetPath( HandlerUtil.GetRequiredString( request.Payload, "path" ) );
@@ -192,6 +211,20 @@ internal static class SoundHandlers
 		component.Force2d = force2d;
 		component.Volume = volume;
 		component.Pitch = pitch;
+	}
+
+	private static object DescribeSoundComponent( SoundPointComponent component )
+	{
+		return new
+		{
+			component = HandlerUtil.DescribeComponent( component ),
+			soundEvent = component.SoundEvent is null ? null : DescribeSoundEvent( component.SoundEvent ),
+			playOnStart = component.PlayOnStart,
+			repeat = component.Repeat,
+			force2d = component.Force2d,
+			volume = component.Volume,
+			pitch = component.Pitch
+		};
 	}
 
 	private static bool IsSoundAsset( Asset asset )

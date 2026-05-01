@@ -57,6 +57,42 @@ SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
 
 This focused smoke first calls `editor.stop` with `stopAll: true`, waits for `editor.wait_stopped`, waits for `editor.wait_compile`, opens `scenes/minimal.scene`, enters play mode, waits for `editor.wait_runtime`, lists ARPG runtime test actions, invokes deterministic ARPG actions for UI state, inventory open, damage, and restore, then stops and waits for `editor.wait_stopped` again. It intentionally verifies bridge/runtime feedback rather than OS-level input focus.
 
+For asset/material preview verification:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:assets
+```
+
+This focused smoke creates a project material, inspects its `.vmat` source properties, mutates `g_vColorTint` and `TextureColor`, enters play mode, waits for runtime readiness, captures `asset.preview_model` with `targetSession: runtime`, verifies the PNG is nonblack, then stops and waits for `editor.wait_stopped`.
+
+For prefab instance metadata verification:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:prefabs
+```
+
+This focused smoke creates a simple model-backed prefab, binds the source GameObject to it, reloads prefab info, instantiates it, inspects prefab instance metadata, verifies a nonempty prefab id map, mutates the instance transform, verifies name/position/rotation patch samples, and removes the temporary scene objects.
+
+For physics verification:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:physics
+```
+
+This focused smoke creates temporary physics objects, adds a Rigidbody, box collider, and fixed joint, verifies `physics.inspect` read-back for body/collider/joint fields, raycasts through the temporary collider, then removes the temporary scene objects.
+
+For sound verification:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:sounds
+```
+
+This focused smoke creates a project sound event, inspects it, assigns it to a temporary `SoundPointComponent`, verifies `sound.inspect` read-back for component settings, previews the event, checks for a valid playing handle, then removes the temporary scene object.
+
 Useful environment variables:
 
 - `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root.
@@ -66,6 +102,12 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` cannot be added and mutated. The fixture may be addable by exact type name even when it is not visible to `component.list_types`.
 - `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`: override the runtime feedback smoke scene path; defaults to `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1`: allow the runtime feedback smoke to recover a stale unsaved test scene with `editor.open_scene forceReload`.
+- `SBOX_AGENT_BRIDGE_ASSET_SMOKE_MATERIAL`: override the asset/material smoke material path; defaults to `materials/agent_bridge/smoke/asset_material_smoke.vmat`.
+- `SBOX_AGENT_BRIDGE_ASSET_SMOKE_MODEL`: override the asset/material smoke model path; defaults to `models/dev/box.vmdl`.
+- `SBOX_AGENT_BRIDGE_PREFAB_SMOKE_PATH`: override the prefab smoke prefab path; defaults to `prefabs/agent_bridge/smoke/prefab_instance_smoke.prefab`.
+- `SBOX_AGENT_BRIDGE_PREFAB_SMOKE_MODEL`: override the prefab smoke model path; defaults to `models/dev/box.vmdl`.
+- `SBOX_AGENT_BRIDGE_SOUND_SMOKE_EVENT`: override the sound smoke event path; defaults to `sounds/agent_bridge/smoke/sound_smoke.sound`.
+- `SBOX_AGENT_BRIDGE_SOUND_SMOKE_FILE`: override the sound file used by the sound smoke; defaults to `sounds/ambience/cave-loop.vsnd`.
 
 ## Live Editor Smoke Checks
 
