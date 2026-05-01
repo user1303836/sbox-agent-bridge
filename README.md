@@ -1,30 +1,33 @@
 # sbox-agent-bridge
 
-MCP server and editor bridge for AI-assisted s&box development. Inspect, control, and automate a live s&box editor session through the Model Context Protocol.
+Provider-neutral MCP server and editor bridge for AI-assisted s&box development. Inspect, control, and automate a live s&box editor session through the Model Context Protocol.
 
-`sbox-agent-bridge` lets MCP-capable agents work with the editor instead of guessing from source files alone. Agents can read scene state, inspect GameObjects and components, make small verified edits, and use the editor as part of an AI-assisted game development loop.
+`sbox-agent-bridge` lets MCP-capable agents work from live editor state instead of guessing from source files alone. Agents can read scenes, inspect GameObjects and components, make small undoable edits, observe compile/play/log feedback, and run deterministic runtime checks while building a game.
 
-The goal is not an unsafe "do anything" bridge. The bridge exposes narrow, observable editor actions that can be undone, verified, and composed safely.
+The goal is not an unsafe "do anything" bridge. The bridge exposes narrow, observable editor actions that can be verified, undone where applicable, and composed safely.
 
 ## What Can Agents Do?
 
-Ask an agent to:
+Ask an MCP-capable agent to:
 
-- summarize the active scene
+- summarize the active editor scene or the live runtime `GameSession`
+- list editor tabs/sessions and activate the scene you want to edit
 - inspect the current selection
 - search the scene for GameObjects by name or component
-- create, rename, move, duplicate, reparent, or delete GameObjects
-- inspect components, editable properties, and resource-backed fields
-- add, remove, enable, disable, or update components
+- create, rename, move, duplicate, reparent, enable/disable, or frame GameObjects
+- inspect components, editable properties, schema hints, and resource-backed fields
+- add, remove, enable/disable, validate, or update components
 - validate component property values before writing them
+- create or edit C# scripts under the project `Code` directory
 - search assets, inspect model bounds/orientation candidates, assign models/materials, create simple materials, and set material parameters
 - store asset orientation overrides and place known models upright/grounded with one verified command
 - list/create/assign/preview sound events
 - add colliders, rigidbodies, simple joints, and run scene raycasts
 - create, inspect, list, and instantiate prefabs
 - capture camera screenshots with luminance stats for visual feedback
-- start/stop play mode and inspect play state
-- read compile/hotload diagnostics and recent editor logs
+- start/stop play mode, wait for runtime readiness, and inspect play state
+- read compile/hotload diagnostics and recent editor logs with log cursors
+- invoke component-authored runtime test actions for deterministic gameplay/UI assertions
 - run small multi-step scene batches with read-back after each operation
 - verify mutations by reading editor state back after each change
 
@@ -34,20 +37,22 @@ This is the shape we are building toward: point Claude, Codex, Kimi, or any MCP-
 
 The project has two pieces:
 
-- `editor/`: an s&box library with the bridge runtime and an **Agent Bridge** status dock.
-- `mcp-server/`: a TypeScript MCP server that exposes agent-facing tools over stdio.
+- `editor/`: an s&box library with the bridge runtime, command handlers, feedback state, and an **Agent Bridge** status dock.
+- `mcp-server/`: a TypeScript MCP stdio server that exposes agent-facing tools and forwards requests to the editor bridge.
 
 The local loop looks like this:
 
 ```text
 Agent / MCP client
-  <-> MCP server
+  <-> MCP server over stdio
     <-> local bridge IPC
       <-> s&box editor bridge runtime
-        <-> live editor scene
+        <-> SceneEditorSession.Active / All / GameSession
 ```
 
-The current transport is local file IPC under `%TEMP%/sbox-agent-bridge`. It is intentionally simple and inspectable, and the command envelope is designed so other transports can be added later. The dock is the human-facing status and control surface; the editor-frame bridge pump starts automatically once the editor library compiles and loads.
+The current transport is local file IPC under `%TEMP%/sbox-agent-bridge`. It is intentionally simple and inspectable: the MCP server writes request JSON files, the editor-frame pump processes them on the s&box editor thread, and the bridge writes response JSON files. The command envelope is designed so other transports can be added later behind the same bridge-client boundary.
+
+The dock is the human-facing status and control surface. The editor-frame bridge pump starts automatically once the editor library compiles and loads.
 
 ## Quick Start
 
@@ -92,7 +97,9 @@ YourProject/
       Editor/
         BridgeDock.cs
         BridgeRuntime.cs
-        ...
+        CommandDispatcher.cs
+        Handlers/
+          ...
 ```
 
 Open the project in s&box and let it compile. The bridge starts automatically once the editor bridge assembly loads. To view status and controls, open:
@@ -139,7 +146,7 @@ Optional custom IPC folder:
 Start with read-only prompts:
 
 ```text
-Use the sbox-agent-bridge MCP tools to check bridge status, summarize the active scene, and inspect the current selection. Do not mutate the scene yet.
+Use the sbox-agent-bridge MCP tools to check bridge status, list editor tabs, summarize the active scene, and inspect the current selection. Do not mutate the scene yet.
 ```
 
 Then try one small verified edit:
@@ -147,6 +154,89 @@ Then try one small verified edit:
 ```text
 Use the sbox-agent-bridge MCP tools to create one GameObject named Agent Bridge Test, verify that it exists, then undo the creation.
 ```
+
+For play-mode feedback, try:
+
+```text
+Use the sbox-agent-bridge MCP tools to read compile status, start play mode, wait for the runtime scene, summarize the runtime GameSession, then stop play mode.
+```
+
+## Current Tool Surface
+
+The MCP server currently registers these tools: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
+
+- `editor`: bridge status, active context, editor tabs, tab activation, open scene, selection, save verification, undo, redo, frame object, play/stop, play state, compile status, recent logs, combined feedback, and MCP-side `wait_compile` / `wait_runtime` / `wait_stopped` helpers
+- `scene`: summary, hierarchy, search, GameObject details, target-session-aware runtime reads, and small verified batches with `$ref` aliasing
+- `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent, and place assets with orientation overrides plus ground alignment; create can optionally parent the new object
+- `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, and validate property
+- `script`: create, edit, and delete C# scripts in the project `Code` directory
+- `asset`: search assets, inspect assets, inspect model bounds/orientation candidates, get/set model orientation overrides, assign models/materials, create simple `.vmat` materials, and set material parameters
+- `visual`: capture rendered camera PNGs with camera metadata and luminance statistics
+- `sound`: list sound assets, inspect sound assets/events, create `.sound` events, assign `SoundPointComponent`, and preview sound events
+- `physics`: add colliders, add rigidbodies, add simple joints, and raycast against the active scene
+- `prefab`: create prefabs from scene GameObjects, list/inspect prefab assets, and instantiate prefab roots into the active editor scene
+- `runtime`: list and invoke component-authored deterministic runtime test actions in the live `GameSession`
+
+Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it, including resource references that can be set from asset paths. Property writes can also be dry-run validated without mutating the scene.
+
+Target-session-aware reads can use `targetSession: "runtime"` / `"game"` to inspect the live `GameSession` while play mode is running, rather than accidentally reading a stale editor tab.
+
+For detailed implementation status, see [docs/status.md](docs/status.md), [docs/capability-matrix.md](docs/capability-matrix.md), and [docs/tool-limitations.md](docs/tool-limitations.md).
+
+## Verification And Smoke Tests
+
+### CI-safe MCP checks
+
+```powershell
+cd mcp-server
+npm run ci
+```
+
+`npm run ci` typechecks the TypeScript server, runs bridge-client and wait-helper tests, and builds `dist/`. GitHub Actions also validates JSON metadata and `.sbproj` files.
+
+These checks do **not** prove live editor behavior because CI does not launch a real s&box editor.
+
+### Live editor smoke
+
+With a s&box project open and the bridge loaded:
+
+```powershell
+cd mcp-server
+npm run smoke:live
+```
+
+The live smoke uses the same file IPC path as the MCP server. It reads editor feedback, checks save-state reporting, creates temporary GameObjects, verifies core scene and GameObject actions, runs a small `scene.batch`, validates component property schemas, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, verifies orientation override storage plus `gameobject.place_asset`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, checks undo/redo, and attempts cleanup.
+
+To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. Do not leave duplicate fixture files in the project tree; duplicate component type definitions can break a cold compile and prevent the Agent Bridge dock from loading.
+
+### Runtime feedback smoke
+
+For deterministic play-mode/runtime verification:
+
+```powershell
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
+```
+
+The runtime smoke stops stale play sessions, waits for compile/stopped/runtime transitions, opens the configured scene, enters play mode, waits for a live runtime `GameSession`, lists component-authored runtime test actions, invokes ARPG testbed actions for logical UI/gameplay state, then stops and waits for the editor to settle again.
+
+Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
+
+## Current Caveats
+
+This project is useful now, but the docs intentionally keep the status honest:
+
+- The editor bridge must be installed into each s&box project that should expose live editor access.
+- The s&box editor must be open and the bridge editor library must compile/load.
+- CI covers the MCP server and metadata only; live editor behavior is local-smoke verified.
+- `gameobject.destroy` was previously verified, but is currently treated as blocked pending fresh-session reverification because the latest editor session hit a native delete/undo null reference after play-mode testing.
+- `script.delete` is implemented, but should be treated as blocked until a dedicated scratch-file smoke verifies it.
+- `component.list_types` discovers built-in/editor-visible components, but local project component discovery is still partial. `component.add` can add compiled local components by exact C# type name in verified cases.
+- `gameobject.duplicate` is shallow: it copies name, enabled state, transform, and parent, but not components or children.
+- `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report exists through test actions, but generic HUD/panel pixel verification remains future work.
+- Bounds and orientation candidates do not prove semantic uprightness. Use `asset.set_orientation_override`, `gameobject.place_asset`, captures, and human/vision confirmation for ambiguous models.
+
+See [docs/tool-limitations.md](docs/tool-limitations.md) for the full blocked/partial list.
 
 ## Troubleshooting
 
@@ -168,6 +258,14 @@ YourProject/Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFix
 
 Remove any extra `AgentBridgeMutationFixture.cs` copies from `YourProject/Code/` or `YourProject/Libraries/sbox_agent_bridge/Code/`. Then reopen the project so s&box can cold-compile the library cleanly.
 
+### Live Reads Look Empty Or Stale After Play Mode
+
+Play/stop transitions can leave duplicate or stale editor tabs in some sessions. Use `editor.tabs` to inspect open sessions, `editor.activate_tab` to target the sourced scene, and `editor.open_scene` with `forceReload: true` to reload a saved scene. For scratch/test scenes only, `discardUnsaved: true` can allow recovery when an unsaved stale tab blocks reload.
+
+### Windows npm Shim Issues
+
+On some Windows shells, `npm` may not be on `PATH`, or `npm run check` may hit an `Access is denied` shim issue. Direct Node execution is a workable fallback; see [docs/testing.md](docs/testing.md) and [docs/agent-handoff.md](docs/agent-handoff.md) for examples.
+
 ## Example Prompts
 
 ```text
@@ -175,7 +273,7 @@ Summarize the active s&box scene and tell me what GameObjects and component type
 ```
 
 ```text
-Inspect the selected GameObject, list its components, and explain which component properties are editable.
+Inspect the selected GameObject, list its components, and explain which component properties are editable and settable.
 ```
 
 ```text
@@ -186,40 +284,9 @@ Create an empty parent GameObject named Arena Markers, add three child marker ob
 Find the object named PlayerStart, inspect its components, validate any property values before changing them, and report the before/after state.
 ```
 
-## Current Capabilities
-
-The bridge currently exposes these MCP tools: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `visual`, `sound`, `physics`, and `prefab`.
-
-- `editor`: bridge status, active context, open scene, selection, save verification, undo, redo, frame object, play/stop, compile status, recent logs, combined feedback
-- `scene`: summary, hierarchy, search, GameObject details, small verified batches
-- `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent, place assets with orientation overrides and ground alignment; create can optionally parent the new object
-- `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, validate property
-- `script`: create and edit C# scripts in the project `Code` directory
-- `asset`: search assets, inspect assets, inspect model bounds/orientation candidates, get/set model orientation overrides, assign models/materials, create simple `.vmat` materials, set material parameters
-- `visual`: capture rendered camera PNGs with basic luminance statistics
-- `sound`: list sound assets, create `.sound` events, assign `SoundPointComponent`, preview sound events
-- `physics`: add colliders, add rigidbodies, add simple joints, raycast against the active scene
-- `prefab`: create prefabs from scene GameObjects, list/inspect prefab assets, instantiate prefab roots into the active editor scene
-
-Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it, including resource references that can be set from asset paths. Property writes can also be dry-run validated without mutating the scene.
-
-For the detailed implementation status, see [docs/status.md](docs/status.md), [docs/capability-matrix.md](docs/capability-matrix.md), and [docs/tool-limitations.md](docs/tool-limitations.md).
-
-## Live Smoke Test
-
-With a s&box project open and the bridge loaded:
-
-```powershell
-cd mcp-server
-npm run smoke:live
+```text
+Start play mode, wait for the runtime GameSession, list available runtime test actions, run the relevant state check, then stop play mode and report any new errors from the editor log cursor.
 ```
-
-The smoke test creates temporary GameObjects, verifies scene and GameObject actions, checks save-state reporting, validates component property schemas, runs a small `scene.batch`, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, checks orientation override storage plus `gameobject.place_asset`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, checks undo/redo, and attempts to clean up after itself.
-It also checks the editor feedback loop by reading play state, logs, compile status, and starting/stopping play mode when the editor is not already playing.
-
-To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. Do not leave duplicate fixture files in the project tree; duplicate component type definitions can break a cold compile and prevent the Agent Bridge dock from loading.
-
-Current note: direct feedback-loop actions are verified, but the full smoke can be blocked by a native editor delete/undo null reference after play-mode testing in the current s&box session. See [docs/status.md](docs/status.md) before treating live smoke as fully green.
 
 ## Development
 
@@ -232,9 +299,12 @@ npm run ci
 Useful scripts:
 
 - `npm run dev`: run the MCP server from TypeScript.
+- `npm run check`: TypeScript typecheck without emitting files.
+- `npm test`: run bridge-client and wait-helper unit tests.
 - `npm run build`: compile the MCP server to `dist/`.
 - `npm run ci`: typecheck, unit test, and build.
 - `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
+- `npm run smoke:runtime`: run the focused runtime feedback smoke against an already-open bridge.
 
 ## Project Docs
 
@@ -255,6 +325,6 @@ Useful scripts:
 
 ## Grounding
 
-This repo is grounded in the official s&box docs/API schema and local public source research. The bridge uses s&box Scenes, GameObjects, Components, editor sessions, undo scopes, and type/property metadata rather than Unity/Godot assumptions.
+This repo is grounded in the official s&box docs/API schema and local public source research. The bridge uses s&box Scenes, GameObjects, Components, editor sessions, undo scopes, compile/play/log feedback, runtime `GameSession` targeting, and type/property metadata rather than Unity/Godot assumptions.
 
 See [docs/verified-sbox-apis.md](docs/verified-sbox-apis.md) for the currently verified API surface.
