@@ -123,12 +123,35 @@ The controller builds the playable slice at runtime:
 - Added `gameobject.place_asset`, which creates a renderer-backed model object, applies the stored base rotation plus requested yaw, aligns transformed render bounds to ground, and returns object/component/bounds read-back.
 - Verified placement by creating `Agent Bridge Spatial V1 Obelisk 20260501-100811` from `models/agent_bridge/arpg_props/cursed_obelisk.vmdl` at a requested ground position, saving `scenes/minimal.scene`, force-reloading the scene, finding the object again, and reading back a valid persisted `ModelRenderer.Model` resource reference.
 
+## ARPG Feature Slice: Orbs, Terrain, Whirlwind, Elites, Inventory, And Loot
+
+- Reworked the health and energy orbs so the visible colored fill is bottom-anchored and changes height directly from current health/energy instead of relying on a dark overlay mask.
+- Added runtime terrain elevation support through deterministic ground-height helpers plus raised terraces, ramps, and ash mounds. Actor movement now resolves back onto the computed ground height after flat 2D collision solving.
+- Changed the runtime player and zombies to use `SkinnedModelRenderer` plus `CitizenAnimationHelper`, with the citizen animation graph explicitly assigned at `models/citizen/citizen.vanmgrph`.
+- Adjusted the player weapon presentation so the sword sits closer to the hand and changes pose during attacks and Whirlwind.
+- Replaced the first skill with Whirlwind. Holding hotkey `1` now drains energy over time, spins the character, damages nearby zombies on a tick interval, reduces movement speed by 20%, and disables player-vs-zombie collision while the channel is active.
+- Added elite zombie variants with higher health, damage, larger collision radius, slower movement, purple tint, guaranteed coin drops, and better item-drop odds.
+- Added a Path of Exile-style grid inventory model with 10 columns by 5 rows. Items have slot sizes such as 2x3 greatswords and 1x1 amulets.
+- Added equipment slots for mainhand, offhand, head, chest, amulet, and boots. Dragging an item panel onto a compatible equipment slot equips it; equipped stats affect player damage, armor, health, energy, movement speed, and crit chance.
+- Added zombie loot tables that drop coins and usable gear including weapons, armor, boots, offhands, and amulets. Item hover tooltips show rarity, size, slot, and stats.
+- Fixed a runtime startup bug exposed by bridge verification: if `OnStart` ran while not playing, the ARPG world could remain unbuilt in play mode. `OnUpdate` now lazily builds the world the first time play mode is active.
+
+Verification:
+
+- `editor.compile_status` after the pass reported `local.testproject` and `local.testproject.editor` with `buildSuccess: true` and `errorCount: 0`.
+- `editor.open_scene` with `forceReload: true` recovered the saved scene after play/stop stale-session behavior.
+- `editor.play` reported `hasGameSession: true`.
+- `visual.capture_camera` succeeded after the lazy runtime build fix and wrote `20260501-150633-arpg-feature-slice-citizen-graph-854f95651641455fac8c592ba20f7f42.png` under `%TEMP%/sbox-agent-bridge/captures`.
+- The capture verified a nonblank runtime scene with visible elevation changes. Camera capture does not include the screen UI overlay, so the orb fill, inventory grid, equipment drag/drop, and item tooltips still need human/editor visual verification or a future UI/runtime inspection bridge.
+- Runtime log verification remains weak because `editor.logs` has no cursor/timestamp filter and returned stale compile errors even after current compile status was green.
+
 ## Bridge Lessons
 
 - `editor.open_scene` needed a `forceReload` mode. After play/stop, the active editor session can remain present but expose an empty scene to bridge reads until the sourced scene is reopened from disk.
 - `editor.open_scene` also needs editor-asset resolution, not only resource-library resolution. In the live ARPG iteration, `ResourceLibrary.Get<SceneFile>("scenes/minimal.scene")` failed from the bridge context while `AssetSystem.FindByPath("scenes/minimal.scene").LoadResource<SceneFile>()` succeeded.
 - The current play feedback loop is not enough for runtime inspection. `editor.play` can report play mode started, but follow-up scene reads may target a stale editor session instead of the live game session. This is a blocker for agent confidence during game POCs.
 - In the 2026-04-30 UI pass, `editor.play` reported `hasGameSession: true` immediately, but subsequent `editor.play_state` reads reported `isPlaying: true` with `hasGameSession: false`, and `scene.summary` only saw the saved editor scene. Runtime-scene targeting needs to be made explicit before agents can verify HUD/zombie objects that are created during play.
+- In the 2026-05-01 ARPG feature slice, runtime camera capture only worked after fixing the game component to lazily build the world once play mode is active. This was a game-code bug, but it also reinforced the need for a runtime self-report or game-session object query.
 - `editor.logs` needs cursor/timestamp support. Right now it tails the file and can surface stale compile/runtime errors as if they are current unless the caller uses very specific filters.
 - `ModelRenderer` should be created disabled until a valid model is assigned, then enabled. Creating it enabled with no model can assert in s&box.
 - `AssetSystem.CreateResource("material", ...)` returned null for `.vmat` creation on this install. The bridge now writes a minimal `.vmat` source file, registers it, and compiles it.
@@ -147,6 +170,7 @@ The controller builds the playable slice at runtime:
 - Local game-component type discovery remains unresolved. Agents can add a known compiled type by exact name, but they cannot yet ask the bridge to list all local project component types.
 - Joint creation works, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
 - The bridge cannot yet inspect runtime-only objects created during play. For the next POC iteration, add a runtime feedback channel or play-session scene targeting so an agent can verify the warrior, zombies, HUD, loot, and gore state directly.
+- `visual.capture_camera` verifies the world camera but not the screen UI overlay. The orb/inventory/equipment work needs either direct human verification in the editor viewport or a bridge capability that captures/composes UI panels.
 - Combat has simple state/visuals rather than animation graph integration. Animation graph/property support should come after runtime feedback is trustworthy.
 
 ## Recommended Next Bridge Work

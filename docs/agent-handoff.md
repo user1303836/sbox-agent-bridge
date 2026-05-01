@@ -166,6 +166,7 @@ Gameplay features currently include:
 - Manual 2D collision for player, zombies, and props.
 - Generated dark-fantasy prop kit imported into `Assets/models/agent_bridge/arpg_props/`.
 - Lighting/post-processing pass to make the scene brighter and more readable.
+- 2026-05-01 ARPG feature slice: bottom-filled health/energy orbs, raised terrain helpers/geometry, Whirlwind on hotkey `1`, elite zombies, item loot tables, 10x5 grid inventory, equipment slots, drag-to-equip, and item stat tooltips.
 
 The ARPG is intentionally rough. Use it to test bridge capabilities, not as an end product.
 
@@ -175,10 +176,12 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Direct IPC callers need schema validation too. Partial vectors such as `{ "z": 0 }` are now rejected because they previously zeroed omitted axes.
 - `gameobject.destroy` was once verified but became unsafe in the current editor session after play-mode testing due to a native editor delete/undo null reference.
 - Play mode and editor scene inspection are not fully aligned yet. `editor.play` may start play mode, while scene reads still target the editor scene or stale session.
+- Runtime world construction in `ArpgDemoController` now also happens lazily from `OnUpdate` once `Game.IsPlaying` is true. This fixed a case where `OnStart` ran in the editor, returned early, and never built the runtime ARPG world after entering play mode.
 - `editor.open_scene` with `forceReload: true` recovers sourced scenes after stale/empty session states.
 - Local compiled game components can be added by exact C# type name, but `component.list_types` still does not reliably enumerate local project components.
 - Bounds help with geometry but do not prove semantic orientation. A prop can have sensible bounds while upside down.
 - `visual.capture_camera` gives the agent an actual rendered feedback channel and brightness stats, but visual composition and semantic orientation still need human or vision-model confirmation.
+- `visual.capture_camera` captures the world camera but not the screen UI overlay, so HUD/orb/inventory verification still needs human/editor visual checking or a future UI capture/inspection bridge.
 
 ## Known Blockers And Caveats
 
