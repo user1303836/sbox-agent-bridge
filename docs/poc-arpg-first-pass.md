@@ -161,7 +161,7 @@ Verification:
 - `PrefabFile.Load(path)` did not load a project-created prefab by the same path returned by `AssetSystem`. The bridge now falls back to `AssetSystem.FindByPath(...).LoadResource<PrefabFile>()`.
 - Runtime-oriented `GameObject.Clone(prefab, ...)` failed in the editor bridge context with `No Active Scene`. The bridge now instantiates prefabs by deserializing `PrefabFile.RootObject` into the active editor scene with fresh GUIDs.
 - `component.add` can now add local compiled game components by exact C# type name, but `component.list_types` still cannot enumerate those local types through editor-side `Game.TypeLibrary`.
-- A rejected local-component fallback is documented in `tool-limitations.md`: do not deserialize a modified full target GameObject blob just to append a component, because live testing showed it duplicates existing components. The safe path only uses a temporary empty serialized probe to resolve the runtime type.
+- A rejected local-component fallback is documented in current status notes: do not deserialize a modified full target GameObject blob just to append a component, because live testing showed it duplicates existing components. The safe path only uses a temporary empty serialized probe to resolve the runtime type.
 - Direct IPC callers need bridge-side schema validation too, not only MCP-side Zod schemas. The generated prop pass showed why `Vector3` parsing must reject partial vectors before mutation.
 
 ## POC Gaps

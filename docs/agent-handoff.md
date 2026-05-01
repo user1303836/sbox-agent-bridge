@@ -79,6 +79,8 @@ The bridge currently exposes MCP tools for:
 As of 2026-05-01, direct local checks verified:
 
 - s&box bridge editor compile is green with zero errors in the live test project.
+- `bridge.doctor` and `editor.recover_scene` are live-verified. Doctor returned all-pass checks; recover_scene restored `scenes/minimal.scene` to one active tab.
+- `mcp-server/test/mvp-smoke.ts` is live-verified and is the preferred external-tester smoke.
 - `asset.inspect_model` works on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
 - `asset.inspect_material`, `asset.set_material_source_property`, and `asset.preview_model` are live-verified through `mcp-server/test/asset-material-smoke.ts`. The preview path should target `runtime` after `editor.play`/`editor.wait_runtime`; stopped editor preview captures can render black on the current s&box build.
 - `prefab.instantiate` now remaps prefab GUIDs to fresh instance GUIDs and preserves `__PrefabIdToInstanceId`. `prefab.inspect_instance` is live-verified through `mcp-server/test/prefab-instance-smoke.ts`, including source binding, id-map count, and name/position/rotation override patch samples.
@@ -92,7 +94,7 @@ As of 2026-05-01, direct local checks verified:
 The most recent pushed bridge commit before this handoff pass was:
 
 ```text
-3cfd460 Add feedback loop wait helpers
+2bacb0e Expand bridge asset prefab sound physics coverage
 ```
 
 ## Windows Node/NPM Note
@@ -183,6 +185,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Runtime world construction in `ArpgDemoController` now also happens lazily from `OnUpdate` once `Game.IsPlaying` is true. This fixed a case where `OnStart` ran in the editor, returned early, and never built the runtime ARPG world after entering play mode.
 - Citizen weapon attachment is better handled through model attachments. The current test project enables attachments for the player renderer and parents the sword to `hold_R`, falling back to `hand_R` or the old body-relative pose.
 - `editor.open_scene` with `forceReload: true` recovers sourced scenes after stale/empty session states.
+- `editor.recover_scene` wraps the common recovery path: stop all play sessions, reload/reactivate a sourced scene, and return before/after tab snapshots.
 - Local compiled game components can be added by exact C# type name, but `component.list_types` still does not reliably enumerate local project components.
 - Bounds help with geometry but do not prove semantic orientation. A prop can have sensible bounds while upside down.
 - `visual.capture_camera` gives the agent an actual rendered feedback channel and brightness stats, but visual composition and semantic orientation still need human or vision-model confirmation.
@@ -196,9 +199,9 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 
 ## Known Blockers And Caveats
 
-- `gameobject.destroy`: blocked pending fresh editor recheck or safer delete strategy.
+- `gameobject.destroy`: reverified in focused smokes and `smoke:mvp`; cleanup scripts still fall back to disabling objects if native delete fails in a stale editor session.
 - `script.delete`: implemented but not live-smoked; use a scratch-file smoke before marking verified.
-- Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, and runtime test actions are verified, but duplicate stale tab restoration and generic runtime queries still need work.
+- Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, `editor.recover_scene`, and runtime test actions are verified; generic runtime queries still need work.
 - Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
 - Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
@@ -211,7 +214,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 The next best bridge tasks are:
 
 - seed human-verified orientation overrides for the generated ARPG prop kit and add contact-sheet previews for ambiguous rotations;
-- post-transition stale-tab restoration;
+- clean-clone/fresh-project tester walkthrough;
 - viewport/HUD capture or generic panel hierarchy inspection;
 - focused viewport input injection;
 - fresh-session destructive edit verification;
@@ -222,10 +225,10 @@ The next best bridge tasks are:
 Start with:
 
 - `README.md`: user-facing setup and capabilities.
+- `docs/README.md`: consolidated docs map.
+- `docs/tester-quickstart.md`: human tester install/doctor/MVP smoke path.
 - `docs/status.md`: current verified state and limitations.
 - `docs/capability-matrix.md`: per-action status.
-- `docs/spatial-reasoning.md`: why visual/spatial feedback matters and what to build next.
-- `docs/editor-feedback-loop.md`: play/compile/log feedback design.
 - `docs/poc-arpg-first-pass.md`: ARPG testbed history and lessons.
 - `docs/testing.md`: CI, local checks, and live smoke process.
 

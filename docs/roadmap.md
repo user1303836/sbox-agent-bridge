@@ -42,11 +42,24 @@ Acceptance criteria:
 - README includes a minimal MCP configuration example known to work.
 - Troubleshooting notes cover editor-library compile/load failures, dock visibility, and IPC path.
 
+## Milestone 1.5: External Tester MVP
+
+Goal: make the bridge installable and diagnosable by testers who did not build the ARPG testbed.
+
+Status: in progress. Verified locally: install script, `bridge.doctor`, `editor.recover_scene`, and `npm run smoke:mvp`.
+
+Acceptance criteria:
+
+- A tester can install the editor bridge with one PowerShell script.
+- A tester can run a readiness check before mutating the scene.
+- The MVP smoke covers the main safe workflow without relying on ARPG-specific runtime components.
+- Docs point testers to one quickstart instead of several overlapping engineering notes.
+
 ## Milestone 2: Core Scene Editing
 
 Goal: give agents basic editor hands for GameObjects.
 
-Status: in progress. Verified so far: tab/session listing and activation, selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, save-state reporting, undo/redo, reparent, shallow duplicate, and batch scene v0. `gameobject.destroy` was previously verified but is currently blocked in this editor session.
+Status: in progress. Verified so far: tab/session listing and activation, selection read/set, object details, id-targeted read, rename, transform edits, enabled-state edits, frame object, save-state reporting, undo/redo, reparent, shallow duplicate, destroy with cleanup fallback, and batch scene v0.
 
 Candidate actions:
 
@@ -54,12 +67,13 @@ Candidate actions:
 - `editor.activate_tab` - verified by source path while an unsaved untitled scene tab was also open
 - `editor.save_scene` - verified for save-state reporting, no-source guard, and actual disk-write verification against a sourced scene
 - `editor.open_scene` - verified for opening sourced scenes, resolving scenes through editor assets when needed, and force-reloading stale open sessions
+- `editor.recover_scene` - verified for stop-all plus sourced scene reload/reactivation after play-mode transitions
 - `editor.undo` - verified
 - `editor.redo` - verified
 - `editor.frame_object` - verified
 - `editor.get_selection` - verified
 - `editor.set_selection` - verified
-- `gameobject.destroy` - blocked pending fresh-session recheck or safer delete strategy
+- `gameobject.destroy` - partial; reverified through smokes, with cleanup scripts falling back to disable when native delete fails
 - `gameobject.get` - verified
 - `gameobject.rename` - verified
 - `gameobject.set_transform` - verified
@@ -185,6 +199,7 @@ Candidate actions:
 - `editor.logs` - verified, including `afterIndex` cursor reads
 - `editor.compile_status` - verified
 - `editor.feedback` - verified
+- `bridge.doctor` - verified readiness check for bridge runtime, IPC, active session, compile health, stale play tabs, and source-scene state
 - `editor.wait_compile` - verified MCP-side helper
 - `editor.wait_runtime` - verified MCP-side helper
 - `editor.wait_stopped` - verified MCP-side helper
@@ -204,8 +219,7 @@ Remaining gaps:
 
 - Structured live log-event capture, if a stable editor-library hook is verified.
 - Generic runtime/game-session inspection beyond scene/component reads and component-authored self-report.
-- Stable post-transition editor-scene restoration after play/stop. Targeted runtime reads, runtime waits, and runtime test actions work, but agents may still need `open_scene forceReload` to recover stale editor tabs.
-- Post-stop stale-tab restoration. `editor.stop stopAll` clears playing editor sessions for smoke tests, but play/stop can still leave duplicate stale tabs and unsaved empty sessions that need `open_scene forceReload` recovery.
+- Richer post-transition cleanup. `editor.recover_scene` covers the common saved-scene recovery path, but unsaved/prefab/custom editor session edge cases still need more coverage.
 - Focused viewport input injection. Component-authored runtime test actions work, but shell-driven OS keypresses were not reliable enough to verify game input focus.
 - Viewport/HUD capture. `visual.capture_camera` captures world cameras, but not the editor/game viewport UI overlay. Runtime UI self-report works for instrumented components; generic HUD verification needs viewport/window capture or panel hierarchy inspection.
 - Reverify destructive scene edits after play/stop transitions. The current editor session exposed a null reference in the native GameObject delete/undo path.

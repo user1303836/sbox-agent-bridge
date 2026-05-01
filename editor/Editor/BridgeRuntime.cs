@@ -8,6 +8,8 @@ namespace SboxAgentBridge.Editor;
 
 public static class BridgeRuntime
 {
+	public const string Version = "0.1.0";
+
 	private static readonly JsonSerializerOptions JsonOptions = new()
 	{
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

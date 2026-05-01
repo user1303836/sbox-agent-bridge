@@ -48,6 +48,15 @@ npm run smoke:live
 
 This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, verifies orientation override storage plus `gameobject.place_asset`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, reads a component from the active scene when one exists, and then attempts to clean up the temporary objects.
 
+For external-tester MVP readiness:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_MVP_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:mvp
+```
+
+This smoke is intentionally broader than the focused category smokes but narrower than the legacy live smoke. It verifies `bridge.doctor`, compile wait, `editor.recover_scene`, scene read, GameObject creation, model/material assignment, physics inspection, sound inspection, prefab instance inspection, runtime-targeted model preview, play/stop settle, and cleanup. It is the preferred smoke for new human testers.
+
 For runtime feedback and ARPG testbed verification:
 
 ```bash
@@ -101,6 +110,12 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
 - `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` cannot be added and mutated. The fixture may be addable by exact type name even when it is not visible to `component.list_types`.
 - `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`: override the runtime feedback smoke scene path; defaults to `scenes/minimal.scene`.
+- `SBOX_AGENT_BRIDGE_MVP_SCENE`: scene path used by the MVP smoke. If omitted, the smoke asks `editor.recover_scene` to infer a sourced open scene.
+- `SBOX_AGENT_BRIDGE_MVP_MODEL`: model path used by the MVP smoke; defaults to `models/dev/box.vmdl`.
+- `SBOX_AGENT_BRIDGE_MVP_MATERIAL`: material path written by the MVP smoke; defaults to `materials/agent_bridge/smoke/mvp_smoke.vmat`.
+- `SBOX_AGENT_BRIDGE_MVP_PREFAB`: prefab path written by the MVP smoke; defaults to `prefabs/agent_bridge/smoke/mvp_smoke.prefab`.
+- `SBOX_AGENT_BRIDGE_MVP_SOUND_EVENT`: sound event path written by the MVP smoke; defaults to `sounds/agent_bridge/smoke/mvp_smoke.sound`.
+- `SBOX_AGENT_BRIDGE_MVP_SOUND_FILE`: sound file used by the MVP smoke; defaults to `sounds/ambience/cave-loop.vsnd`.
 - `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1`: allow the runtime feedback smoke to recover a stale unsaved test scene with `editor.open_scene forceReload`.
 - `SBOX_AGENT_BRIDGE_ASSET_SMOKE_MATERIAL`: override the asset/material smoke material path; defaults to `materials/agent_bridge/smoke/asset_material_smoke.vmat`.
 - `SBOX_AGENT_BRIDGE_ASSET_SMOKE_MODEL`: override the asset/material smoke model path; defaults to `models/dev/box.vmdl`.

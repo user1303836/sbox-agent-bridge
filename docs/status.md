@@ -14,10 +14,11 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 
 - The editor library compiles and the **Agent Bridge** dock appears in s&box.
 - The bridge runtime starts automatically once the editor library loads and listens through local file IPC; the dock displays status and manual start/stop controls.
+- `bridge.doctor` reports editor bridge/MCP versions, IPC writability, active project/session health, compile health, recent bridge logs, stale play-tab warnings, and an actionable next step. It is the first check for external testers.
 - The MCP server can read editor status, active context, selection, scene summaries, hierarchy, GameObject details, component lists, and component properties.
 - GameObject mutations are undo-scoped and read back after the edit: create, rename, transform, enable/disable, reparent, and duplicate.
 - `gameobject.create` can optionally parent a new object by `parentId`; this was verified through `scene.batch`.
-- `gameobject.destroy` was previously verified, but the current editor session now reports a null reference in the native delete/undo path after play-mode testing. Treat it as blocked until reverified in a fresh session or replaced with a safer delete strategy.
+- `gameobject.destroy` is reverified through the focused category smokes and MVP smoke. It still uses the native editor delete/undo path, so cleanup scripts fall back to disabling objects if destroy fails in a stale editor session.
 - Component mutations are undo-scoped and read back after the edit: add, remove, enable/disable, and set property.
 - `component.add` can add local compiled game components by exact C# type name through a serialized-probe fallback that resolves the runtime type, then calls s&box `GameObject.AddComponent<T>()` on the target. Live verified with `AgentBridgeArpgFixture` on ARPG fixture objects without duplicating existing components.
 - Component property metadata includes explicit JSON-shape hints, attributes, enum values, and reference targets for agents.
@@ -54,17 +55,19 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `physics.add_joint` creates joint components, but target assignment is not wired because the verified `Joint.Object2` property is read-only.
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. Cursor indexes are file line indexes, not structured log-event ids, and large ranges can still be tail-truncated.
-- Runtime/game-session reads are now targetable and `editor.wait_runtime` removes the need for fixed sleeps, but play/stop transitions can still leave duplicate stale tabs. `editor.open_scene` supports `discardUnsaved:true` with `forceReload:true` for scratch/test-scene recovery.
+- Runtime/game-session reads are now targetable and `editor.wait_runtime` removes the need for fixed sleeps. `editor.recover_scene` stops stale play sessions and reopens/reactivates a sourced scene; `editor.open_scene` still supports `discardUnsaved:true` with `forceReload:true` for scratch/test-scene recovery.
 - `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report is available through test actions, but generic viewport/HUD pixel capture and panel hierarchy inspection remain open.
 - Shell-driven OS keypresses are not reliable enough to verify game input. Deterministic runtime test actions are now available; focused viewport input injection remains future work.
-- Spatial placement now has a live-verified v1 override-backed placement path, but the override data still needs to be seeded for the full generated prop kit. Renderer bounds still cannot confirm that an asset is semantically upright without human or vision confirmation. See `docs/spatial-reasoning.md`.
+- Spatial placement now has a live-verified v1 override-backed placement path, but the override data still needs to be seeded for the full generated prop kit. Renderer bounds still cannot confirm that an asset is semantically upright without human or vision confirmation.
 - Local game component types, including `AgentBridgeMutationFixture`, are not visible through editor-side `Game.TypeLibrary` enumeration in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set, but exact-name `component.add` can still add compiled local components in verified cases.
-- The full live smoke is currently blocked in this editor session by the `gameobject.destroy` delete/undo null reference. Direct feedback-loop actions were verified separately.
+- `npm run smoke:mvp` is the preferred external-tester smoke. The older `smoke:live` remains useful for broad regression checks but has more historical fixture assumptions.
 - The current Windows shell does not have `npm` on PATH, and `npm run check` currently hits an `Access is denied` shim issue. Direct execution through the installed Node runtime works; TypeScript check/build and the bridge-client tests were rerun successfully with direct `node` commands.
+- Do not add local components by deserializing a modified full target `GameObject` JSON blob. Live testing showed that this duplicates existing components; the safe fallback uses a temporary empty probe only to resolve the local runtime type, then adds the component with `GameObject.AddComponent<T>()`.
 
 ## Next Larger Milestones
 
+- Run the tester quickstart from a clean clone and a fresh minimal s&box project.
 - Seed persistent asset orientation overrides for the generated ARPG prop kit and add isolated preview captures for ambiguous assets.
-- Editor feedback loop refinements: structured live log events, viewport/HUD capture, focused viewport input injection, and post-transition stale-tab restoration.
+- Editor feedback loop refinements: structured live log events, viewport/HUD capture, and focused viewport input injection.
 - Improve local game component type discovery so agents can list project components before adding them by exact name.
 - Continue asset, prefab, sound, physics, and runtime-feedback workflows through the ARPG POC.

@@ -10,6 +10,7 @@ The goal is not an unsafe "do anything" bridge. The bridge exposes narrow, obser
 
 Ask an MCP-capable agent to:
 
+- run a bridge readiness/doctor check before editing
 - summarize the active editor scene or the live runtime `GameSession`
 - list editor tabs/sessions and activate the scene you want to edit
 - inspect the current selection
@@ -26,6 +27,7 @@ Ask an MCP-capable agent to:
 - create, inspect, list, and instantiate prefabs
 - capture camera screenshots with luminance stats for visual feedback
 - start/stop play mode, wait for runtime readiness, and inspect play state
+- recover a sourced editor scene after stale play/stop tabs
 - read compile/hotload diagnostics and recent editor logs with log cursors
 - invoke component-authored runtime test actions for deterministic gameplay/UI assertions
 - run small multi-step scene batches with read-back after each operation
@@ -77,6 +79,12 @@ npm run build
 Copy this repo's `editor/` folder into your s&box project as `Libraries/sbox_agent_bridge`.
 
 From the repo root:
+
+```powershell
+.\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\YourProject'
+```
+
+Or copy manually:
 
 ```powershell
 $Project = 'C:\Users\you\Documents\s&box projects\YourProject'
@@ -146,7 +154,7 @@ Optional custom IPC folder:
 Start with read-only prompts:
 
 ```text
-Use the sbox-agent-bridge MCP tools to check bridge status, list editor tabs, summarize the active scene, and inspect the current selection. Do not mutate the scene yet.
+Use the sbox-agent-bridge MCP tools to run the bridge doctor, list editor tabs, summarize the active scene, and inspect the current selection. Do not mutate the scene yet.
 ```
 
 Then try one small verified edit:
@@ -165,7 +173,7 @@ Use the sbox-agent-bridge MCP tools to read compile status, start play mode, wai
 
 The MCP server currently registers these tools: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
 
-- `editor`: bridge status, active context, editor tabs, tab activation, open scene, selection, save verification, undo, redo, frame object, play/stop, play state, compile status, recent logs, combined feedback, and MCP-side `wait_compile` / `wait_runtime` / `wait_stopped` helpers
+- `editor`: bridge status/doctor, active context, editor tabs, tab activation, open/recover scene, selection, save verification, undo, redo, frame object, play/stop, play state, compile status, recent logs, combined feedback, and MCP-side `wait_compile` / `wait_runtime` / `wait_stopped` helpers
 - `scene`: summary, hierarchy, search, GameObject details, target-session-aware runtime reads, and small verified batches with `$ref` aliasing
 - `gameobject`: get, create, rename, transform, enable/disable, destroy, duplicate, reparent, and place assets with orientation overrides plus ground alignment; create can optionally parent the new object
 - `component`: list types, list on object, inspect, inspect property schemas, add, remove, enable/disable, set property, and validate property
@@ -173,15 +181,15 @@ The MCP server currently registers these tools: `editor`, `scene`, `gameobject`,
 - `asset`: search assets, inspect assets, inspect model bounds/orientation candidates, get/set model orientation overrides, assign models/materials, create simple `.vmat` materials, and set material parameters
 - `visual`: capture rendered camera PNGs with camera metadata and luminance statistics
 - `sound`: list sound assets, inspect sound assets/events, create `.sound` events, assign `SoundPointComponent`, and preview sound events
-- `physics`: add colliders, add rigidbodies, add simple joints, and raycast against the active scene
-- `prefab`: create prefabs from scene GameObjects, list/inspect prefab assets, and instantiate prefab roots into the active editor scene
+- `physics`: inspect physics components, add colliders, add rigidbodies, add simple joints, and raycast against the active scene
+- `prefab`: create prefabs from scene GameObjects, list/inspect prefab assets, instantiate prefab roots into the active editor scene, and inspect prefab instance metadata
 - `runtime`: list and invoke component-authored deterministic runtime test actions in the live `GameSession`
 
 Component property metadata includes JSON-shape hints so agents can see what a property expects before writing it, including resource references that can be set from asset paths. Property writes can also be dry-run validated without mutating the scene.
 
 Target-session-aware reads can use `targetSession: "runtime"` / `"game"` to inspect the live `GameSession` while play mode is running, rather than accidentally reading a stale editor tab.
 
-For detailed implementation status, see [docs/status.md](docs/status.md), [docs/capability-matrix.md](docs/capability-matrix.md), and [docs/tool-limitations.md](docs/tool-limitations.md).
+For detailed implementation status, see [docs/status.md](docs/status.md) and [docs/capability-matrix.md](docs/capability-matrix.md).
 
 ## Verification And Smoke Tests
 
@@ -209,6 +217,19 @@ The live smoke uses the same file IPC path as the MCP server. It reads editor fe
 
 To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`. If the smoke test says `AgentBridgeMutationFixture` is not available, wait for s&box hotload or reopen the project. Do not leave duplicate fixture files in the project tree; duplicate component type definitions can break a cold compile and prevent the Agent Bridge dock from loading.
 
+### MVP tester smoke
+
+For external testers, prefer the MVP smoke:
+
+```powershell
+cd mcp-server
+$env:SBOX_AGENT_BRIDGE_MVP_SCENE='scenes/minimal.scene'
+$env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
+npm run smoke:mvp
+```
+
+It verifies `bridge.doctor`, compile wait, scene recovery, scene read, object creation, model/material assignment, physics/sound/prefab read-back, runtime model preview capture, play/stop settle, and cleanup without relying on the ARPG-specific runtime hooks.
+
 ### Runtime feedback smoke
 
 For deterministic play-mode/runtime verification:
@@ -229,14 +250,14 @@ This project is useful now, but the docs intentionally keep the status honest:
 - The editor bridge must be installed into each s&box project that should expose live editor access.
 - The s&box editor must be open and the bridge editor library must compile/load.
 - CI covers the MCP server and metadata only; live editor behavior is local-smoke verified.
-- `gameobject.destroy` was previously verified, but is currently treated as blocked pending fresh-session reverification because the latest editor session hit a native delete/undo null reference after play-mode testing.
+- `gameobject.destroy` is reverified by focused smokes, but cleanup scripts still fall back to disabling objects if the native editor delete/undo path fails in a stale session.
 - `script.delete` is implemented, but should be treated as blocked until a dedicated scratch-file smoke verifies it.
 - `component.list_types` discovers built-in/editor-visible components, but local project component discovery is still partial. `component.add` can add compiled local components by exact C# type name in verified cases.
 - `gameobject.duplicate` is shallow: it copies name, enabled state, transform, and parent, but not components or children.
 - `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report exists through test actions, but generic HUD/panel pixel verification remains future work.
 - Bounds and orientation candidates do not prove semantic uprightness. Use `asset.set_orientation_override`, `gameobject.place_asset`, captures, and human/vision confirmation for ambiguous models.
 
-See [docs/tool-limitations.md](docs/tool-limitations.md) for the full blocked/partial list.
+See [docs/status.md](docs/status.md) for the full current caveat list.
 
 ## Troubleshooting
 
@@ -260,7 +281,7 @@ Remove any extra `AgentBridgeMutationFixture.cs` copies from `YourProject/Code/`
 
 ### Live Reads Look Empty Or Stale After Play Mode
 
-Play/stop transitions can leave duplicate or stale editor tabs in some sessions. Use `editor.tabs` to inspect open sessions, `editor.activate_tab` to target the sourced scene, and `editor.open_scene` with `forceReload: true` to reload a saved scene. For scratch/test scenes only, `discardUnsaved: true` can allow recovery when an unsaved stale tab blocks reload.
+Play/stop transitions can leave duplicate or stale editor tabs in some sessions. Use `editor.recover_scene` with the saved scene path to stop play sessions and reload/reactivate the editor scene. For scratch/test scenes only, `discardUnsaved: true` can allow recovery when an unsaved stale tab blocks reload.
 
 ### Windows npm Shim Issues
 
@@ -304,24 +325,12 @@ Useful scripts:
 - `npm run build`: compile the MCP server to `dist/`.
 - `npm run ci`: typecheck, unit test, and build.
 - `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
+- `npm run smoke:mvp`: run the preferred external-tester smoke against an already-open bridge.
 - `npm run smoke:runtime`: run the focused runtime feedback smoke against an already-open bridge.
 
 ## Project Docs
 
-- [Status](docs/status.md)
-- [Fresh Agent Handoff](docs/agent-handoff.md)
-- [Roadmap](docs/roadmap.md)
-- [Capability Matrix](docs/capability-matrix.md)
-- [Tool Limitations](docs/tool-limitations.md)
-- [Testing Strategy](docs/testing.md)
-- [Editor Feedback Loop](docs/editor-feedback-loop.md)
-- [Spatial Reasoning And Asset Placement](docs/spatial-reasoning.md)
-- [ARPG POC First Pass](docs/poc-arpg-first-pass.md)
-- [Architecture](docs/architecture.md)
-- [Protocol](docs/protocol.md)
-- [Verified s&box APIs](docs/verified-sbox-apis.md)
-- [Prior Art](docs/prior-art.md)
-- [Contributing](CONTRIBUTING.md)
+Start with [docs/README.md](docs/README.md). Human testers should use [docs/tester-quickstart.md](docs/tester-quickstart.md).
 
 ## Grounding
 

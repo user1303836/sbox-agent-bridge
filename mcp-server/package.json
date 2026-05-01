@@ -11,6 +11,7 @@
     "dev": "tsx src/index.ts",
     "smoke:assets": "tsx test/asset-material-smoke.ts",
     "smoke:live": "tsx test/live-smoke.ts",
+    "smoke:mvp": "tsx test/mvp-smoke.ts",
     "smoke:physics": "tsx test/physics-smoke.ts",
     "smoke:prefabs": "tsx test/prefab-instance-smoke.ts",
     "smoke:runtime": "tsx test/runtime-feedback-smoke.ts",

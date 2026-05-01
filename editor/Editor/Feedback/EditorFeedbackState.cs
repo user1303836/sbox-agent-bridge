@@ -70,6 +70,47 @@ internal static class EditorFeedbackState
 		};
 	}
 
+	public static CompileHealthSnapshot GetCompileHealth()
+	{
+		TrackedCompileGroup[] groups;
+
+		lock ( Sync )
+		{
+			groups = CompileGroups.Values
+				.OrderByDescending( x => x.Sequence )
+				.ToArray();
+		}
+
+		if ( groups.Length == 0 )
+		{
+			return new CompileHealthSnapshot
+			{
+				ObservedGroupCount = 0,
+				LatestSequence = null,
+				BuildSucceeded = false,
+				IsBuilding = false,
+				NeedsBuild = false,
+				ErrorCount = 0,
+				WarningCount = 0
+			};
+		}
+
+		var compilerSnapshots = groups
+			.SelectMany( group => group.Group.Compilers?.Select( DescribeCompiler ) ?? Array.Empty<CompilerSnapshot>() )
+			.ToArray();
+
+		return new CompileHealthSnapshot
+		{
+			ObservedGroupCount = groups.Length,
+			LatestSequence = groups.Max( x => x.Sequence ),
+			BuildSucceeded = compilerSnapshots.Length > 0 && compilerSnapshots.All( x => x.BuildSuccess ),
+			IsBuilding = groups.Any( x => x.Group.IsBuilding ) || compilerSnapshots.Any( x => x.IsBuilding ),
+			NeedsBuild = groups.Any( x => x.Group.NeedsBuild ) || compilerSnapshots.Any( x => x.NeedsBuild ),
+			ErrorCount = compilerSnapshots.Sum( x => x.ErrorCount ),
+			WarningCount = compilerSnapshots.Sum( x => x.WarningCount )
+		};
+	}
+
 	public static object DescribeLogs( int maxLines, string contains, string level, int afterIndex = -1 )
 	{
 		maxLines = Clamp( maxLines, 1, 1000 );
@@ -403,5 +444,16 @@ internal static class EditorFeedbackState
 		public int StartIndex { get; set; }
 		public int TotalLineCount { get; set; }
 		public bool TruncatedByTailLimit { get; set; }
+	}
+
+	internal sealed class CompileHealthSnapshot
+	{
+		public int ObservedGroupCount { get; set; }
+		public long? LatestSequence { get; set; }
+		public bool BuildSucceeded { get; set; }
+		public bool IsBuilding { get; set; }
+		public bool NeedsBuild { get; set; }
+		public int ErrorCount { get; set; }
+		public int WarningCount { get; set; }
 	}
 }

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Editor;
 using Sandbox;
@@ -17,12 +19,120 @@ internal static class EditorHandlers
 			verified = new
 			{
 				bridge = "sbox-agent-bridge",
-				version = "0.1.0",
+				version = BridgeRuntime.Version,
 				running = BridgeRuntime.IsRunning,
 				ipcRoot = BridgeRuntime.IpcRoot,
 				hasActiveSession = session is not null,
 				activeScene = session?.Scene?.Name,
 				isPlaying = session?.IsPlaying ?? false
+			}
+		} );
+	}
+
+	public static BridgeResponse Doctor( BridgeRequest request )
+	{
+		var maxDiagnostics = HandlerUtil.GetInt( request.Payload, "maxDiagnostics", 10 );
+		var maxLines = HandlerUtil.GetInt( request.Payload, "maxLines", 40 );
+		var mcpServerVersion = HandlerUtil.GetString( request.Payload, "mcpServerVersion" );
+		var checks = new List<DoctorCheck>();
+		var session = HandlerUtil.ActiveSession;
+		var tabs = DescribeTabsSnapshot();
+		var compileHealth = EditorFeedbackState.GetCompileHealth();
+		var ipc = DescribeIpcHealth();
+		var bridgeLogs = EditorFeedbackState.DescribeLogs( maxLines, "Agent Bridge", "all" );
+		var project = DescribeProject();
+
+		AddCheck(
+			checks,
+			"bridge-running",
+			BridgeRuntime.IsRunning ? "pass" : "fail",
+			BridgeRuntime.IsRunning ? "Bridge runtime is running." : "Bridge runtime is stopped.",
+			BridgeRuntime.IsRunning ? "" : "Open View > Agent Bridge and click Start Bridge, or reload the editor library."
+		);
+
+		AddCheck(
+			checks,
+			"ipc-writable",
+			ipc.Writable ? "pass" : "fail",
+			ipc.Writable ? "Bridge IPC directories are writable." : $"Bridge IPC is not writable: {ipc.WriteError}",
+			ipc.Writable ? "" : "Check filesystem permissions for the IPC root or set SBOX_AGENT_BRIDGE_IPC to a writable folder."
+		);
+
+		AddCheck(
+			checks,
+			"active-session",
+			session is null ? "fail" : "pass",
+			session is null ? "No active editor scene session." : $"Active scene session: {SafeRead( () => session.Scene?.Name ?? "" )}",
+			session is null ? "Open a scene in the s&box editor before running scene or component tools." : ""
+		);
+
+		AddCheck(
+			checks,
+			"compile-status",
+			compileHealth.ObservedGroupCount == 0 ? "warn" : compileHealth.ErrorCount > 0 ? "fail" : compileHealth.IsBuilding || compileHealth.NeedsBuild ? "warn" : "pass",
+			compileHealth.ObservedGroupCount == 0
+				? "No compile group has been observed since the bridge loaded."
+				: $"Compile groups observed: {compileHealth.ObservedGroupCount}; errors: {compileHealth.ErrorCount}; warnings: {compileHealth.WarningCount}.",
+			compileHealth.ObservedGroupCount == 0
+				? "Trigger a compile/hotload or reopen the project if you need compiler diagnostics."
+				: compileHealth.ErrorCount > 0
+					? "Run editor.compile_status with maxDiagnostics and fix compiler errors before testing."
+					: compileHealth.IsBuilding || compileHealth.NeedsBuild
+						? "Wait for compile to settle with editor.wait_compile before mutating the scene."
+						: ""
+		);
+
+		AddCheck(
+			checks,
+			"stale-play-tabs",
+			tabs.PlayingEditorTabCount == 0 ? "pass" : "warn",
+			tabs.PlayingEditorTabCount == 0 ? "No playing editor sessions are currently reported." : $"{tabs.PlayingEditorTabCount} editor session(s) still report play mode.",
+			tabs.PlayingEditorTabCount == 0 ? "" : "Run editor.recover_scene or editor.stop with stopAll:true before smoke tests."
+		);
+
+		AddCheck(
+			checks,
+			"source-scene",
+			session is not null && !string.IsNullOrWhiteSpace( SafeRead( () => session.Scene?.Source?.ResourcePath ?? "" ) ) ? "pass" : "warn",
+			session is null
+				? "No active scene to check for a source path."
+				: string.IsNullOrWhiteSpace( SafeRead( () => session.Scene?.Source?.ResourcePath ?? "" ) )
+					? "Active scene has no source path."
+					: $"Active scene source: {SafeRead( () => session.Scene?.Source?.ResourcePath ?? "" )}.",
+			session is null || !string.IsNullOrWhiteSpace( SafeRead( () => session.Scene?.Source?.ResourcePath ?? "" ) ) ? "" : "Save the scene once or open a sourced scene before testing save/reload workflows."
+		);
+
+		var overall = checks.Any( x => x.Status == "fail" )
+			? "fail"
+			: checks.Any( x => x.Status == "warn" )
+				? "warn"
+				: "pass";
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = overall == "pass" ? "Bridge doctor passed" : overall == "warn" ? "Bridge doctor found warnings" : "Bridge doctor found failures",
+			verified = new
+			{
+				overall,
+				bridge = new
+				{
+					name = "sbox-agent-bridge",
+					version = BridgeRuntime.Version,
+					running = BridgeRuntime.IsRunning,
+					ipcRoot = BridgeRuntime.IpcRoot
+				},
+				mcp = new
+				{
+					version = string.IsNullOrWhiteSpace( mcpServerVersion ) ? "unknown-direct-ipc" : mcpServerVersion
+				},
+				project,
+				ipc,
+				tabs,
+				compileHealth,
+				compileStatus = EditorFeedbackState.DescribeCompileStatus( maxDiagnostics ),
+				bridgeLogs,
+				checks,
+				nextSuggestedAction = GetDoctorNextAction( checks )
 			}
 		} );
 	}
@@ -50,22 +160,10 @@ internal static class EditorHandlers
 
 	public static BridgeResponse Tabs( BridgeRequest request )
 	{
-		var sessions = SceneEditorSession.All.ToArray();
-		var active = SceneEditorSession.Active;
-		var tabs = sessions
-			.Select( ( session, index ) => DescribeEditorTab( session, index, ReferenceEquals( session, active ) ) )
-			.ToArray();
-
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = "Editor tabs read",
-			verified = new
-			{
-				count = tabs.Length,
-				activeIndex = active is null ? -1 : FindSessionIndex( active, sessions ),
-				activeId = active is null ? "" : GetSessionId( active ),
-				tabs
-			}
+			verified = DescribeTabsSnapshot()
 		} );
 	}
 
@@ -146,6 +244,57 @@ internal static class EditorHandlers
 		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
 		var forceReload = HandlerUtil.GetBool( request.Payload, "forceReload", false );
 		var discardUnsaved = HandlerUtil.GetBool( request.Payload, "discardUnsaved", false );
+		var result = OpenSceneCore( path, bringToFront, forceReload, discardUnsaved );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor scene opened",
+			verified = result
+		} );
+	}
+
+	public static BridgeResponse RecoverScene( BridgeRequest request )
+	{
+		var before = DescribeTabsSnapshot();
+		var stopAll = HandlerUtil.GetBool( request.Payload, "stopAll", true );
+		var bringToFront = HandlerUtil.GetBool( request.Payload, "bringToFront", true );
+		var forceReload = HandlerUtil.GetBool( request.Payload, "forceReload", true );
+		var discardUnsaved = HandlerUtil.GetBool( request.Payload, "discardUnsaved", false );
+		var requestedPath = HandlerUtil.GetString( request.Payload, "path" );
+		var path = string.IsNullOrWhiteSpace( requestedPath ) ? FindRecoverScenePath() : requestedPath;
+		object stopResult = null;
+
+		if ( string.IsNullOrWhiteSpace( path ) )
+			throw new InvalidOperationException( "recover_scene requires a path when no sourced editor scene can be inferred from open tabs." );
+
+		if ( stopAll )
+			stopResult = StopAll( request ).Result;
+
+		var openResult = OpenSceneCore( path, bringToFront, forceReload, discardUnsaved );
+		var after = DescribeTabsSnapshot();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Editor scene recovery requested",
+			verified = new
+			{
+				requestedPath,
+				resolvedPath = path,
+				stopAll,
+				bringToFront,
+				forceReload,
+				discardUnsaved,
+				before,
+				stop = stopResult,
+				open = openResult,
+				after
+			}
+		} );
+	}
+
+	private static object OpenSceneCore( string path, bool bringToFront, bool forceReload, bool discardUnsaved )
+	{
+		path = (path ?? "").Replace( '\\', '/' ).TrimStart( '/' );
 		var sceneFile = ResourceLibrary.Get<SceneFile>( path );
 		var resolution = "resource-library";
 
@@ -187,21 +336,17 @@ internal static class EditorHandlers
 
 		existing.MakeActive( bringToFront );
 
-		return BridgeResponse.Success( request.Id, new
+		return new
 		{
-			message = "Editor scene opened",
-			verified = new
-			{
-				requestedPath = path,
-				bringToFront,
-				forceReload,
-				discardUnsaved,
-				resolution,
-				scene = existing.Scene.Name,
-				hasUnsavedChanges = existing.HasUnsavedChanges,
-				source = HandlerUtil.DescribeResourceReference( existing.Scene.Source )
-			}
-		} );
+			requestedPath = path,
+			bringToFront,
+			forceReload,
+			discardUnsaved,
+			resolution,
+			scene = existing.Scene.Name,
+			hasUnsavedChanges = existing.HasUnsavedChanges,
+			source = HandlerUtil.DescribeResourceReference( existing.Scene.Source )
+		};
 	}
 
 	public static BridgeResponse PlayState( BridgeRequest request )
@@ -759,6 +904,131 @@ internal static class EditorHandlers
 		};
 	}
 
+	private static TabsSnapshot DescribeTabsSnapshot()
+	{
+		var sessions = SceneEditorSession.All.ToArray();
+		var active = SceneEditorSession.Active;
+		var tabs = sessions
+			.Select( ( session, index ) => DescribeEditorTab( session, index, ReferenceEquals( session, active ) ) )
+			.ToArray();
+		var editorTabs = sessions.Where( session => session is not GameEditorSession ).ToArray();
+		var gameSessionTabs = sessions.Where( session => session is GameEditorSession ).ToArray();
+		var playingEditorTabs = editorTabs.Where( session => TryReadIsPlaying( session, false ) || SafeRead( () => session.GameSession is not null, false ) ).ToArray();
+		var duplicateSourcePaths = editorTabs
+			.Select( GetSessionSourcePath )
+			.Where( path => !string.IsNullOrWhiteSpace( path ) )
+			.GroupBy( path => NormalizeTabPath( path ), StringComparer.OrdinalIgnoreCase )
+			.Where( group => group.Count() > 1 )
+			.Select( group => new DuplicateSourcePathSnapshot
+			{
+				SourcePath = group.Key,
+				Count = group.Count()
+			} )
+			.ToArray();
+
+		return new TabsSnapshot
+		{
+			Count = tabs.Length,
+			ActiveIndex = active is null ? -1 : FindSessionIndex( active, sessions ),
+			ActiveId = active is null ? "" : GetSessionId( active ),
+			EditorTabCount = editorTabs.Length,
+			GameSessionTabCount = gameSessionTabs.Length,
+			PlayingEditorTabCount = playingEditorTabs.Length,
+			DuplicateSourcePaths = duplicateSourcePaths,
+			Tabs = tabs
+		};
+	}
+
+	private static string FindRecoverScenePath()
+	{
+		var active = SceneEditorSession.Active;
+		var activeSource = active is GameEditorSession gameSession && gameSession.Parent is not null
+			? GetSessionSourcePath( gameSession.Parent )
+			: active is null ? "" : GetSessionSourcePath( active );
+
+		if ( !string.IsNullOrWhiteSpace( activeSource ) )
+			return activeSource;
+
+		return SceneEditorSession.All
+			.Where( session => session is not GameEditorSession )
+			.Select( GetSessionSourcePath )
+			.FirstOrDefault( path => !string.IsNullOrWhiteSpace( path ) ) ?? "";
+	}
+
+	private static object DescribeProject()
+	{
+		return new
+		{
+			assetsPath = SafeRead( () => Project.Current.GetAssetsPath(), "" ),
+			currentDirectory = SafeRead( () => Environment.CurrentDirectory, "" )
+		};
+	}
+
+	private static IpcHealthSnapshot DescribeIpcHealth()
+	{
+		var snapshot = new IpcHealthSnapshot
+		{
+			Root = BridgeRuntime.IpcRoot,
+			RequestPath = BridgeRuntime.RequestPath,
+			ResponsePath = BridgeRuntime.ResponsePath,
+			RootExists = Directory.Exists( BridgeRuntime.IpcRoot ),
+			RequestPathExists = Directory.Exists( BridgeRuntime.RequestPath ),
+			ResponsePathExists = Directory.Exists( BridgeRuntime.ResponsePath )
+		};
+
+		try
+		{
+			Directory.CreateDirectory( BridgeRuntime.RequestPath );
+			Directory.CreateDirectory( BridgeRuntime.ResponsePath );
+			var probePath = Path.Combine( BridgeRuntime.ResponsePath, $".doctor-{Guid.NewGuid():N}.tmp" );
+			File.WriteAllText( probePath, "ok" );
+			File.Delete( probePath );
+
+			snapshot.RootExists = Directory.Exists( BridgeRuntime.IpcRoot );
+			snapshot.RequestPathExists = Directory.Exists( BridgeRuntime.RequestPath );
+			snapshot.ResponsePathExists = Directory.Exists( BridgeRuntime.ResponsePath );
+			snapshot.Writable = true;
+		}
+		catch ( Exception ex )
+		{
+			snapshot.Writable = false;
+			snapshot.WriteError = ex.Message;
+		}
+
+		return snapshot;
+	}
+
+	private static void AddCheck( List<DoctorCheck> checks, string id, string status, string message, string suggestion )
+	{
+		checks.Add( new DoctorCheck
+		{
+			Id = id,
+			Status = status,
+			Message = message,
+			Suggestion = suggestion
+		} );
+	}
+
+	private static string GetDoctorNextAction( IEnumerable<DoctorCheck> checks )
+	{
+		var first = checks.FirstOrDefault( check => check.Status == "fail" || check.Status == "warn" );
+		return first is null || string.IsNullOrWhiteSpace( first.Suggestion )
+			? "Run a read-only scene summary, then a focused smoke test if you are preparing for external testing."
+			: first.Suggestion;
+	}
+
+	private static T SafeRead<T>( Func<T> read, T fallback = default )
+	{
+		try
+		{
+			return read();
+		}
+		catch
+		{
+			return fallback;
+		}
+	}
+
 	private static object DescribeEditorTab( SceneEditorSession session, int index, bool isActive )
 	{
 		var sourcePath = GetSessionSourcePath( session );
@@ -847,5 +1117,43 @@ internal static class EditorHandlers
 		public string SourcePath { get; set; }
 		public object? Source { get; set; }
 		public object[] ReadErrors { get; set; }
+	}
+
+	private sealed class TabsSnapshot
+	{
+		public int Count { get; set; }
+		public int ActiveIndex { get; set; }
+		public string ActiveId { get; set; }
+		public int EditorTabCount { get; set; }
+		public int GameSessionTabCount { get; set; }
+		public int PlayingEditorTabCount { get; set; }
+		public DuplicateSourcePathSnapshot[] DuplicateSourcePaths { get; set; }
+		public object[] Tabs { get; set; }
+	}
+
+	private sealed class DuplicateSourcePathSnapshot
+	{
+		public string SourcePath { get; set; }
+		public int Count { get; set; }
+	}
+
+	private sealed class IpcHealthSnapshot
+	{
+		public string Root { get; set; }
+		public string RequestPath { get; set; }
+		public string ResponsePath { get; set; }
+		public bool RootExists { get; set; }
+		public bool RequestPathExists { get; set; }
+		public bool ResponsePathExists { get; set; }
+		public bool Writable { get; set; }
+		public string WriteError { get; set; } = "";
+	}
+
+	private sealed class DoctorCheck
+	{
+		public string Id { get; set; }
+		public string Status { get; set; }
+		public string Message { get; set; }
+		public string Suggestion { get; set; }
 	}
 }

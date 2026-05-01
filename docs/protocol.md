@@ -39,10 +39,12 @@ Errors use the same envelope:
 ## Actions
 
 - `bridge.status`
+- `bridge.doctor`
 - `editor.context`
 - `editor.tabs`
 - `editor.activate_tab`
 - `editor.open_scene`
+- `editor.recover_scene`
 - `editor.get_selection`
 - `editor.set_selection`
 - `editor.save_scene`
@@ -120,6 +122,10 @@ Mutations should return a `verified` object read back from the editor after the 
 Vector payloads must be complete. For `Vector3` fields, direct protocol callers must include numeric `x`, `y`, and `z` values; partial vector objects are rejected before mutation.
 
 `editor.open_scene` accepts `path`, optional `bringToFront`, optional `forceReload`, and optional `discardUnsaved`. Use `forceReload: true` to reload an already-open sourced scene from disk after play-mode transitions leave the active editor session stale. If the open session has unsaved changes, the bridge refuses to reload unless `discardUnsaved: true` is also provided; reserve that for scratch/test scenes.
+
+`bridge.doctor` is a read-only readiness check for testers and agents. It reports bridge/MCP version data, IPC writability, project paths, tab/session health, compile health, bridge-related logs, pass/warn/fail checks, and `nextSuggestedAction`.
+
+`editor.recover_scene` accepts optional `path`, `stopAll`, `bringToFront`, `forceReload`, and `discardUnsaved`. If `path` is omitted, it tries to infer the active sourced editor scene. It stops playing sessions by default, reloads/reactivates the sourced scene, and returns before/after tab snapshots. Use `discardUnsaved:true` only for scratch/test scenes.
 
 `editor.save_scene` returns before/after save state. `dryRun: true` reads save state without writing. Untitled scenes without a source path are guarded: the bridge returns `saveAttempted: false` and a `skippedReason` instead of opening a surprise save-as flow. When a save is attempted, `saveVerified` is true only if the after-state reports no unsaved changes.
 

@@ -22,10 +22,12 @@ Status meanings:
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
 | Bridge status | `bridge.status` | `editor` / `status` | Verified | Returns running state, IPC root, active scene, play state. |
+| Bridge doctor/readiness | `bridge.doctor` | `editor` / `doctor` | Verified | Reports bridge/MCP version context, IPC writability, project/session health, compile health, recent bridge logs, stale play-tab warnings, and a next suggested action. Live IPC returned all-pass checks on the MVP test project. |
 | Editor context | `editor.context` | `editor` / `context` | Verified | Direct file-IPC read verified with selected GameObject details. Includes active tab/session metadata so agents can see which scene tab commands will target. |
 | List editor tabs | `editor.tabs` | `editor` / `tabs` | Verified | Lists open `SceneEditorSession` tabs with index, scene id, active flag, source path, dirty state, and play state. Live IPC verified with both `Untitled Scene` and `scenes/minimal.scene` open. |
 | Activate editor tab | `editor.activate_tab` | `editor` / `activate_tab` | Verified | Activates an existing editor scene tab by index, scene id, source path, or scene name. Live IPC verified by raising `scenes/minimal.scene` while an unsaved untitled tab was also open. |
 | Open scene | `editor.open_scene` | `editor` / `open_scene` | Verified | Opens a scene resource by path and makes its session active. Falls back through `AssetSystem.FindByPath` when direct resource lookup fails. Supports `forceReload` for reloading an already-open sourced scene when play/stop leaves the editor session stale. |
+| Recover editor scene | `editor.recover_scene` | `editor` / `recover_scene` | Verified | Stops playing sessions by default, reloads/reactivates a sourced scene, and returns before/after tab snapshots. Live IPC restored `scenes/minimal.scene` to one active tab. |
 | Save scene | `editor.save_scene` | `editor` / `save_scene` | Verified | Reports before/after dirty state and scene source path; guards untitled scenes instead of opening a save-as flow. Live IPC verified dry-run, no-source skip behavior, and disk write against `scenes/minimal.scene`. |
 | Undo | `editor.undo` | `editor` / `undo` | Verified | Verified during earlier scene mutation smoke. Avoid coupling current undo checks to `gameobject.destroy` until the native delete/undo issue is reverified. |
 | Redo | `editor.redo` | `editor` / `redo` | Verified | Verified during earlier scene mutation smoke. Avoid coupling current redo checks to `gameobject.destroy` until the native delete/undo issue is reverified. |
@@ -60,7 +62,7 @@ Status meanings:
 |---|---|---|---|---|
 | Read GameObject | `gameobject.get` | `gameobject` / `get` | Verified | Id-targeted read returning the same detail shape as `scene.details`; supports target-session selection for runtime reads. |
 | Create GameObject | `gameobject.create` | `gameobject` / `create` | Verified | Uses `SceneEditorSession.Active.Scene.CreateObject(true)` and verifies via read-back; optional `parentId` was verified through `scene.batch`. |
-| Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Blocked | Previously verified, but the current editor session now reports a null reference in the native editor delete/undo path after play-mode testing. Needs fresh-session verification and/or a safer delete strategy before relying on it. |
+| Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Partial | Reverified through focused category smokes and `smoke:mvp`; cleanup scripts fall back to disabling objects if the native editor delete/undo path fails in a stale session. |
 | Rename GameObject | `gameobject.rename` | `gameobject` / `rename` | Verified | Id-targeted, undo scoped, unique-name default verified by read-back. |
 | Set transform | `gameobject.set_transform` | `gameobject` / `set_transform` | Verified | World position, Euler/quaternion rotation input, and world scale; verified by read-back. |
 | Enable/disable | `gameobject.set_enabled` | `gameobject` / `set_enabled` | Verified | Verified false and true read-back on a live object. |
@@ -244,9 +246,10 @@ Status meanings:
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
 | Runtime feedback smoke script | Verified | `mcp-server/test/runtime-feedback-smoke.ts` verifies `wait_compile`, `wait_stopped`, `wait_runtime`, runtime test-action listing/invocation, ARPG logical UI state, inventory open, damage, and restore. |
+| MVP smoke script | Verified | `mcp-server/test/mvp-smoke.ts` verifies doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics inspection, sound inspection, prefab inspection, runtime preview capture, play/stop settle, and cleanup without ARPG-specific test actions. |
 | Asset/material smoke script | Verified | `mcp-server/test/asset-material-smoke.ts` verifies material creation, material source inspection/mutation, runtime-targeted model preview capture, and wait-helper cleanup. |
 | Prefab instance smoke script | Verified | `mcp-server/test/prefab-instance-smoke.ts` verifies prefab creation, source binding, prefab info reload, GUID-remapped instantiation, instance id maps, and transform override patch samples. |
 | Physics smoke script | Verified | `mcp-server/test/physics-smoke.ts` verifies physics body creation/read-back, box collider creation/read-back, joint creation/read-back, and a raycast hit against the temporary collider. |
 | Sound smoke script | Verified | `mcp-server/test/sound-smoke.ts` verifies sound event creation/info, SoundPointComponent assignment/read-back, and a valid playing sound preview handle. |
-| Live editor smoke script | Blocked | Feedback actions, compile status, save-state reporting, `scene.batch`, and resource-backed ModelRenderer property mutations were directly verified, but the full smoke is currently blocked by the `gameobject.destroy` native delete/undo null reference in this editor session. Fixture-backed component mutation is skipped unless `AgentBridgeMutationFixture` is visible; use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` to require it. |
+| Live editor smoke script | Partial | Broad regression smoke for older scene-editing workflows. Prefer `smoke:mvp` for external testers; fixture-backed component mutation is skipped unless `AgentBridgeMutationFixture` is visible. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

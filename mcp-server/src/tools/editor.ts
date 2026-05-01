@@ -4,18 +4,22 @@ import type { BridgeClient } from "../bridge-client.js";
 import { asJsonText } from "./result.js";
 import { waitForCompile, waitForRuntime, waitForStopped } from "../wait-helpers.js";
 
+const MCP_SERVER_VERSION = "0.1.0";
+
 export function registerEditorTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
     "editor",
-    "Inspect the s&box editor bridge status and active editor context.",
+    "Inspect, diagnose, recover, and control the s&box editor bridge and active editor context.",
     {
       action: z
         .enum([
           "status",
+          "doctor",
           "context",
           "tabs",
           "activate_tab",
           "open_scene",
+          "recover_scene",
           "get_selection",
           "set_selection",
           "save_scene",
@@ -36,7 +40,7 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
       id: z.string().optional().describe("Target GameObject id for frame_object."),
       index: z.number().int().min(0).optional().describe("Editor tab index for activate_tab."),
       scene: z.string().optional().describe("Scene/tab name selector for activate_tab."),
-      path: z.string().optional().describe("Scene resource path for open_scene, such as scenes/minimal.scene."),
+      path: z.string().optional().describe("Scene resource path for open_scene or recover_scene, such as scenes/minimal.scene."),
       targetSession: z
         .enum(["active", "editor", "playing", "runtime", "game"])
         .optional()
@@ -46,12 +50,12 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
       sessionPath: z.string().optional().describe("Optional scene source path selector for target-session-aware reads."),
       sessionScene: z.string().optional().describe("Optional scene name selector for target-session-aware reads."),
       bringToFront: z.boolean().optional().describe("Bring the opened scene editor tab to front for open_scene."),
-      forceReload: z.boolean().optional().describe("For open_scene, reload an already-open sourced scene if it has no unsaved changes."),
+      forceReload: z.boolean().optional().describe("For open_scene or recover_scene, reload an already-open sourced scene if it has no unsaved changes."),
       discardUnsaved: z
         .boolean()
         .optional()
-        .describe("For open_scene with forceReload, allow discarding unsaved changes in the open scene session. Use only for scratch/test scenes."),
-      stopAll: z.boolean().optional().describe("For stop, stop every currently playing editor session before returning read-back state."),
+        .describe("For open_scene/recover_scene with forceReload, allow discarding unsaved changes in the open scene session. Use only for scratch/test scenes."),
+      stopAll: z.boolean().optional().describe("For stop or recover_scene, stop every currently playing editor session before returning read-back state."),
       timeoutMs: z.number().int().min(100).max(120_000).optional().describe("For wait_* actions, maximum time to wait."),
       pollMs: z.number().int().min(25).max(5_000).optional().describe("For wait_* actions, polling interval."),
       sinceSequence: z
@@ -98,6 +102,10 @@ export function registerEditorTools(server: McpServer, bridge: BridgeClient): vo
 
       if (action === "wait_stopped") {
         return asJsonText(await waitForStopped(bridge, payload));
+      }
+
+      if (action === "doctor") {
+        return asJsonText(await bridge.send("bridge.doctor", { ...payload, mcpServerVersion: MCP_SERVER_VERSION }));
       }
 
       const bridgeAction = action === "status" ? "bridge.status" : `editor.${action}`;
