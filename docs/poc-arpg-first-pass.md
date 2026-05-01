@@ -114,7 +114,14 @@ The controller builds the playable slice at runtime:
 - Verified rendering-oriented component mutation through AmbientLight, PointLight, SpotLight, DirectionalLight, FilmGrain, Tonemapping, Bloom, PostProcessVolume, Vignette, ColorAdjustments, decals, and basic particle components.
 - Added `asset.inspect_model` so agents can inspect model bounds, render bounds, physics bounds, material slots, orientation candidates, footprints, and ground offsets before placing assets.
 - Added `visual.capture_camera` so agents can capture the active camera to a PNG under `%TEMP%/sbox-agent-bridge/captures` and read luminance stats. The first ARPG capture reported average luminance `0.1332` and dark pixel ratio `0.3145`, which gives agents a concrete visibility signal instead of relying only on scene metadata.
-- Documented the remaining spatial reasoning gap: geometry bounds can suggest candidate rotations and ground offsets, but they cannot prove that a prop is semantically upright. Persistent orientation overrides and higher-level placement helpers are the next bridge step.
+- Documented the remaining spatial reasoning gap: geometry bounds can suggest candidate rotations and ground offsets, but they cannot prove that a prop is semantically upright. Spatial placement v1 now provides persistent orientation overrides and a high-level placement helper; the remaining work is seeding/confirming overrides across the prop kit.
+
+## Spatial Placement V1 Pass
+
+- Added project-local orientation override storage at `Assets/agent_bridge/orientation_overrides.json`.
+- Live IPC wrote and read back a cursed obelisk override with `baseRotation.pitch: 90`, `forwardAxis: +Y`, and `confidence: human_verified`.
+- Added `gameobject.place_asset`, which creates a renderer-backed model object, applies the stored base rotation plus requested yaw, aligns transformed render bounds to ground, and returns object/component/bounds read-back.
+- Verified placement by creating `Agent Bridge Spatial V1 Obelisk 20260501-100811` from `models/agent_bridge/arpg_props/cursed_obelisk.vmdl` at a requested ground position, saving `scenes/minimal.scene`, force-reloading the scene, finding the object again, and reading back a valid persisted `ModelRenderer.Model` resource reference.
 
 ## Bridge Lessons
 
@@ -144,7 +151,7 @@ The controller builds the playable slice at runtime:
 
 ## Recommended Next Bridge Work
 
-1. Add project-local orientation overrides and `gameobject.place_asset` so generated props can be placed upright and grounded from reusable metadata.
+1. Seed human-verified orientation overrides for the rest of the generated ARPG prop kit.
 2. Add play-session-aware scene reads, or a separate runtime snapshot command that can inspect the live game session.
 3. Add timestamp/cursor-based log reads so feedback ignores stale errors.
 4. Add a small runtime self-report component/tool path for gameplay state: player health, energy, position, zombie count, loot count, and last event.

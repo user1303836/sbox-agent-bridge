@@ -13,6 +13,8 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
           "search",
           "get_info",
           "inspect_model",
+          "get_orientation_override",
+          "set_orientation_override",
           "assign_model",
           "assign_material",
           "create_material",
@@ -37,6 +39,19 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
         .optional()
         .describe("Optional scale to apply while inspecting model candidate bounds."),
       yaw: z.number().optional().describe("Optional yaw angle applied to inspect_model orientation candidates."),
+      baseRotation: z
+        .object({
+          pitch: z.number().optional(),
+          yaw: z.number().optional(),
+          roll: z.number().optional()
+        })
+        .optional()
+        .describe("Base model rotation for set_orientation_override."),
+      groundOffsetZ: z.number().optional().describe("Optional ground offset for set_orientation_override; calculated from render bounds when omitted."),
+      forwardAxis: z.string().optional().describe("Optional semantic forward axis for set_orientation_override, such as +Y."),
+      confidence: z.string().optional().describe("Optional confidence label for set_orientation_override, such as human_verified."),
+      source: z.string().optional().describe("Optional source label for set_orientation_override."),
+      notes: z.string().optional().describe("Optional notes for set_orientation_override."),
       includeMaterials: z.boolean().optional().describe("Include model material slots in inspect_model output."),
       maxResults: z.number().int().min(1).max(500).optional().describe("Maximum search results.")
     },

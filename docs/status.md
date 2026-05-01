@@ -30,6 +30,7 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `scene.batch` now composes broader authoring actions. The ARPG fixture pass verified object create/reparent/duplicate/rename/enable, selection/focus, model/material assignment, sound assignment, collider/rigidbody/joint creation, material-property mutation, and raycast read-back in batches.
 - Asset/material helpers are live-verified: `asset.search`, `asset.get_info`, `asset.assign_model`, `asset.create_material`, `asset.assign_material`, and `asset.set_material_property`.
 - `asset.inspect_model` is live-verified against the generated ARPG prop kit. It returns model/render/physics bounds, material slots, common orientation candidates, candidate ground offsets, footprints, and explicit caveats about geometry versus semantic uprightness.
+- Spatial placement v1 is live-verified: `asset.get_orientation_override`, `asset.set_orientation_override`, and `gameobject.place_asset` store project-local orientation metadata and use it to place model assets with ground alignment. Live IPC verified a cursed obelisk override with `pitch: 90`, placed a grounded obelisk, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`.
 - `visual.capture_camera` is live-verified against the active ARPG camera. It writes a PNG under `%TEMP%/sbox-agent-bridge/captures` and returns camera metadata plus luminance stats for visibility/readability checks.
 - Sound helpers are live-verified: `sound.list`, `sound.get_info`, `sound.create_event`, `sound.assign`, and `sound.preview`.
 - Physics helpers are live-verified for colliders, rigidbodies, and raycasts. Joint component creation works, but target assignment remains limited.
@@ -53,14 +54,14 @@ This document tracks the current verified state of `sbox-agent-bridge`. The READ
 - `editor.compile_status` only tracks compile groups observed after the bridge library has loaded.
 - `editor.logs` tails `sbox-dev.log`; raw lines are exact log output, while the level field is inferred from text. It does not yet support a timestamp/cursor, so stale errors can appear in current feedback.
 - Runtime/game-session inspection is not reliable yet. The ARPG POC showed that scene reads can target a stale editor session during or after play mode until the sourced scene is force-reloaded.
-- Spatial placement still needs persistent asset orientation overrides and high-level placement helpers. `asset.inspect_model` and `visual.capture_camera` now provide the first geometry/render feedback loop, but renderer bounds still cannot confirm that an asset is semantically upright. See `docs/spatial-reasoning.md`.
+- Spatial placement now has a live-verified v1 override-backed placement path, but the override data still needs to be seeded for the full generated prop kit. Renderer bounds still cannot confirm that an asset is semantically upright without human or vision confirmation. See `docs/spatial-reasoning.md`.
 - Local game component types, including `AgentBridgeMutationFixture`, are not visible through editor-side `Game.TypeLibrary` enumeration in every editor session. The live smoke script skips fixture-backed mutation unless `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` is set, but exact-name `component.add` can still add compiled local components in verified cases.
 - The full live smoke is currently blocked in this editor session by the `gameobject.destroy` delete/undo null reference. Direct feedback-loop actions were verified separately.
 - The current Windows shell does not have `npm` on PATH, and `npm run check` currently hits an `Access is denied` shim issue. Direct execution through the installed Node runtime works; TypeScript check/build and the bridge-client tests were rerun successfully with direct `node` commands.
 
 ## Next Larger Milestones
 
-- Add persistent asset orientation overrides and a high-level `gameobject.place_asset` workflow built on `asset.inspect_model` and `visual.capture_camera`.
+- Seed persistent asset orientation overrides for the generated ARPG prop kit and add isolated preview captures for ambiguous assets.
 - Editor feedback loop refinements: wait-for-compile, structured live log events, visual capture review, and runtime/game-session inspection.
 - Improve local game component type discovery so agents can list project components before adding them by exact name.
 - Continue asset, prefab, sound, physics, and runtime-feedback workflows through the ARPG POC.

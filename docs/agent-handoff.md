@@ -81,6 +81,7 @@ As of 2026-05-01, direct local checks verified:
 - s&box bridge editor compile is green with zero errors in the live test project.
 - `asset.inspect_model` works on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
 - `visual.capture_camera` captures the active main camera to PNG and returns luminance stats.
+- Spatial placement v1 works: `asset.set_orientation_override` and `asset.get_orientation_override` store/read `Assets/agent_bridge/orientation_overrides.json`, and `gameobject.place_asset` placed a cursed obelisk with a stored `pitch: 90` override, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`.
 - TypeScript check/build pass when invoked directly through the installed Node runtime.
 - MCP bridge-client tests pass.
 
@@ -188,25 +189,17 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Local component discovery: exact-name add works, discovery is partial.
 - Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
 - Joint target assignment: blocked because verified `Joint.Object2` is read-only.
-- Spatial reasoning: needs persistent orientation overrides and high-level placement helpers.
+- Spatial reasoning: v1 orientation overrides and `gameobject.place_asset` are implemented and live-verified; the full generated prop kit still needs seeded human-verified overrides and isolated preview captures.
 
 ## Best Next Work
 
-The next best bridge task is spatial placement v1:
+The next best bridge tasks are:
 
-1. Add project-local orientation override storage for model paths.
-2. Add `asset.get_orientation_override` and `asset.set_orientation_override`.
-3. Add `gameobject.place_asset` that creates an object, assigns a model/material, applies the known base rotation, aligns to ground using bounds, and returns read-back verification.
-4. Use the ARPG prop kit to seed human-verified overrides.
-5. Add smoke coverage for one override-backed placement that survives save/load.
-
-After that, the next highest-leverage bridge tasks are:
-
+- seed human-verified orientation overrides for the generated ARPG prop kit and add isolated asset preview captures for ambiguous rotations;
 - runtime/game-session inspection or a gameplay self-report component;
 - log cursor/timestamp support;
 - fresh-session destructive edit verification;
-- local component discovery;
-- isolated asset preview captures.
+- local component discovery.
 
 ## Documentation Map
 

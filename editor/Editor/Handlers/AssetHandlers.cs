@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using Editor;
 using Sandbox;
 
@@ -81,9 +82,9 @@ internal static class AssetHandlers
 				scale = HandlerUtil.ToJson( scale ),
 				bounds = new
 				{
-					model = DescribeBBox( model.Bounds ),
-					render = DescribeBBox( model.RenderBounds ),
-					physics = DescribeBBox( model.PhysicsBounds )
+					model = HandlerUtil.DescribeBBox( model.Bounds ),
+					render = HandlerUtil.DescribeBBox( model.RenderBounds ),
+					physics = HandlerUtil.DescribeBBox( model.PhysicsBounds )
 				},
 				materials = includeMaterials ? DescribeModelMaterials( model ) : null,
 				orientationCandidates = candidates,
@@ -91,6 +92,69 @@ internal static class AssetHandlers
 				{
 					"Bounds describe geometry, not semantic up direction; use capture_camera or human/editor feedback to confirm final orientation.",
 					"groundOffsetZ is the local Z offset needed to put the candidate's minimum bound on the ground plane."
+				}
+			}
+		} );
+	}
+
+	public static BridgeResponse GetOrientationOverride( BridgeRequest request )
+	{
+		var path = GetModelPath( request );
+		var record = OrientationOverrideStore.Get( path );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = record is null ? "Model orientation override not found" : "Model orientation override read",
+			verified = new
+			{
+				modelPath = path,
+				found = record is not null,
+				storage = OrientationOverrideStore.DescribeStorage(),
+				orientationOverride = record is null ? null : OrientationOverrideStore.DescribeRecord( record )
+			}
+		} );
+	}
+
+	public static BridgeResponse SetOrientationOverride( BridgeRequest request )
+	{
+		var path = GetModelPath( request );
+		var model = Model.Load( path );
+
+		if ( model is null || !model.IsValid || model.IsError )
+			throw new InvalidOperationException( $"Model '{path}' could not be loaded." );
+
+		var baseRotation = ReadOrientationAngles( request.Payload, "baseRotation", new OrientationAngles() );
+		var calculatedGroundOffset = HandlerUtil.CalculateGroundOffsetZ( model.RenderBounds, HandlerUtil.ToRotation( baseRotation ), Vector3.One );
+		var groundOffset = HandlerUtil.GetFloat( request.Payload, "groundOffsetZ", float.NaN );
+
+		if ( float.IsNaN( groundOffset ) )
+			groundOffset = HandlerUtil.GetFloat( request.Payload, "groundOffset", float.NaN );
+
+		if ( float.IsNaN( groundOffset ) )
+			groundOffset = calculatedGroundOffset;
+
+		var record = OrientationOverrideStore.Set( new OrientationOverrideRecord
+		{
+			ModelPath = path,
+			BaseRotation = baseRotation,
+			GroundOffsetZ = groundOffset,
+			ForwardAxis = HandlerUtil.GetString( request.Payload, "forwardAxis", "+Y" ),
+			Confidence = HandlerUtil.GetString( request.Payload, "confidence", "agent_verified" ),
+			Source = HandlerUtil.GetString( request.Payload, "source", "agent" ),
+			Notes = HandlerUtil.GetString( request.Payload, "notes" )
+		} );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Model orientation override saved",
+			verified = new
+			{
+				storage = OrientationOverrideStore.DescribeStorage(),
+				orientationOverride = OrientationOverrideStore.DescribeRecord( record ),
+				calculated = new
+				{
+					groundOffsetZ = calculatedGroundOffset,
+					bounds = HandlerUtil.DescribeBBox( model.RenderBounds )
 				}
 			}
 		} );
@@ -342,8 +406,8 @@ internal static class AssetHandlers
 				roll = candidate.Roll,
 				quaternion = HandlerUtil.ToJson( rotation )
 			},
-			bounds = DescribeBBox( bounds ),
-			groundedBounds = DescribeBBox( groundedBounds ),
+			bounds = HandlerUtil.DescribeBBox( bounds ),
+			groundedBounds = HandlerUtil.DescribeBBox( groundedBounds ),
 			groundOffsetZ = groundOffset,
 			height = size.z,
 			footprint = new
@@ -369,19 +433,6 @@ internal static class AssetHandlers
 			return "x";
 
 		return "y";
-	}
-
-	private static object DescribeBBox( BBox bounds )
-	{
-		return new
-		{
-			mins = HandlerUtil.ToJson( bounds.Mins ),
-			maxs = HandlerUtil.ToJson( bounds.Maxs ),
-			center = HandlerUtil.ToJson( bounds.Center ),
-			size = HandlerUtil.ToJson( bounds.Size ),
-			extents = HandlerUtil.ToJson( bounds.Extents ),
-			volume = bounds.Volume
-		};
 	}
 
 	private static object DescribeModelMaterials( Model model )
@@ -432,6 +483,38 @@ internal static class AssetHandlers
 			throw new InvalidOperationException( "Asset path cannot contain '..' segments." );
 
 		return path;
+	}
+
+	private static string GetModelPath( BridgeRequest request )
+	{
+		var rawPath = HandlerUtil.GetString( request.Payload, "modelPath" );
+		if ( string.IsNullOrWhiteSpace( rawPath ) )
+			rawPath = HandlerUtil.GetString( request.Payload, "path" );
+
+		if ( string.IsNullOrWhiteSpace( rawPath ) )
+			throw new InvalidOperationException( "This action requires a modelPath or path payload property." );
+
+		return OrientationOverrideStore.NormalizeModelPath( rawPath );
+	}
+
+	private static OrientationAngles ReadOrientationAngles( JsonElement payload, string propertyName, OrientationAngles fallback )
+	{
+		var source = payload;
+
+		if ( payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty( propertyName, out var nested ) )
+		{
+			if ( nested.ValueKind != JsonValueKind.Object )
+				throw new InvalidOperationException( $"{propertyName} must be an object with pitch, yaw, and roll fields." );
+
+			source = nested;
+		}
+
+		return new OrientationAngles
+		{
+			Pitch = HandlerUtil.GetFloat( source, "pitch", fallback.Pitch ),
+			Yaw = HandlerUtil.GetFloat( source, "yaw", fallback.Yaw ),
+			Roll = HandlerUtil.GetFloat( source, "roll", fallback.Roll )
+		};
 	}
 
 	private static string EnsureExtension( string path, string extension )

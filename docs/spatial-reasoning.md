@@ -31,13 +31,13 @@ Add asset-aware spatial tools instead of expecting agents to solve every placeme
 Candidate tools:
 
 - `asset.inspect_model`: implemented v0. It loads a model and returns model/render/physics bounds, material slots, source/compiled paths, common orientation candidates, footprints, and candidate ground offsets. Future versions should add pivot/origin details and any available source-axis metadata.
-- `asset.set_orientation_override`: store a project-local orientation profile for an asset path, including base rotation, ground offset, forward axis, semantic tags, and confidence/source.
-- `asset.get_orientation_override`: read that profile before placing the asset.
-- `gameobject.place_asset`: high-level placement that takes asset path, position, yaw, material, parent, and `alignToGround`, then applies the known orientation override and returns renderer-bounds verification.
+- `asset.set_orientation_override`: implemented v1. Stores a project-local orientation profile for an asset path, including base rotation, ground offset, forward axis, confidence/source, and notes.
+- `asset.get_orientation_override`: implemented v1. Reads that profile before placing the asset and reports `found:false` when no override exists.
+- `gameobject.place_asset`: implemented v1. High-level placement that takes asset path, position, yaw, material, parent, scale, and `alignToGround`, then applies the known orientation override and returns renderer-bounds verification.
 - `visual.capture_camera`: implemented v0. It captures a live CameraComponent to PNG and reports luminance stats, which gives agents a rendered feedback channel for visibility/readability checks.
 - `asset.preview_capture`: capture isolated asset previews for human or vision-model confirmation when metadata confidence is low.
 
-The override file should live in the project, for example:
+The v1 override file lives in the project at `Assets/agent_bridge/orientation_overrides.json`:
 
 ```json
 {
@@ -66,9 +66,16 @@ Recommended agent workflow once these tools exist:
 
 ## Near-Term Work
 
-- Add project-local orientation overrides.
-- Teach the ARPG POC prop kit to use overrides for all generated props.
-- Add `gameobject.place_asset` so agents can place known assets with the override and ground alignment in one verified operation.
+- Seed the ARPG POC prop kit with human-verified overrides for all generated props.
 - Add an isolated asset preview capture path for comparing candidate rotations without cluttering the active scene.
-- Add live smoke cases for `asset.inspect_model`, `visual.capture_camera`, and one override-backed placement that survives save/load.
+- Keep expanding live smoke coverage beyond the current `asset.inspect_model`, `visual.capture_camera`, override storage, and one override-backed placement case.
 - Record ambiguous assets rather than pretending the bridge can infer semantic orientation from geometry alone.
+
+## V1 Live Verification
+
+On 2026-05-01, direct IPC verified a cursed obelisk override and placement:
+
+- `asset.set_orientation_override` wrote `models/agent_bridge/arpg_props/cursed_obelisk.vmdl` with `baseRotation.pitch: 90`.
+- `asset.get_orientation_override` read the override back with `found:true`.
+- `gameobject.place_asset` created `Agent Bridge Spatial V1 Obelisk 20260501-100811`, reported `orientationSource: stored-override`, and aligned final Z to the calculated render-bounds ground offset.
+- `editor.save_scene` saved `scenes/minimal.scene`, `editor.open_scene forceReload:true` reloaded it, and `component.get_properties` read back a valid `ModelRenderer.Model` reference on the placed object.

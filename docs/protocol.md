@@ -61,6 +61,8 @@ Errors use the same envelope:
 - `asset.search`
 - `asset.get_info`
 - `asset.inspect_model`
+- `asset.get_orientation_override`
+- `asset.set_orientation_override`
 - `asset.assign_model`
 - `asset.assign_material`
 - `asset.create_material`
@@ -92,6 +94,7 @@ Errors use the same envelope:
 - `gameobject.destroy`
 - `gameobject.duplicate`
 - `gameobject.reparent`
+- `gameobject.place_asset`
 - `component.list_types`
 - `component.list_on_gameobject`
 - `component.get`
@@ -134,6 +137,12 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 ## Visual And Spatial Feedback Actions
 
 `asset.inspect_model` accepts `path` or `modelPath`, plus optional `scale`, `yaw`, and `includeMaterials`. It loads the model resource and returns model/render/physics bounds, material slots, common orientation candidates, candidate ground offsets, footprints, and limitations. Bounds are geometry facts; callers should not treat them as proof of semantic uprightness.
+
+`asset.get_orientation_override` accepts `path` or `modelPath` and reads the project-local override stored at `Assets/agent_bridge/orientation_overrides.json`. Missing overrides return `found: false` instead of failing.
+
+`asset.set_orientation_override` accepts `path` or `modelPath`, `baseRotation`, optional `groundOffsetZ`, `forwardAxis`, `confidence`, `source`, and `notes`. If `groundOffsetZ` is omitted, the bridge calculates it from the model render bounds after applying the base rotation at scale 1. The file is written atomically without a UTF-8 BOM.
+
+`gameobject.place_asset` accepts `modelPath`, optional `materialPath`, `name`, `parentId`, `position`, `yaw`, `scale`, `baseRotation`, `alignToGround`, and `requireOrientationOverride`. It creates a GameObject, adds a disabled `ModelRenderer`, assigns the model/material, applies the stored orientation override plus yaw, optionally lifts the object so transformed render bounds sit on the requested ground position, enables the renderer, and returns GameObject/component/bounds read-back. If `requireOrientationOverride` is true, missing orientation metadata is an error; otherwise the bridge falls back to the imported orientation and reports `orientationSource`.
 
 `visual.capture_camera` accepts optional `cameraComponentId` or `gameObjectId`, plus `width`, `height`, and `name`. Without a camera id, it captures the enabled main camera, or the first enabled camera. The response includes a PNG path under `%TEMP%/sbox-agent-bridge/captures`, camera metadata, byte count, and luminance statistics:
 

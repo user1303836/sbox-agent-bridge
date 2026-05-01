@@ -29,6 +29,8 @@ internal static class CommandDispatcher
 			"asset.search" => AssetHandlers.Search( request ),
 			"asset.get_info" => AssetHandlers.GetInfo( request ),
 			"asset.inspect_model" => AssetHandlers.InspectModel( request ),
+			"asset.get_orientation_override" => AssetHandlers.GetOrientationOverride( request ),
+			"asset.set_orientation_override" => AssetHandlers.SetOrientationOverride( request ),
 			"asset.assign_model" => AssetHandlers.AssignModel( request ),
 			"asset.assign_material" => AssetHandlers.AssignMaterial( request ),
 			"asset.create_material" => AssetHandlers.CreateMaterial( request ),
@@ -60,6 +62,7 @@ internal static class CommandDispatcher
 			"gameobject.destroy" => GameObjectHandlers.Destroy( request ),
 			"gameobject.duplicate" => GameObjectHandlers.Duplicate( request ),
 			"gameobject.reparent" => GameObjectHandlers.Reparent( request ),
+			"gameobject.place_asset" => GameObjectHandlers.PlaceAsset( request ),
 			"component.list_types" => ComponentHandlers.ListTypes( request ),
 			"component.list_on_gameobject" => ComponentHandlers.ListOnGameObject( request ),
 			"component.get" => ComponentHandlers.Get( request ),
@@ -72,7 +75,7 @@ internal static class CommandDispatcher
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, editor.context, editor.tabs, editor.activate_tab, editor.open_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, asset.search, asset.get_info, asset.inspect_model, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, visual.capture_camera, sound.list, sound.get_info, sound.create_event, sound.assign, sound.preview, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, prefab.create, prefab.list, prefab.get_info, prefab.instantiate, scene.summary, scene.hierarchy, scene.find, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
+				"Use one of: bridge.status, editor.context, editor.tabs, editor.activate_tab, editor.open_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, asset.search, asset.get_info, asset.inspect_model, asset.get_orientation_override, asset.set_orientation_override, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, visual.capture_camera, sound.list, sound.get_info, sound.create_event, sound.assign, sound.preview, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, prefab.create, prefab.list, prefab.get_info, prefab.instantiate, scene.summary, scene.hierarchy, scene.find, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, gameobject.place_asset, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
 			)
 		};
 	}

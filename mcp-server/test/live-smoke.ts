@@ -219,6 +219,40 @@ interface CameraCaptureResult {
   };
 }
 
+interface OrientationOverrideResult {
+  verified: {
+    found?: boolean;
+    modelPath: string;
+    orientationOverride: {
+      modelPath: string;
+      baseRotation: {
+        pitch: number;
+        yaw: number;
+        roll: number;
+      };
+      groundOffsetZ: number;
+      confidence: string;
+    } | null;
+  };
+}
+
+interface PlaceAssetResult {
+  verified: {
+    gameObject: {
+      id: string;
+      name: string;
+      position: { x: number; y: number; z: number };
+    };
+    placement: {
+      orientationSource: string;
+      alignToGround: boolean;
+      calculatedGroundOffsetZ: number;
+      requestedPosition: { x: number; y: number; z: number };
+      finalPosition: { x: number; y: number; z: number };
+    };
+  };
+}
+
 const bridge = new BridgeClient({
   root: process.env.SBOX_AGENT_BRIDGE_IPC,
   timeoutMs: Number(process.env.SBOX_AGENT_BRIDGE_TIMEOUT_MS ?? 10_000)
@@ -628,11 +662,53 @@ async function runVisualSpatialSmoke(stamp: string): Promise<Record<string, unkn
   ensure(capture.verified.byteCount > 0, "visual.capture_camera wrote an empty PNG");
   ensure(capture.verified.luminance.sampleCount === 320 * 180, "visual.capture_camera luminance sample count mismatch");
 
+  const orientationSet = await bridge.send<OrientationOverrideResult>("asset.set_orientation_override", {
+    modelPath: model.path,
+    baseRotation: { pitch: 0, yaw: 0, roll: 0 },
+    forwardAxis: "+Y",
+    confidence: "smoke_verified",
+    source: "live-smoke",
+    notes: `live smoke ${stamp}`
+  });
+  ensure(
+    orientationSet.verified.orientationOverride?.modelPath === model.path,
+    "asset.set_orientation_override did not save an override for the requested model"
+  );
+
+  const orientationRead = await bridge.send<OrientationOverrideResult>("asset.get_orientation_override", {
+    modelPath: model.path
+  });
+  ensure(orientationRead.verified.found === true, "asset.get_orientation_override did not find the saved override");
+  ensure(
+    orientationRead.verified.orientationOverride?.confidence === "smoke_verified",
+    "asset.get_orientation_override returned unexpected confidence"
+  );
+
+  const placed = await bridge.send<PlaceAssetResult>("gameobject.place_asset", {
+    name: `${prefix} Placed Asset ${stamp}`,
+    modelPath: model.path,
+    position: { x: 176, y: 0, z: 64 },
+    yaw: 45,
+    alignToGround: true,
+    requireOrientationOverride: true
+  });
+  createdIds.push(placed.verified.gameObject.id);
+  ensure(placed.verified.placement.orientationSource === "stored-override", "gameobject.place_asset did not use the stored override");
+  ensure(placed.verified.placement.alignToGround === true, "gameobject.place_asset did not report alignToGround=true");
+  ensureClose(
+    placed.verified.placement.finalPosition.z,
+    placed.verified.placement.requestedPosition.z + placed.verified.placement.calculatedGroundOffsetZ,
+    "gameobject.place_asset final grounded Z"
+  );
+
   return {
     modelPath: model.path,
     renderBoundsSize: inspection.verified.bounds.render.size,
     orientationCandidateCount: inspection.verified.orientationCandidates.length,
     firstGroundOffsetZ: inspection.verified.orientationCandidates[0]?.groundOffsetZ,
+    orientationOverride: orientationRead.verified.orientationOverride,
+    placedAssetId: placed.verified.gameObject.id,
+    placedAssetGroundOffsetZ: placed.verified.placement.calculatedGroundOffsetZ,
     capturePath: capture.verified.path,
     captureBytes: capture.verified.byteCount,
     luminance: capture.verified.luminance

@@ -66,6 +66,7 @@ Candidate actions:
 - `gameobject.set_enabled` - verified
 - `gameobject.reparent` - verified
 - `gameobject.duplicate` - verified as a shallow scene-attached duplicate
+- `gameobject.place_asset` - verified; creates a renderer-backed model object using orientation overrides and ground alignment
 - `scene.batch` - verified for bounded action lists with `$ref` aliasing
 
 Acceptance criteria:
@@ -120,6 +121,8 @@ Candidate actions:
 
 - `asset.search` - verified
 - `asset.get_info` - verified
+- `asset.get_orientation_override` - verified
+- `asset.set_orientation_override` - verified
 - `asset.assign_model` - verified
 - `asset.create_material` - verified
 - `asset.assign_material` - verified
@@ -197,7 +200,7 @@ Remaining gaps:
 
 Goal: expand toward high-coverage editor workflows while preserving safety and observability.
 
-Status: in progress. Verified so far: `asset.inspect_model` for model bounds/orientation candidates and `visual.capture_camera` for rendered camera PNGs with luminance stats.
+Status: in progress. Verified so far: `asset.inspect_model` for model bounds/orientation candidates, `visual.capture_camera` for rendered camera PNGs with luminance stats, orientation override storage, and `gameobject.place_asset`.
 
 Candidate areas:
 

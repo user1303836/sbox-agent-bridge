@@ -60,6 +60,7 @@ Status meanings:
 | Enable/disable | `gameobject.set_enabled` | `gameobject` / `set_enabled` | Verified | Verified false and true read-back on a live object. |
 | Reparent | `gameobject.reparent` | `gameobject` / `reparent` | Verified | Preserves world transform by default; supports moving back to scene root. |
 | Duplicate | `gameobject.duplicate` | `gameobject` / `duplicate` | Verified | Shallow scene-attached duplicate of name/enabled/transform/parent. Component and child cloning are future work. |
+| Place model asset | `gameobject.place_asset` | `gameobject` / `place_asset` | Verified | Live IPC created `Agent Bridge Spatial V1 Obelisk 20260501-100811` from `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`, used a stored override with `pitch: 90`, aligned render bounds to ground, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`. |
 
 ## Components
 
@@ -90,6 +91,8 @@ Status meanings:
 | Search assets | `asset.search` | `asset` / `search` | Verified | Live IPC found built-in models/materials and newly created ARPG materials. |
 | Inspect asset | `asset.get_info` | `asset` / `get_info` | Verified | Live IPC inspected built-in material metadata and project-created assets. |
 | Inspect model orientation/bounds | `asset.inspect_model` | `asset` / `inspect_model` | Verified | Live IPC inspected `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`, returning asset/model metadata, model/render/physics bounds, material slots, common orientation candidates, ground offsets, footprints, and explicit semantic-orientation limitations. |
+| Get model orientation override | `asset.get_orientation_override` | `asset` / `get_orientation_override` | Verified | Live IPC read back the cursed obelisk override from `Assets/agent_bridge/orientation_overrides.json` with `found:true` and `baseRotation.pitch: 90`. |
+| Set model orientation override | `asset.set_orientation_override` | `asset` / `set_orientation_override` | Verified | Live IPC wrote the cursed obelisk override to `Assets/agent_bridge/orientation_overrides.json`; omitted ground offset was calculated from render bounds and reused by `gameobject.place_asset`. |
 | Assign model | `asset.assign_model` | `asset` / `assign_model` | Verified | Live IPC assigned `models/dev/box.vmdl` to ARPG fixture objects with read-back. |
 | Create material | `asset.create_material` | `asset` / `create_material` | Verified | Writes a simple `.vmat` source, registers it, and compiles it. Verified four project materials under `materials/agent_bridge/`. |
 | Assign material | `asset.assign_material` | `asset` / `assign_material` | Verified | Live IPC assigned project-created materials to `ModelRenderer.MaterialOverride`. |

@@ -46,7 +46,7 @@ cd mcp-server
 npm run smoke:live
 ```
 
-This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, reads a component from the active scene when one exists, and then attempts to clean up the temporary objects.
+This script uses the same file IPC path as the MCP server. It reads editor feedback, starts/stops play mode when the editor is not already playing, checks save-state reporting, creates temporary GameObjects, verifies the core scene-editing actions, runs a small `scene.batch`, inspects available component types and property schema metadata, validates candidate property values without mutation, checks visual/spatial feedback with `asset.inspect_model` and `visual.capture_camera`, verifies orientation override storage plus `gameobject.place_asset`, mutates `AgentBridgeMutationFixture` when it is addable by the editor, reads a component from the active scene when one exists, and then attempts to clean up the temporary objects.
 
 Useful environment variables:
 
@@ -170,9 +170,13 @@ For visual/spatial feedback changes, verify:
 
 1. `asset.search` finds a known model asset.
 2. `asset.inspect_model` returns model/render/physics bounds, material slots, orientation candidates, and ground offsets for that model.
-3. `visual.capture_camera` captures the active camera to a PNG path under `%TEMP%/sbox-agent-bridge/captures`.
-4. The capture response includes camera metadata and luminance stats.
-5. Open or inspect the capture when visual correctness matters; luminance stats help flag visibility problems, but they do not prove composition or semantic orientation.
+3. `asset.set_orientation_override` stores a base rotation and either a supplied or calculated `groundOffsetZ` under `Assets/agent_bridge/orientation_overrides.json`.
+4. `asset.get_orientation_override` reads the same model path back with `found:true`.
+5. `gameobject.place_asset` with `requireOrientationOverride:true` creates a renderer-backed object and reports `orientationSource: stored-override`.
+6. When `alignToGround:true`, verify `finalPosition.z` equals requested ground Z plus `calculatedGroundOffsetZ`.
+7. `visual.capture_camera` captures the active camera to a PNG path under `%TEMP%/sbox-agent-bridge/captures`.
+8. The capture response includes camera metadata and luminance stats.
+9. Open or inspect the capture when visual correctness matters; luminance stats help flag visibility problems, but they do not prove composition or semantic orientation.
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 

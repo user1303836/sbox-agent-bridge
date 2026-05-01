@@ -29,14 +29,27 @@ export function registerGameObjectTools(server: McpServer, bridge: BridgeClient)
     "Perform small, undoable GameObject mutations in the active s&box editor scene.",
     {
       action: z
-        .enum(["get", "create", "rename", "set_transform", "set_enabled", "destroy", "duplicate", "reparent"])
+        .enum(["get", "create", "rename", "set_transform", "set_enabled", "destroy", "duplicate", "reparent", "place_asset"])
         .describe("The GameObject action to run."),
       id: z.string().optional().describe("Target GameObject id for read or mutation actions."),
       parentId: z.string().optional().describe("Parent GameObject id for create or reparent; omit during reparent to move to scene root."),
       name: z.string().optional().describe("Name for create or rename actions."),
+      modelPath: z.string().optional().describe("Model path for place_asset."),
+      materialPath: z.string().optional().describe("Optional material path for place_asset."),
       makeUnique: z.boolean().optional().describe("Make the final GameObject name unique when renaming."),
       keepWorldPosition: z.boolean().optional().describe("Preserve world transform when reparenting."),
       enabled: z.boolean().optional().describe("Enabled state for set_enabled."),
+      alignToGround: z.boolean().optional().describe("For place_asset, lift the object so transformed model bounds sit on the requested ground position."),
+      requireOrientationOverride: z.boolean().optional().describe("For place_asset, fail if no stored orientation override exists for the model."),
+      yaw: z.number().optional().describe("Yaw offset in degrees for place_asset."),
+      baseRotation: z
+        .object({
+          pitch: z.number().optional(),
+          yaw: z.number().optional(),
+          roll: z.number().optional()
+        })
+        .optional()
+        .describe("Optional per-call base rotation for place_asset, overriding the stored orientation profile."),
       position: vector3Schema.optional().describe("Optional world position."),
       offset: vector3Schema.optional().describe("Optional world-position offset for duplicate."),
       rotation: rotationSchema.optional().describe("Optional world rotation, either Euler degrees or quaternion."),

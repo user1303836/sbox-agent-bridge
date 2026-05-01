@@ -307,6 +307,30 @@ internal static class HandlerUtil
 		};
 	}
 
+	public static object DescribeBBox( BBox bounds )
+	{
+		return new
+		{
+			mins = ToJson( bounds.Mins ),
+			maxs = ToJson( bounds.Maxs ),
+			center = ToJson( bounds.Center ),
+			size = ToJson( bounds.Size ),
+			extents = ToJson( bounds.Extents ),
+			volume = bounds.Volume
+		};
+	}
+
+	public static Rotation ToRotation( OrientationAngles angles, float yawOffset = 0f )
+	{
+		return Rotation.From( angles.Pitch, angles.Yaw + yawOffset, angles.Roll );
+	}
+
+	public static float CalculateGroundOffsetZ( BBox localBounds, Rotation rotation, Vector3 scale )
+	{
+		var bounds = localBounds.Transform( new Transform( Vector3.Zero, rotation, scale ) );
+		return -bounds.Mins.z;
+	}
+
 	public static GameObject RequireGameObject( Scene scene, JsonElement payload, string propertyName = "id" )
 	{
 		var id = GetString( payload, propertyName );
