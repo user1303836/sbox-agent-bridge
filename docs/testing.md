@@ -73,7 +73,7 @@ cd mcp-server
 SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:capability-gaps
 ```
 
-This focused smoke creates, edits, compiles, deletes, and verifies removal of a scratch C# script, then uses temporary scene objects to verify `SkinnedModelRenderer`, `CitizenAnimationHelper`, `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` add/configure/read-back flows.
+This focused smoke creates, edits, compiles, deletes, and verifies removal of a scratch C# script using new compile sequence waits. It also creates a deliberately invalid scratch script to verify compile diagnostics, deletes it, waits for recovery to zero errors, then uses temporary scene objects to verify `SkinnedModelRenderer`, `CitizenAnimationHelper`, `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` add/configure/read-back flows.
 
 For runtime feedback and ARPG testbed verification:
 

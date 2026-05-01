@@ -53,6 +53,14 @@ interface AssetInfoResult {
   };
 }
 
+interface CompileStatusResult {
+  verified: {
+    groups: Array<{
+      sequence: number;
+    }>;
+  };
+}
+
 interface ComponentMutationResult {
   verified: {
     creationMode?: string;
@@ -172,7 +180,9 @@ try {
 async function verifyScriptDelete(): Promise<Record<string, unknown>> {
   const createdContent = buildScratchScriptContent("created");
   const editedContent = buildScratchScriptContent("edited");
+  const invalidContent = buildInvalidScratchScriptContent();
 
+  const beforeCreateSequence = await getLatestCompileSequence();
   const created = await bridge.send<ScriptCreateResult>("script.create", {
     path: scratchScriptPath,
     content: createdContent,
@@ -181,10 +191,9 @@ async function verifyScriptDelete(): Promise<Record<string, unknown>> {
   ensure(created.verified.exists, "script.create did not read back the scratch script");
   ensure(created.verified.length === Buffer.byteLength(createdContent), "script.create length read-back did not match");
 
-  const createdCompile = await waitForCompile(bridge, { timeoutMs: 15_000, maxDiagnostics: 20 });
-  ensure(createdCompile.verified.satisfied, "editor.wait_compile did not settle after script.create");
-  ensure(createdCompile.verified.errorCount === 0, "Scratch script creation introduced compile errors");
+  const createdCompile = await waitForNextCompile("script.create", beforeCreateSequence);
 
+  const beforeEditSequence = await getLatestCompileSequence();
   const edited = await bridge.send<ScriptEditResult>("script.edit", {
     path: scratchScriptPath,
     content: editedContent
@@ -193,10 +202,9 @@ async function verifyScriptDelete(): Promise<Record<string, unknown>> {
   ensure(edited.verified.before.sha256 !== edited.verified.after.sha256, "script.edit did not change the scratch script hash");
   ensure(edited.verified.after.length === Buffer.byteLength(editedContent), "script.edit length read-back did not match");
 
-  const editedCompile = await waitForCompile(bridge, { timeoutMs: 15_000, maxDiagnostics: 20 });
-  ensure(editedCompile.verified.satisfied, "editor.wait_compile did not settle after script.edit");
-  ensure(editedCompile.verified.errorCount === 0, "Scratch script edit introduced compile errors");
+  const editedCompile = await waitForNextCompile("script.edit", beforeEditSequence);
 
+  const beforeDeleteSequence = await getLatestCompileSequence();
   const deleted = await bridge.send<ScriptDeleteResult>("script.delete", {
     path: scratchScriptPath
   });
@@ -204,9 +212,29 @@ async function verifyScriptDelete(): Promise<Record<string, unknown>> {
   ensure(deleted.verified.existsAfter === false, "script.delete left the scratch script on disk");
   ensure(deleted.verified.before?.sha256 === edited.verified.after.sha256, "script.delete before hash did not match edited script");
 
-  const deletedCompile = await waitForCompile(bridge, { timeoutMs: 15_000, maxDiagnostics: 20 });
-  ensure(deletedCompile.verified.satisfied, "editor.wait_compile did not settle after script.delete");
-  ensure(deletedCompile.verified.errorCount === 0, "Scratch script deletion introduced compile errors");
+  const deletedCompile = await waitForNextCompile("script.delete", beforeDeleteSequence);
+
+  const beforeInvalidCreateSequence = await getLatestCompileSequence();
+  const invalidCreated = await bridge.send<ScriptCreateResult>("script.create", {
+    path: scratchScriptPath,
+    content: invalidContent,
+    overwrite: true
+  });
+  ensure(invalidCreated.verified.exists, "script.create did not read back the invalid scratch script");
+
+  const invalidCompile = await waitForNextCompile("invalid script.create", beforeInvalidCreateSequence, {
+    expectErrors: true
+  });
+  ensure(invalidCompile.verified.errorCount > 0, "Invalid scratch script did not produce compile errors");
+
+  const beforeInvalidDeleteSequence = await getLatestCompileSequence();
+  const invalidDeleted = await bridge.send<ScriptDeleteResult>("script.delete", {
+    path: scratchScriptPath
+  });
+  ensure(invalidDeleted.verified.existedBefore, "script.delete did not report the invalid scratch script before delete");
+  ensure(invalidDeleted.verified.existsAfter === false, "script.delete left the invalid scratch script on disk");
+
+  const invalidDeletedCompile = await waitForNextCompile("invalid script.delete", beforeInvalidDeleteSequence);
 
   return {
     path: deleted.verified.path,
@@ -214,10 +242,17 @@ async function verifyScriptDelete(): Promise<Record<string, unknown>> {
     editHashChanged: edited.verified.before.sha256 !== edited.verified.after.sha256,
     existedBeforeDelete: deleted.verified.existedBefore,
     existsAfterDelete: deleted.verified.existsAfter,
+    diagnostics: {
+      invalidScriptProducedErrors: invalidCompile.verified.errorCount > 0,
+      invalidScriptErrors: invalidCompile.verified.errorCount,
+      invalidScriptExistsAfterDelete: invalidDeleted.verified.existsAfter
+    },
     compileWaitMs: {
       create: createdCompile.verified.elapsedMs,
       edit: editedCompile.verified.elapsedMs,
-      delete: deletedCompile.verified.elapsedMs
+      delete: deletedCompile.verified.elapsedMs,
+      invalidCreate: invalidCompile.verified.elapsedMs,
+      invalidDelete: invalidDeletedCompile.verified.elapsedMs
     }
   };
 }
@@ -482,6 +517,46 @@ public sealed class AgentBridgeCapabilityGapSmokeFixture : Component
 \t[Property] public string Label { get; set; } = "${label}";
 }
 `;
+}
+
+function buildInvalidScratchScriptContent(): string {
+  return `using Sandbox;
+
+public sealed class AgentBridgeCapabilityGapSmokeFixture : Component
+{
+\t[Property] public int Broken { get; set; } = ;
+}
+`;
+}
+
+async function getLatestCompileSequence(): Promise<number> {
+  const status = await bridge.send<CompileStatusResult>("editor.compile_status", { maxDiagnostics: 0 });
+  const sequences = status.verified.groups.map((group) => group.sequence ?? 0);
+
+  return sequences.length > 0 ? Math.max(...sequences) : -1;
+}
+
+async function waitForNextCompile(
+  label: string,
+  sinceSequence: number,
+  options: { expectErrors?: boolean } = {}
+): Promise<Awaited<ReturnType<typeof waitForCompile>>> {
+  const compile = await waitForCompile(bridge, {
+    sinceSequence,
+    timeoutMs: 30_000,
+    maxDiagnostics: 20
+  });
+
+  ensure(compile.verified.satisfied, `editor.wait_compile did not settle after ${label}`);
+  ensure(compile.verified.hasRequiredSequence, `editor.wait_compile did not observe a new compile sequence after ${label}`);
+
+  if (options.expectErrors) {
+    ensure(compile.verified.errorCount > 0, `${label} did not produce compile errors`);
+  } else {
+    ensure(compile.verified.errorCount === 0, `${label} introduced compile errors`);
+  }
+
+  return compile;
 }
 
 function propertyValue(result: ComponentMutationResult): unknown {
