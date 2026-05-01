@@ -97,7 +97,7 @@ Acceptance criteria:
 
 Goal: let agents add and configure the behavior/rendering/physics building blocks that make scene editing useful.
 
-Status: in progress. Verified so far: component type discovery for built-in/editor-visible components, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove for visible component types, local game component add by exact compiled type name, enabled-state mutation, typed property mutation, and resource-backed property mutation.
+Status: in progress. Verified so far: component type discovery for built-in/editor-visible components, component listing on a GameObject, id-targeted component reads, property metadata/value/schema inspection, dry-run property validation, component add/remove for visible component types, local game component add by exact compiled type name, enabled-state mutation, typed property mutation, resource-backed property mutation, citizen animation helper setup, and basic particle stack setup.
 
 Candidate actions:
 
@@ -130,7 +130,7 @@ Remaining gaps:
 
 Goal: connect scene operations to actual project content.
 
-Status: in progress. Verified so far: asset search/info, model assignment, material creation/assignment/property mutation, sound list/info/create/assign/preview, collider/rigidbody/raycast helpers, prefab create/list/info/instantiate, and scene batches that compose these actions.
+Status: in progress. Verified so far: asset search/info, model assignment, material creation/assignment/property mutation, sound list/info/create/assign/preview, collider/rigidbody/raycast helpers, prefab create/list/info/instantiate, basic particle stack component setup, and scene batches that compose these actions.
 
 Candidate actions:
 

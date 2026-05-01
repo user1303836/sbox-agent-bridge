@@ -66,6 +66,15 @@ SBOX_AGENT_BRIDGE_BOXING_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UN
 
 This walkthrough installs a reusable `BoxingDemoController` fixture through `script.create`, waits for compile, recovers the target scene, creates an isolated controller object, adds/configures the local component by exact type name, saves the scene, enters play mode, verifies runtime test actions for a boxing loop, exercises jab/block/dodge/knockdown/TKO/decision paths, captures the generated broadcast camera by GameObject id, stops play mode, and reports weak spots found during the run.
 
+For closing implemented-but-unverified capability gaps:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:capability-gaps
+```
+
+This focused smoke creates, edits, compiles, deletes, and verifies removal of a scratch C# script, then uses temporary scene objects to verify `SkinnedModelRenderer`, `CitizenAnimationHelper`, `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` add/configure/read-back flows.
+
 For runtime feedback and ARPG testbed verification:
 
 ```bash
@@ -121,6 +130,8 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS=1`: leave smoke-test objects in the scene for inspection.
 - `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`: fail if `AgentBridgeMutationFixture` cannot be added and mutated. The fixture may be addable by exact type name even when it is not visible to `component.list_types`.
 - `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`: override the runtime feedback smoke scene path; defaults to `scenes/minimal.scene`.
+- `SBOX_AGENT_BRIDGE_CAPABILITY_SMOKE_SCRIPT`: override the scratch script path used by `smoke:capability-gaps`; defaults to `AgentBridgeScratch/CapabilityGapSmokeFixture.cs`.
+- `SBOX_AGENT_BRIDGE_CITIZEN_MODEL`: override the citizen model path used by `smoke:capability-gaps`; defaults to `models/citizen/citizen.vmdl`.
 - `SBOX_AGENT_BRIDGE_MVP_SCENE`: scene path used by the MVP smoke. If omitted, the smoke asks `editor.recover_scene` to infer a sourced open scene.
 - `SBOX_AGENT_BRIDGE_MVP_MODEL`: model path used by the MVP smoke; defaults to `models/dev/box.vmdl`.
 - `SBOX_AGENT_BRIDGE_MVP_MATERIAL`: material path written by the MVP smoke; defaults to `materials/agent_bridge/smoke/mvp_smoke.vmat`.
@@ -259,7 +270,7 @@ For visual/spatial feedback changes, verify:
 
 This is intentionally local-only for now. A CI runner does not have a live s&box editor client, so CI should not claim this coverage until the project has a reliable headless/editor automation story.
 
-Current live-test note: direct feedback-loop actions are verified in the local editor, including compile status with zero errors. The full smoke is currently blocked in this editor session by a native null reference while deleting GameObjects through the editor delete/undo path after play-mode testing. Reopen the s&box project and rerun `npm run smoke:live` before marking the full smoke green again.
+Current live-test note: direct feedback-loop actions are verified in the local editor, including compile status with zero errors. `smoke:capability-gaps` passed locally with `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1`. The legacy full smoke remains partial because it has older fixture assumptions; prefer the focused smokes plus `smoke:mvp` for current verification.
 
 ## MCP End-To-End Checks
 

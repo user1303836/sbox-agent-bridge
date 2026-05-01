@@ -91,7 +91,7 @@ Status meanings:
 |---|---|---|---|---|
 | Create script | `script.create` | `script` / `create` | Verified | Live IPC created `Code/ArpgDemo/AgentBridgeArpgFixture.cs`; compile status stayed green. |
 | Edit script | `script.edit` | `script` / `edit` | Verified | Live IPC edited the same script and verified SHA/length change plus green compile. |
-| Delete script | `script.delete` | `script` / `delete` | Blocked | Implementation exists, but live deletion was intentionally not exercised. Add a dedicated scratch-file smoke before treating it as verified. |
+| Delete script | `script.delete` | `script` / `delete` | Verified | `mcp-server/test/capability-gap-smoke.ts` creates, edits, compiles, deletes, and verifies removal of `AgentBridgeScratch/CapabilityGapSmokeFixture.cs`; post-delete compile status stayed green. |
 
 ## Assets, Materials, Sounds, Physics, And Prefabs
 
@@ -143,10 +143,11 @@ Status meanings:
 | Spot light authoring | `gameobject.create`, `gameobject.set_transform`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | Live IPC created an obelisk spot light and set cone, radius, attenuation, fog, color, and shadow properties. |
 | Post-process components | `component.add`, `component.set_property` | `component` | Verified | Live IPC configured `FilmGrain`, `Tonemapping`, `Bloom`, `PostProcessVolume`, `Vignette`, and `ColorAdjustments` for the ARPG visual pass. |
 | DecalRenderer material assignment | `component.set_property` with `includeAll: true` | `component` | Verified | `DecalRenderer.Material` is public/non-inspector; setting it works when callers opt into all readable properties. Verified with blood/gold/void/bone decal materials. |
-| Basic particle stack setup | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Partial | Live IPC created `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` and set basic bool/number/color properties. Complex particle wrapper types remain unsupported. |
+| Basic particle stack setup | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Verified | `mcp-server/test/capability-gap-smoke.ts` creates `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer`, then verifies bool, number, integer, color, vector, and enum property read-back. |
+| Complex particle wrapper properties | TBD | TBD | Planned | Basic particle component setup is verified, but bridge conversion still does not support wrapper/curve/gradient properties such as `ParticleFloat`, `ParticleVector3`, and `ParticleGradient`. |
 | Camera capture feedback | `visual.capture_camera` | `visual` / `capture_camera` | Verified | Live IPC rendered the active main `CameraComponent` to a PNG under `%TEMP%/sbox-agent-bridge/captures` and returned camera metadata plus luminance stats. First ARPG smoke capture at 640x360 reported average luminance `0.1332` and dark pixel ratio `0.3145`. |
 | Viewport/HUD capture | TBD | TBD | Planned | `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI state can now be inspected through test actions, but pixel/viewport HUD capture is still missing. |
-| Effects, beams, tracers, and effect lifetime | TBD | TBD | Planned | Basic particle component setup is partially covered, but there are no domain helpers for effect resources, beams, tracers, animated effects, or lifetime configuration. |
+| Effects, beams, tracers, and effect lifetime | TBD | TBD | Planned | Basic particle component setup is verified, but there are no domain helpers for effect resources, beams, tracers, animated effects, or lifetime configuration. |
 | Shader and ShaderGraph authoring | TBD | TBD | Planned | Bridge can create simple material sources and set known material params, but cannot inspect or edit custom shaders or ShaderGraph assets. |
 | Render hooks/custom rendering | TBD | TBD | Planned | No bridge action covers render hooks, command lists, custom rendering, `SceneCamera`, or render targets. |
 | ScreenPanel and UI-render-target helpers | TBD | TBD | Planned | No direct helpers for screen panels or rendering images to UI. |
@@ -234,7 +235,7 @@ Status meanings:
 |---|---|---|---|---|
 | Animation graph inspection | TBD | TBD | Planned | No animation graph, parameter, transition, or clip inspection. |
 | Animation state machines, layers, and IK | TBD | TBD | Planned | No state machine, layer, IK, or blend tree helpers. |
-| SkinnedModelRenderer/citizen animation helpers | `component.add`, `component.set_property` | `component` | Unverified | Generic component tools may add/configure visible animation components by exact type/property, but no dedicated animation smoke has verified this workflow. |
+| SkinnedModelRenderer/citizen animation helpers | `component.add`, `component.set_property` | `component` | Verified | `mcp-server/test/capability-gap-smoke.ts` adds `SkinnedModelRenderer` and `CitizenAnimationHelper`, assigns `models/citizen/citizen.vmdl`, links `CitizenAnimationHelper.Target`, and verifies tint, playback, animation graph flag, look-at, height, and enum read-back. |
 | Animation events and automated animation | TBD | TBD | Planned | No tools for animation event inspection, automated animation setup, or event validation. |
 
 ## Testing And CI
@@ -244,10 +245,11 @@ Status meanings:
 | MCP TypeScript build | Verified | `npm` is not on PATH in the current shell and `npm run check` hits an `Access is denied` shim issue, but direct execution through the installed Node runtime works: `node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit` and `node node_modules/typescript/bin/tsc -p tsconfig.json` both passed. |
 | MCP bridge-client and wait-helper tests | Verified | `npm test` covers bridge-client success/error/timeout behavior plus compile/runtime/stopped wait-helper polling logic. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
-| JSON/sbproj validation | Implemented | GitHub Actions workflow added. |
+| JSON/sbproj validation | Verified | GitHub Actions workflow added; workflow-equivalent local Python validation passed for `.json` and `.sbproj` files under `schemas`, `editor`, and `mcp-server`. |
 | Runtime feedback smoke script | Verified | `mcp-server/test/runtime-feedback-smoke.ts` verifies `wait_compile`, `wait_stopped`, `wait_runtime`, runtime test-action listing/invocation, ARPG logical UI state, inventory open, damage, and restore. |
 | MVP smoke script | Verified | `mcp-server/test/mvp-smoke.ts` verifies doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics inspection, sound inspection, prefab inspection, runtime preview capture, play/stop settle, and cleanup without ARPG-specific test actions. |
 | Boxing clean-room walkthrough | Verified | `mcp-server/test/boxing-poc-walkthrough.ts` installs a boxing controller through `script.create`, adds/configures the local component by exact type name, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera by GameObject id, and reports project/scene bootstrap, script-editing, input, and camera-targeting gaps. |
+| Capability gap smoke script | Verified | `mcp-server/test/capability-gap-smoke.ts` verifies scratch script create/edit/delete with green compile, animation helper component setup, and basic particle stack component/property mutation. |
 | Asset/material smoke script | Verified | `mcp-server/test/asset-material-smoke.ts` verifies material creation, material source inspection/mutation, runtime-targeted model preview capture, and wait-helper cleanup. |
 | Prefab instance smoke script | Verified | `mcp-server/test/prefab-instance-smoke.ts` verifies prefab creation, source binding, prefab info reload, GUID-remapped instantiation, instance id maps, and transform override patch samples. |
 | Physics smoke script | Verified | `mcp-server/test/physics-smoke.ts` verifies physics body creation/read-back, box collider creation/read-back, joint creation/read-back, and a raycast hit against the temporary collider. |

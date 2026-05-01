@@ -254,7 +254,7 @@ SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
 
 The runtime smoke stops stale play sessions, waits for compile/stopped/runtime transitions, opens the configured scene, enters play mode, waits for a live runtime `GameSession`, lists component-authored runtime test actions, invokes ARPG testbed actions for logical UI/gameplay state, then stops and waits for the editor to settle again.
 
-Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, `SBOX_AGENT_BRIDGE_BOXING_SCENE`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
+Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, `SBOX_AGENT_BRIDGE_BOXING_SCENE`, `SBOX_AGENT_BRIDGE_CAPABILITY_SMOKE_SCRIPT`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
 
 ## Current Caveats
 
@@ -264,7 +264,7 @@ This project is useful now, but the docs intentionally keep the status honest:
 - The s&box editor must be open and the bridge editor library must compile/load.
 - CI covers the MCP server and metadata only; live editor behavior is local-smoke verified.
 - `gameobject.destroy` is reverified by focused smokes, but cleanup scripts still fall back to disabling objects if the native editor delete/undo path fails in a stale session.
-- `script.delete` is implemented, but should be treated as blocked until a dedicated scratch-file smoke verifies it.
+- `script.delete` is verified by `smoke:capability-gaps` against a scratch C# file, but script tooling is still full-file create/edit/delete rather than source-aware patching.
 - `component.list_types` discovers built-in/editor-visible components, but local project component discovery is still partial. `component.add` can add compiled local components by exact C# type name in verified cases.
 - `gameobject.duplicate` is shallow: it copies name, enabled state, transform, and parent, but not components or children.
 - `visual.capture_camera` captures camera output, not the editor/game viewport overlay. Runtime UI self-report exists through test actions, but generic HUD/panel pixel verification remains future work.
@@ -338,6 +338,7 @@ Useful scripts:
 - `npm run build`: compile the MCP server to `dist/`.
 - `npm run ci`: typecheck, unit test, and build.
 - `npm run walkthrough:boxing`: build and verify the clean-room boxing gameplay walkthrough.
+- `npm run smoke:capability-gaps`: verify scratch script delete, animation helper setup, and basic particle stack setup.
 - `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
 - `npm run smoke:mvp`: run the preferred external-tester smoke against an already-open bridge.
 - `npm run smoke:runtime`: run the focused runtime feedback smoke against an already-open bridge.

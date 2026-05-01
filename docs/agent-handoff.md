@@ -88,6 +88,7 @@ As of 2026-05-01, direct local checks verified:
 - `physics.inspect` is live-verified through `mcp-server/test/physics-smoke.ts`, along with Rigidbody/collider/joint creation and a raycast against the temporary smoke collider.
 - `sound.inspect` is live-verified through `mcp-server/test/sound-smoke.ts`, along with sound event creation/info, SoundPointComponent assignment read-back, and a valid playing preview handle.
 - `visual.capture_camera` captures the active main camera to PNG and returns luminance stats.
+- `mcp-server/test/capability-gap-smoke.ts` is live-verified. It creates/edits/deletes `AgentBridgeScratch/CapabilityGapSmokeFixture.cs`, keeps compile status green, verifies `SkinnedModelRenderer` and `CitizenAnimationHelper` setup against `models/citizen/citizen.vmdl`, and verifies basic particle stack property mutation.
 - Spatial placement v1 works: `asset.set_orientation_override` and `asset.get_orientation_override` store/read `Assets/agent_bridge/orientation_overrides.json`, and `gameobject.place_asset` placed a cursed obelisk with a stored `pitch: 90` override, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`.
 - TypeScript check/build pass when invoked directly through the installed Node runtime.
 - MCP bridge-client and wait-helper tests pass.
@@ -95,7 +96,7 @@ As of 2026-05-01, direct local checks verified:
 The most recent pushed bridge commit before this handoff pass was:
 
 ```text
-2bacb0e Expand bridge asset prefab sound physics coverage
+edb98bb Add boxing clean-room walkthrough
 ```
 
 ## Windows Node/NPM Note
@@ -198,19 +199,20 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - Shell-driven OS keypresses were not reliable enough to verify runtime input. Use `runtime.run_test_action` for deterministic component-authored verification; focused viewport input injection remains future work.
 - The ARPG controller now exposes Agent Bridge runtime test actions for logical UI/gameplay state. The runtime smoke verified inventory open, damage, restore, skill list, and zombie count. It also exposed that the current ScreenPanel child panels are not built (`hud.root=false`), which is a testbed/UI implementation issue now visible through bridge read-back.
 - The clean-room boxing walkthrough (`npm run walkthrough:boxing`) builds a second genre through the bridge. It creates `Code/BoxingDemo/BoxingDemoController.cs` via `script.create`, adds/configures the local component by exact type name, saves the scene, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera by GameObject id, and ends with `bridge.doctor` passing.
+- The capability gap smoke (`npm run smoke:capability-gaps`) closes the easiest implemented-but-unverified rows: scratch `script.delete`, `SkinnedModelRenderer`/`CitizenAnimationHelper`, and basic particle stack setup.
 - Property-protocol test components should ignore empty `AgentBridgeTestAction` setter values. s&box scene deserialization can replay serialized empty strings; this exposed an ARPG fixture failure during the boxing walkthrough. The bridge now unwraps property-protocol target invocation failures with component/action context.
 - In multi-camera runtime scenes, pass `cameraComponentId` or `gameObjectId` to `visual.capture_camera`. The boxing walkthrough initially captured the existing scene camera until it resolved `Broadcast camera` by runtime scene search.
 
 ## Known Blockers And Caveats
 
 - `gameobject.destroy`: reverified in focused smokes and `smoke:mvp`; cleanup scripts still fall back to disabling objects if native delete fails in a stale editor session.
-- `script.delete`: implemented but not live-smoked; use a scratch-file smoke before marking verified.
+- `script.delete`: live-smoked with a scratch C# file in `AgentBridgeScratch/CapabilityGapSmokeFixture.cs`; create/edit/delete read-back and compile status passed.
 - Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, `editor.recover_scene`, and runtime test actions are verified; generic runtime queries still need work.
 - Clean-room project setup: there is still no bridge action to create/switch s&box projects, create a new scene, or save-as a scene. Walkthroughs need a human-opened project with an existing saved scene.
 - Script editing: `script.create`/`script.edit` are full-file replacement tools. Large gameplay scripts are possible, but structured patch/source-aware edit helpers would be safer.
 - Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
-- Particle properties: simple bool/number/color settings work, complex particle wrapper types are not supported yet.
+- Particle properties: basic particle stack setup is live-smoked for bool, number, integer, color, vector, and enum properties; complex particle wrapper types are not supported yet.
 - Joint target assignment: blocked because verified `Joint.Object2` is read-only.
 - Spatial reasoning: v1 orientation overrides, `gameobject.place_asset`, and runtime-targeted `asset.preview_model` captures are implemented and live-verified; the full generated prop kit still needs seeded human-verified overrides and richer contact-sheet previews.
 - Prefab override metadata is inspectable, but save/apply override and break-link mutations are still future work.
