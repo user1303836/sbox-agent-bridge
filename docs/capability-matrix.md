@@ -5,6 +5,7 @@ Status meanings:
 - **Verified**: tested against a live s&box editor.
 - **Partial**: useful behavior is verified, but a known limitation remains.
 - **Implemented**: code exists, but live editor verification is pending.
+- **Unverified**: the official docs cover this area, but no dedicated bridge smoke has verified it.
 - **Planned**: intended, not implemented.
 - **Blocked**: known blocker or missing verified API.
 
@@ -14,6 +15,7 @@ Status meanings:
 - s&box project: Minimal Game-derived local project with the ARPG bridge testbed
 - Bridge install path: `Libraries/sbox_agent_bridge`
 - Transport: file IPC at `%TEMP%/sbox-agent-bridge`
+- Official docs sweep source: `https://sbox.game/dev/doc/` navigation index reviewed on 2026-05-01. Missing top-level doc areas are listed below even when the bridge has no tool support yet.
 
 ## Bridge And Editor
 
@@ -43,6 +45,7 @@ Status meanings:
 |---|---|---|---|---|
 | Scene summary | `scene.summary` | `scene` / `summary` | Verified | Returns object/component counts from active scene. |
 | Scene hierarchy | `scene.hierarchy` | `scene` / `hierarchy` | Verified | Live IPC read-back verified the ARPG fixture yard hierarchy after scene mutations. |
+| Scene metadata | TBD | TBD | Planned | Official docs include scene metadata; bridge reads active scene identity/path/state, but does not inspect or edit scene metadata resources. |
 | Find GameObjects | `scene.find` | `scene` / `find` | Verified | Verified by finding a created object. |
 | Object details | `scene.details` | `scene` / `details` | Verified | Includes id, parent, enabled/active state, transforms, components, child count. |
 | Batch operations | `scene.batch` | `scene` / `batch` | Verified | Runs bounded action lists with per-operation result capture and `$ref` alias substitution. Live IPC verified object create/reparent/duplicate/rename/enable/selection/focus plus asset assignment, sound assignment, physics/collider/joint, material-property, and raycast actions. |
@@ -75,6 +78,7 @@ Status meanings:
 | Set property | `component.set_property` | `component` / `set_property` | Verified | Live smoke verifies string, bool, numeric primitives, enum, `Vector2`, `Vector3`, `Rotation`, `Angles`, `Transform`, `Color`, `GameObject`, and `Component` values through `AgentBridgeMutationFixture`; live IPC also verified resource paths on built-in `ModelRenderer.Model`, `ModelRenderer.MaterialOverride`, and non-inspector `DecalRenderer.Material` via `includeAll: true`; local `AgentBridgeArpgFixture` enum/string/int properties are verified; supports `dryRun: true`. |
 | Validate property | `component.validate_property` | `component` / `validate_property` | Verified | Converts and resolves a candidate value without mutation; live smoke verifies valid conversion, invalid rejection, and unchanged fixture values. |
 | Enable/disable component | `component.set_enabled` | `component` / `set_enabled` | Verified | Live smoke verifies false and true read-back. |
+| Component lifecycle, interfaces, and event hooks | TBD | TBD | Planned | Official docs cover component methods/interfaces, async, events, `ISceneStartup`, `IGameObjectNetworkEvents`, execution order, and temporary effects; bridge does not inspect or validate source/runtime lifecycle hooks. |
 
 ## Scripts
 
@@ -106,10 +110,17 @@ Status meanings:
 | Add physics body | `physics.add_physics` | `physics` / `add_physics` | Verified | Added static/non-motion rigidbodies to fixture props. |
 | Add joint | `physics.add_joint` | `physics` / `add_joint` | Partial | Creates joint components. Target assignment is blocked in v0 because `Joint.Object2` is read-only through the verified API. |
 | Raycast | `physics.raycast` | `physics` / `raycast` | Verified | Live IPC raycast hit the Blood Shrine fixture through its collider. |
+| Scene physics events | TBD | TBD | Planned | Official docs include `IScenePhysicsEvents`; bridge has no helper to inspect, register, or verify physics event callbacks. |
 | Create prefab | `prefab.create` | `prefab` / `create` | Verified | Serialized a live GameObject to `prefabs/agent_bridge/arpg_loot_chest_fixture.prefab`; list/get-info verified the resource. |
 | List prefabs | `prefab.list` | `prefab` / `list` | Verified | Live IPC listed built-in prefabs and the project-created ARPG prefab. |
 | Inspect prefab | `prefab.get_info` | `prefab` / `get_info` | Verified | Uses `AssetSystem` fallback when `PrefabFile.Load(path)` cannot load a project-created prefab path. |
 | Instantiate prefab | `prefab.instantiate` | `prefab` / `instantiate` | Verified | Instantiates by deserializing prefab `RootObject` into the active editor scene with fresh GUIDs; live IPC created `Loot Chest Prefab Instance - bridge fixture`. |
+| Prefab instance overrides and templates | TBD | TBD | Planned | Bridge can create/list/inspect/instantiate prefabs, but has no helper for instance override metadata or prefab templates. |
+| Asset file-system operations | TBD | TBD | Planned | Official docs cover asset file-system workflows; bridge only searches, inspects, creates selected resource types, and assigns assets today. Need safe project-scoped browse/read/write helpers before exposing general file operations. |
+| Cloud asset/package discovery | TBD | TBD | Planned | Asset search returns `isCloud` metadata when available, but there is no cloud search/import/package workflow. |
+| Custom asset/resource authoring | TBD | TBD | Planned | Bridge can create simple `.vmat`, `.sound`, and `.prefab` resources, but does not expose general custom asset or `GameResource` extension workflows. |
+| Clothing, citizen, and first-person weapon asset workflows | TBD | TBD | Planned | Official docs include these asset domains; bridge has no specialized inspection, authoring, or validation helpers for them yet. |
+| Storage/UGC asset workflows | TBD | TBD | Planned | Official docs include storage/UGC; bridge has no storage APIs, upload/download helpers, or safety model for user-generated content yet. |
 
 ## Rendering, Lighting, Post-Processing, And VFX
 
@@ -123,6 +134,94 @@ Status meanings:
 | DecalRenderer material assignment | `component.set_property` with `includeAll: true` | `component` | Verified | `DecalRenderer.Material` is public/non-inspector; setting it works when callers opt into all readable properties. Verified with blood/gold/void/bone decal materials. |
 | Basic particle stack setup | `gameobject.create`, `component.add`, `component.set_property` | `gameobject`, `component` | Partial | Live IPC created `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` and set basic bool/number/color properties. Complex particle wrapper types remain unsupported. |
 | Camera capture feedback | `visual.capture_camera` | `visual` / `capture_camera` | Verified | Live IPC rendered the active main `CameraComponent` to a PNG under `%TEMP%/sbox-agent-bridge/captures` and returned camera metadata plus luminance stats. First ARPG smoke capture at 640x360 reported average luminance `0.1332` and dark pixel ratio `0.3145`. |
+| Effects, beams, tracers, and effect lifetime | TBD | TBD | Planned | Basic particle component setup is partially covered, but there are no domain helpers for effect resources, beams, tracers, animated effects, or lifetime configuration. |
+| Shader and ShaderGraph authoring | TBD | TBD | Planned | Bridge can create simple material sources and set known material params, but cannot inspect or edit custom shaders or ShaderGraph assets. |
+| Render hooks/custom rendering | TBD | TBD | Planned | No bridge action covers render hooks, command lists, custom rendering, `SceneCamera`, or render targets. |
+| ScreenPanel and UI-render-target helpers | TBD | TBD | Planned | No direct helpers for screen panels or rendering images to UI. |
+| VR rendering | TBD | TBD | Planned | No VR render/session helpers. |
+
+## Project, Code, And Editor Tooling Coverage
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Game/addon/editor project metadata | `bridge.status`, `editor.context` | `editor` / `status` / `context` | Partial | Bridge assumes the installed editor library and active project; it exposes the current scene/editor context, but has no project-type inspector or project metadata workflow. |
+| Editor widgets, dialogs, menus, tools, and asset picker | TBD | TBD | Planned | Bridge provides the Agent Bridge dock and frame pump, but no generic API for creating/querying editor widgets, dialogs, menubar entries, tools, asset picker state, or scene-editor extensions. |
+| Asset previews, model editor, mapping, and texture generators | TBD | TBD | Planned | Official editor docs include asset previews, mapping, the model editor, and texture generators; bridge has no editor-tool automation for these surfaces. |
+| Custom editors and property attributes | TBD | TBD | Planned | Bridge can inspect/set serialized properties generically, but does not author or validate custom inspector/editor code or property attribute behavior. |
+| Code diagnostics beyond compile events | `editor.compile_status` | `editor` / `compile_status` | Partial | Compile groups and recent diagnostics are visible, but there is no code navigation, symbol search, generated API lookup, analyzer surface, or explicit hotload-wait action. |
+| Code generation and hotload control | `editor.compile_status`, `editor.feedback` | `editor` | Partial | Compile/hotload feedback is observable through editor events and logs, but bridge cannot inspect generated code artifacts or explicitly block until a named hotload generation is complete. |
+| s&box C# unit tests | TBD | TBD | Planned | Official docs include unit tests; repo CI covers the MCP TypeScript client, but bridge has no s&box C# test runner integration. |
+| Console variables, API whitelist, math types, and library reference lookup | TBD | TBD | Planned | No bridge helper searches the local API reference, console variables, whitelist, or library docs. |
+| Standalone/export workflows | TBD | TBD | Planned | Official docs cover standalone builds; bridge intentionally has no packaging/export automation yet. |
+
+## Networking And Multiplayer
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Networking systems/state inspection | TBD | TBD | Planned | No bridge tools inspect network mode, host/client state, connection state, transport state, or network diagnostics. |
+| Connection and user permissions | TBD | TBD | Planned | No helpers inspect or mutate connection permission/user permission state. |
+| Networked objects, ownership, visibility, and custom snapshot data | TBD | TBD | Planned | No tools inspect networked object registrations, ownership, visibility filtering, or custom snapshot payloads. |
+| Sync properties | TBD | TBD | Planned | No tools inspect `[Sync]`/networked properties, dirty state, or replication behavior. |
+| RPC messages and network events | TBD | TBD | Planned | No bridge support for discovering RPC methods/network events, validating call targets, or tracing invocation flow. |
+| Serverside code, dedicated servers, and local multiplayer testing | TBD | TBD | Planned | No helpers launch or attach dedicated servers, start multi-client local test sessions, or report server/client roles. |
+| HTTP requests and WebSockets | TBD | TBD | Planned | No s&box-networking wrapper for HTTP/WebSocket diagnostics or controlled request tests. |
+
+## UI
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Screen UI/panel hierarchy inspection | TBD | TBD | Planned | No bridge tool inspects UI panel trees, Razor component instances, or runtime HUD state. ARPG UI can exist in game code, but bridge cannot reliably inspect runtime-only UI yet. |
+| Razor/component authoring helpers | `script.create`, `script.edit` | `script` | Partial | Agents can edit source files, but there are no UI-specific templates, schemas, style checks, or live panel verification. |
+| HudPainter | TBD | TBD | Planned | No helpers inspect or verify immediate-mode HUD drawing. |
+| Localization | TBD | TBD | Planned | No helpers inspect localization files, translation keys, or active locale state. |
+| Styling, style properties, events, and class state | TBD | TBD | Planned | No helpers inspect Razor/CSS class state, event bindings, focus/hover state, or style resolution. |
+| VirtualGrid | TBD | TBD | Planned | No helpers inspect virtualized UI data sources, visible ranges, or selection/focus state. |
+
+## ActionGraph, Movie Maker, And Game Mounts
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| ActionGraph inspection/authoring | TBD | TBD | Planned | Official docs include ActionGraph, but bridge has no graph inspection, node authoring, or validation support. |
+| Movie Maker workflows | TBD | TBD | Planned | No support for movie maker timelines, cameras, keyframes, preview capture, or export. |
+| Game mounts | TBD | TBD | Planned | No support for mount configuration or mounted-content inspection beyond normal asset search. |
+
+## Media
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Video playback/media assets | TBD | TBD | Planned | Official docs include video; bridge has no video asset inspection, playback, or capture validation helpers. |
+| Audio media workflows | `sound.list`, `sound.get_info`, `sound.create_event`, `sound.assign`, `sound.preview` | `sound` | Partial | Sound events and preview are verified, but there are no broader audio media helpers for playback graph/state inspection or non-sound-event workflows. |
+| Sound API coverage | `sound.*` | `sound` | Partial | Bridge covers common sound asset/event operations, but not the full sound API surface documented by s&box. |
+
+## Gameplay Systems
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Input actions/settings | TBD | TBD | Planned | ARPG proof-of-concept work edited `ProjectSettings/Input.config` manually; bridge has no input binding inspector/editor. |
+| Controller input, raw input, and glyphs | TBD | TBD | Planned | No helpers inspect gamepad/raw input state, action glyphs, or input device metadata. |
+| Navigation/navmesh | TBD | TBD | Planned | No navigation mesh build/read helpers, navmesh agent inspection, area/cost/filter controls, obstacle inspection, or link diagnostics. |
+| Terrain | TBD | TBD | Planned | No terrain sculpt, paint, material, read, or placement helpers. |
+| Clutter system | TBD | TBD | Planned | No clutter authoring, inspection, or density validation helpers. |
+| Runtime gameplay state/self-report | `editor.play_state` | `editor` / `play_state` | Partial | Play-state reads include limited runtime `GameSession` metadata when available, but there is no runtime scene targeting, component query, or gameplay self-report channel. |
+| VR gameplay | TBD | TBD | Planned | No VR gameplay/session/controller helpers. |
+
+## Services
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Achievements | TBD | TBD | Planned | No achievement definition, read, unlock, or reset helpers. |
+| Auth tokens/identity | TBD | TBD | Planned | No auth token, session identity, or permission helper. |
+| Leaderboards and stats | TBD | TBD | Planned | No leaderboard or stats read/write helpers. |
+| Web API calls | TBD | TBD | Planned | No s&box Web API wrapper; any network access should remain explicit and scoped. |
+
+## Animation
+
+| Capability | Bridge Action | MCP Tool | Status | Notes |
+|---|---|---|---|---|
+| Animation graph inspection | TBD | TBD | Planned | No animation graph, parameter, transition, or clip inspection. |
+| Animation state machines, layers, and IK | TBD | TBD | Planned | No state machine, layer, IK, or blend tree helpers. |
+| SkinnedModelRenderer/citizen animation helpers | `component.add`, `component.set_property` | `component` | Unverified | Generic component tools may add/configure visible animation components by exact type/property, but no dedicated animation smoke has verified this workflow. |
+| Animation events and automated animation | TBD | TBD | Planned | No tools for animation event inspection, automated animation setup, or event validation. |
 
 ## Testing And CI
 
