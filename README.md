@@ -143,7 +143,7 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 | **Assets/materials** | search assets, inspect models/materials, create/edit `.vmat`, assign models/materials, preview models |
 | **Prefabs** | create, list, inspect, instantiate with GUID remapping, inspect instance patch metadata |
 | **Physics** | add/read rigidbodies, colliders, joints; run raycasts |
-| **Sound** | create `.sound` events, assign/read `SoundPointComponent`, preview playback |
+| **Sound** | create `.sound` events, assign/read `SoundPointComponent`, preview/status/stop playback |
 | **Visual feedback** | capture camera PNGs with luminance stats; preview isolated model/material combinations |
 | **Play/debug loop** | start/stop play mode, wait for runtime, read compile status/logs, run deterministic runtime test hooks |
 | **Scripts** | create/edit/delete C# files and wait for compile recovery |

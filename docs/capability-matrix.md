@@ -118,7 +118,7 @@ Status meanings:
 | Inspect scene sound components | `sound.inspect` | `sound` / `inspect` | Verified | Reads `SoundPointComponent` settings from a GameObject, including event resource, play-on-start, repeat, force-2D, volume, and pitch. Live sound smoke verified assigned component read-back. |
 | Create sound event | `sound.create_event` | `sound` / `create_event` | Verified | Created `sounds/agent_bridge/arpg_cave_fixture.sound` from `sounds/ambience/cave-loop.vsnd` and compiled it. |
 | Assign sound | `sound.assign` | `sound` / `assign` | Verified | Added/updated `SoundPointComponent` on shrine and dummy fixture objects. |
-| Preview sound | `sound.preview` | `sound` / `preview` | Verified | Played `sounds/impacts/melee/impact-melee-flesh.sound` and returned a valid playing `SoundHandle`. |
+| Preview sound | `sound.preview`, `sound.preview_status`, `sound.stop_preview` | `sound` / `preview` / `preview_status` / `stop_preview` | Verified | Live sound smoke starts a tracked preview handle, reads status by preview id including play state/time/amplitude, stops it, and verifies stopped read-back. |
 | Inspect physics components | `physics.inspect` | `physics` / `inspect` | Verified | Reads Rigidbody, Collider, and Joint summaries from a GameObject, including rigidbody flags/mass, collider shape dimensions, trigger/static flags, joint collision state, and target read-back. Live physics smoke verified all fields. |
 | Add collider | `physics.add_collider` | `physics` / `add_collider` | Verified | Added box colliders to ARPG fixture props and raycasted against them. Live physics smoke verified box scale/center/static/trigger read-back through `physics.inspect`. |
 | Add physics body | `physics.add_physics` | `physics` / `add_physics` | Verified | Added static/non-motion rigidbodies to fixture props. Live physics smoke verified gravity, motion, and mass override read-back. |
@@ -211,8 +211,8 @@ Status meanings:
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
 | Video playback/media assets | TBD | TBD | Planned | Official docs include video; bridge has no video asset inspection, playback, or capture validation helpers. |
-| Audio media workflows | `sound.list`, `sound.get_info`, `sound.create_event`, `sound.assign`, `sound.preview` | `sound` | Partial | Sound events and preview are verified, but there are no broader audio media helpers for playback graph/state inspection or non-sound-event workflows. |
-| Sound API coverage | `sound.*` | `sound` | Partial | Bridge covers common sound asset/event operations, but not the full sound API surface documented by s&box. |
+| Audio media workflows | `sound.list`, `sound.get_info`, `sound.create_event`, `sound.assign`, `sound.inspect`, `sound.preview`, `sound.preview_status`, `sound.stop_preview` | `sound` | Verified | Common editor-side audio workflows are covered: sound asset listing, sound event authoring/info, scene `SoundPointComponent` assignment/inspection, and preview handle lifecycle. Live sound smoke verifies all of these against a project-created event. |
+| Sound API coverage | `sound.*` | `sound` | Verified | Bridge-supported sound coverage includes `SoundEvent`, `SoundFile` metadata where available, `SoundPointComponent`, and tracked `SoundHandle` preview control. Low-level mixer/voice internals remain outside the bridge's intended editor automation surface. |
 
 ## Gameplay Systems
 
@@ -263,6 +263,6 @@ Status meanings:
 | Asset/material smoke script | Verified | `mcp-server/test/asset-material-smoke.ts` verifies material creation, material source inspection/mutation, runtime-targeted model preview capture, and wait-helper cleanup. |
 | Prefab instance smoke script | Verified | `mcp-server/test/prefab-instance-smoke.ts` verifies prefab creation, source binding, prefab info reload, GUID-remapped instantiation, instance id maps, and transform override patch samples. |
 | Physics smoke script | Verified | `mcp-server/test/physics-smoke.ts` verifies physics body creation/read-back, box collider creation/read-back, joint creation/read-back including linked body/target metadata, and a raycast hit against the temporary collider. |
-| Sound smoke script | Verified | `mcp-server/test/sound-smoke.ts` verifies sound event creation/info, SoundPointComponent assignment/read-back, and a valid playing sound preview handle. |
+| Sound smoke script | Verified | `mcp-server/test/sound-smoke.ts` verifies sound event creation/info, SoundPointComponent assignment/read-back, and tracked preview handle start/status/stop. |
 | Live editor smoke script | Verified | Broad regression smoke for older scene-editing workflows. Passed live against the fresh MVP project with `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1`, including fixture type listing, exact-type component add, property mutation, undo/redo, batch, visual capture, play/stop, logs, and compile feedback. Prefer `smoke:mvp-suite` for external testers. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Editor;
@@ -8,6 +9,8 @@ namespace SboxAgentBridge.Editor;
 
 internal static class SoundHandlers
 {
+	private static readonly Dictionary<string, PreviewHandle> PreviewHandles = new( StringComparer.OrdinalIgnoreCase );
+
 	public static BridgeResponse List( BridgeRequest request )
 	{
 		var query = HandlerUtil.GetString( request.Payload, "query" );
@@ -179,26 +182,87 @@ internal static class SoundHandlers
 		var soundEvent = RequireSoundEvent( eventPath );
 		var position = HandlerUtil.GetVector3( request.Payload, "position" );
 		var fadeIn = HandlerUtil.GetFloat( request.Payload, "fadeIn", 0f );
+		var previewId = Guid.NewGuid().ToString();
 		var handle = position.HasValue
 			? Sound.Play( soundEvent, position.Value, fadeIn )
 			: Sound.Play( soundEvent, fadeIn );
+
+		PreviewHandles[previewId] = new PreviewHandle( previewId, eventPath, DateTime.UtcNow, handle );
 
 		return BridgeResponse.Success( request.Id, new
 		{
 			message = "Sound preview started",
 			verified = new
 			{
+				previewId,
 				soundEvent = DescribeSoundEvent( soundEvent ),
-				handle = new
-				{
-					isValid = Safe( () => handle.IsValid, false ),
-					isPlaying = Safe( () => handle.IsPlaying, false ),
-					isStopped = Safe( () => handle.IsStopped, false ),
-					name = Safe( () => handle.Name, "" ),
-					volume = Safe( () => handle.Volume, 0f ),
-					pitch = Safe( () => handle.Pitch, 0f ),
-					position = Safe( () => HandlerUtil.ToJson( handle.Position ), (object?)null )
-				}
+				handle = DescribeSoundHandle( handle )
+			}
+		} );
+	}
+
+	public static BridgeResponse PreviewStatus( BridgeRequest request )
+	{
+		var previewId = HandlerUtil.GetString( request.Payload, "previewId" );
+		var includeStopped = HandlerUtil.GetBool( request.Payload, "includeStopped", true );
+		var handles = PreviewHandles.Values
+			.Where( x => string.IsNullOrWhiteSpace( previewId ) || string.Equals( x.Id, previewId, StringComparison.OrdinalIgnoreCase ) )
+			.Select( DescribePreviewHandle )
+			.ToArray();
+
+		if ( !includeStopped )
+		{
+			handles = handles.Where( x => x.Handle.IsPlaying && !x.Handle.IsStopped ).ToArray();
+		}
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Sound preview status read",
+			verified = new
+			{
+				previewId,
+				includeStopped,
+				trackedCount = PreviewHandles.Count,
+				count = handles.Length,
+				playingCount = handles.Count( x => x.Handle.IsPlaying ),
+				results = handles
+			}
+		} );
+	}
+
+	public static BridgeResponse StopPreview( BridgeRequest request )
+	{
+		var previewId = HandlerUtil.GetString( request.Payload, "previewId" );
+		var stopAll = HandlerUtil.GetBool( request.Payload, "stopAll", string.IsNullOrWhiteSpace( previewId ) );
+		var fadeOut = HandlerUtil.GetFloat( request.Payload, "fadeOut", 0f );
+		var targets = PreviewHandles.Values
+			.Where( x => stopAll || string.Equals( x.Id, previewId, StringComparison.OrdinalIgnoreCase ) )
+			.ToArray();
+
+		if ( !stopAll && string.IsNullOrWhiteSpace( previewId ) )
+			throw new InvalidOperationException( "Pass previewId or stopAll:true to stop sound previews." );
+
+		foreach ( var preview in targets )
+		{
+			Safe( () =>
+			{
+				preview.Handle.Stop( fadeOut );
+				return true;
+			}, false );
+		}
+
+		var results = targets.Select( DescribePreviewHandle ).ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Sound previews stopped",
+			verified = new
+			{
+				previewId,
+				stopAll,
+				fadeOut,
+				stoppedCount = targets.Length,
+				results
 			}
 		} );
 	}
@@ -225,6 +289,31 @@ internal static class SoundHandlers
 			volume = component.Volume,
 			pitch = component.Pitch
 		};
+	}
+
+	private static PreviewHandleDescription DescribePreviewHandle( PreviewHandle preview )
+	{
+		return new PreviewHandleDescription(
+			preview.Id,
+			preview.EventPath,
+			preview.StartedUtc,
+			DescribeSoundHandle( preview.Handle )
+		);
+	}
+
+	private static SoundHandleDescription DescribeSoundHandle( SoundHandle handle )
+	{
+		return new SoundHandleDescription(
+			Safe( () => handle.IsValid, false ),
+			Safe( () => handle.IsPlaying, false ),
+			Safe( () => handle.IsStopped, false ),
+			Safe( () => handle.Name, "" ),
+			Safe( () => handle.Volume, 0f ),
+			Safe( () => handle.Pitch, 0f ),
+			Safe( () => handle.Time, 0f ),
+			Safe( () => handle.Amplitude, 0f ),
+			Safe( () => HandlerUtil.ToJson( handle.Position ), (object?)null )
+		);
 	}
 
 	private static bool IsSoundAsset( Asset asset )
@@ -383,4 +472,18 @@ internal static class SoundHandlers
 			return fallback;
 		}
 	}
+
+	private sealed record PreviewHandle( string Id, string EventPath, DateTime StartedUtc, SoundHandle Handle );
+	private sealed record PreviewHandleDescription( string PreviewId, string EventPath, DateTime StartedUtc, SoundHandleDescription Handle );
+	private sealed record SoundHandleDescription(
+		bool IsValid,
+		bool IsPlaying,
+		bool IsStopped,
+		string Name,
+		float Volume,
+		float Pitch,
+		float Time,
+		float Amplitude,
+		object? Position
+	);
 }

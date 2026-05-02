@@ -12,9 +12,11 @@ const vector3Schema = z.object({
 export function registerSoundTools(server: McpServer, bridge: BridgeClient): void {
   server.tool(
     "sound",
-    "List sound assets, inspect scene sound components, create sound events, assign SoundPointComponents, and preview sound events in the active s&box editor session.",
+    "List sound assets, inspect scene sound components, create sound events, assign SoundPointComponents, and preview/inspect/stop sound events in the active s&box editor session.",
     {
-      action: z.enum(["list", "get_info", "inspect", "create_event", "assign", "preview"]).describe("The sound action to run."),
+      action: z
+        .enum(["list", "get_info", "inspect", "create_event", "assign", "preview", "preview_status", "stop_preview"])
+        .describe("The sound action to run."),
       query: z.string().optional().describe("Sound asset name/path search query for list."),
       kind: z.enum(["event", "soundevent", "file", "soundfile"]).optional().describe("Optional sound kind filter for list."),
       path: z.string().optional().describe("Sound asset path for get_info or create_event."),
@@ -35,6 +37,10 @@ export function registerSoundTools(server: McpServer, bridge: BridgeClient): voi
       overwrite: z.boolean().optional().describe("Allow create_event to replace an existing sound event file."),
       position: vector3Schema.optional().describe("Optional world position for preview."),
       fadeIn: z.number().optional().describe("Preview fade-in time in seconds."),
+      fadeOut: z.number().optional().describe("Preview fade-out time in seconds for stop_preview."),
+      previewId: z.string().optional().describe("Preview handle id returned by preview, used by preview_status or stop_preview."),
+      stopAll: z.boolean().optional().describe("Stop all tracked sound previews when action is stop_preview."),
+      includeStopped: z.boolean().optional().describe("Include stopped preview handles when action is preview_status."),
       maxResults: z.number().int().min(1).max(500).optional().describe("Maximum list results.")
     },
     async ({ action, ...payload }) => {

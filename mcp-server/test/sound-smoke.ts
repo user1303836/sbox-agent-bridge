@@ -47,13 +47,43 @@ interface SoundInspectResult {
 
 interface SoundPreviewResult {
   verified: {
+    previewId: string;
     handle: {
       isValid: boolean;
       isPlaying: boolean;
+      isStopped: boolean;
       name: string;
       volume: number;
       pitch: number;
     };
+  };
+}
+
+interface SoundPreviewStatusResult {
+  verified: {
+    count: number;
+    playingCount: number;
+    results: Array<{
+      previewId: string;
+      eventPath: string;
+      handle: {
+        isValid: boolean;
+        isPlaying: boolean;
+        isStopped: boolean;
+      };
+    }>;
+  };
+}
+
+interface SoundStopPreviewResult {
+  verified: {
+    stoppedCount: number;
+    results: Array<{
+      previewId: string;
+      handle: {
+        isStopped: boolean;
+      };
+    }>;
   };
 }
 
@@ -131,6 +161,24 @@ try {
     fadeIn: 0
   });
   ensure(preview.verified.handle.isValid, "sound.preview did not return a valid SoundHandle");
+  ensure(preview.verified.previewId.length > 0, "sound.preview did not return a previewId");
+
+  const previewStatus = await bridge.send<SoundPreviewStatusResult>("sound.preview_status", {
+    previewId: preview.verified.previewId
+  });
+  ensure(previewStatus.verified.count === 1, "sound.preview_status did not return the tracked preview");
+  ensure(previewStatus.verified.results[0]?.eventPath === eventPath, "sound.preview_status event path read-back did not match");
+
+  const stoppedPreview = await bridge.send<SoundStopPreviewResult>("sound.stop_preview", {
+    previewId: preview.verified.previewId,
+    fadeOut: 0
+  });
+  ensure(stoppedPreview.verified.stoppedCount === 1, "sound.stop_preview did not stop the tracked preview");
+
+  const stoppedStatus = await bridge.send<SoundPreviewStatusResult>("sound.preview_status", {
+    previewId: preview.verified.previewId
+  });
+  ensure(stoppedStatus.verified.results[0]?.handle.isStopped === true, "sound.preview_status did not report the preview as stopped after stop_preview");
 
   await cleanup();
 
@@ -149,7 +197,13 @@ try {
           sounds: info.verified.soundEvent.sounds
         },
         component,
-        preview: preview.verified.handle
+        preview: {
+          previewId: preview.verified.previewId,
+          started: preview.verified.handle,
+          status: previewStatus.verified.results[0],
+          stopped: stoppedPreview.verified.results[0],
+          stoppedStatus: stoppedStatus.verified.results[0]
+        }
       },
       null,
       2
@@ -162,6 +216,12 @@ try {
 }
 
 async function cleanup(): Promise<void> {
+  try {
+    await bridge.send("sound.stop_preview", { stopAll: true, fadeOut: 0 });
+  } catch {
+    // Best-effort cleanup for tracked preview handles.
+  }
+
   const id = sourceId;
   sourceId = "";
 

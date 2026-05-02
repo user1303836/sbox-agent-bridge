@@ -91,6 +91,8 @@ Errors use the same envelope:
 - `sound.create_event`
 - `sound.assign`
 - `sound.preview`
+- `sound.preview_status`
+- `sound.stop_preview`
 - `physics.inspect`
 - `physics.add_physics`
 - `physics.add_collider`
@@ -209,7 +211,9 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 
 `sound.inspect` accepts `gameObjectId`, optional `targetSession`, and session selectors. It returns all `SoundPointComponent` instances on the GameObject with sound event metadata, play-on-start, repeat, force-2D, volume, and pitch read-back.
 
-`sound.preview` accepts `eventPath`, optional `position`, and optional `fadeIn`. It starts the sound through s&box and returns `SoundHandle` read-back such as validity, playing/stopped state, name, volume, pitch, and position.
+`sound.preview` accepts `eventPath`, optional `position`, and optional `fadeIn`. It starts the sound through s&box, stores a bridge-local `previewId`, and returns `SoundHandle` read-back such as validity, playing/stopped state, name, volume, pitch, playback time, amplitude, and position.
+
+`sound.preview_status` accepts optional `previewId` and `includeStopped`. It reports tracked preview handles and their current `SoundHandle` state. `sound.stop_preview` accepts `previewId` or `stopAll:true`, plus optional `fadeOut`, and returns stopped-handle read-back.
 
 ## Batch Actions
 

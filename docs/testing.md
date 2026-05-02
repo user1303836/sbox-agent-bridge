@@ -154,7 +154,7 @@ cd mcp-server
 SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:sounds
 ```
 
-This focused smoke creates a project sound event, inspects it, assigns it to a temporary `SoundPointComponent`, verifies `sound.inspect` read-back for component settings, previews the event, checks for a valid playing handle, then removes the temporary scene object.
+This focused smoke creates a project sound event, inspects it, assigns it to a temporary `SoundPointComponent`, verifies `sound.inspect` read-back for component settings, previews the event, checks tracked preview status, stops the preview by id, verifies stopped read-back, then removes the temporary scene object.
 
 Useful environment variables:
 
