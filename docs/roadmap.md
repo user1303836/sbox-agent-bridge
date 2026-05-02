@@ -188,7 +188,7 @@ Acceptance criteria:
 
 Goal: build the smallest real playable scene through the bridge and use the rough edges to drive the next capability work.
 
-Status: first ARPG vertical slice created in the local test project. See [poc-arpg-first-pass.md](poc-arpg-first-pass.md).
+Status: superseded by the current smoke suites, runtime feedback checks, and clean-room gameplay walkthroughs documented in [status.md](status.md), [testing.md](testing.md), and [capability-matrix.md](capability-matrix.md).
 
 Candidate acceptance criteria:
 
