@@ -3,9 +3,7 @@
 Date: 2026-04-29
 Updated: 2026-05-01
 
-This note captures the first isometric action-RPG vertical slice built through the bridge against the local test project at:
-
-`C:\Users\hidd3n\Documents\s&box projects\testproject`
+This note captures the first isometric action-RPG vertical slice built through the bridge against a local s&box test project. Paths below are project-relative unless explicitly marked as temp output.
 
 ## Implemented In Test Project
 

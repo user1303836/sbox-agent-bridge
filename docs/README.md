@@ -9,11 +9,10 @@ For human testers, start here:
 For implementers and agents:
 
 - [Capability Matrix](capability-matrix.md): per-capability coverage and verification status.
-- [Protocol](protocol.md): direct bridge actions and payload notes.
+- [Protocol](protocol.md): bridge actions, direct file-IPC envelopes, and manual request helper.
 - [Roadmap](roadmap.md): planned capability work and open gaps.
 - [Architecture](architecture.md): bridge/MCP design.
 - [Verified s&box APIs](verified-sbox-apis.md): local API facts used by the bridge.
-- [Agent Handoff](agent-handoff.md): concise state for a new coding agent.
 
 Historical/context notes:
 

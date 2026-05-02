@@ -312,6 +312,43 @@ The MCP `editor` tool also exposes `wait_compile`, `wait_runtime`, and `wait_sto
 
 For property-protocol components, make the `AgentBridgeTestAction` setter ignore null/empty/whitespace values. s&box scene deserialization can set serialized string properties during scene cloning, and empty action values should not execute test logic or throw. Bridge-side errors from property-protocol invocation include the component type and requested action when the underlying setter throws.
 
+
+## Manual Direct-IPC Helper
+
+Most users should call the MCP server rather than writing IPC files by hand. When debugging the editor bridge directly, the following PowerShell helper sends one bridge action through the same request/response directories used by the MCP server. It honors `SBOX_AGENT_BRIDGE_IPC`; otherwise it uses the default `%TEMP%/sbox-agent-bridge` root.
+
+```powershell
+function Invoke-Bridge($Action, $Payload=@{}) {
+  $ipc = if ($env:SBOX_AGENT_BRIDGE_IPC) { $env:SBOX_AGENT_BRIDGE_IPC } else { Join-Path $env:TEMP 'sbox-agent-bridge' }
+  $id = [guid]::NewGuid().ToString('N')
+  $reqDir = Join-Path $ipc 'requests'
+  $respDir = Join-Path $ipc 'responses'
+  New-Item -ItemType Directory -Force -Path $reqDir | Out-Null
+  New-Item -ItemType Directory -Force -Path $respDir | Out-Null
+
+  $body = @{ id=$id; action=$Action; payload=$Payload } | ConvertTo-Json -Depth 80
+  $tmp = Join-Path $reqDir ".request-$id.tmp"
+  $path = Join-Path $reqDir "request-$id.json"
+  [System.IO.File]::WriteAllText($tmp, $body, [System.Text.UTF8Encoding]::new($false))
+  Move-Item -LiteralPath $tmp -Destination $path -Force
+
+  $resp = Join-Path $respDir "response-$id.json"
+  $deadline = (Get-Date).AddSeconds(30)
+  while ((Get-Date) -lt $deadline -and -not (Test-Path $resp)) { Start-Sleep -Milliseconds 100 }
+  if (-not (Test-Path $resp)) { throw "No bridge response for $Action" }
+  Get-Content -Raw $resp | ConvertFrom-Json
+}
+```
+
+Example checks:
+
+```powershell
+Invoke-Bridge 'bridge.status'
+Invoke-Bridge 'editor.context'
+Invoke-Bridge 'scene.summary'
+Invoke-Bridge 'visual.capture_camera' @{ width=640; height=360; name='manual-check' }
+```
+
 ## File Handoff
 
 Writers should create request and response files through an atomic same-directory rename:
