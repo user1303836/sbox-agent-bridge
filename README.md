@@ -22,8 +22,6 @@
 
 Think: **Claude/Codex/Kimi/etc. as a careful level-design and gameplay prototyping partner inside s&box** — with narrow tools, read-backs, and smoke tests instead of an unsafe arbitrary-code bridge.
 
-## Why this is useful
-
 A normal coding agent can edit C# files, but it cannot see what actually happened in the s&box editor. This bridge closes that loop.
 
 | Without the bridge | With `sbox-agent-bridge` |
