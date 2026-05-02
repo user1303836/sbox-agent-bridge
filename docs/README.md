@@ -2,7 +2,7 @@
 
 For human testers, start here:
 
-- [Tester Quickstart](tester-quickstart.md): install, doctor, MVP smoke, MCP config.
+- [Tester Quickstart](tester-quickstart.md): fresh project creation, install, doctor, MVP suite, MCP config.
 - [Status](status.md): current verified capabilities and known caveats.
 - [Testing](testing.md): full local/CI/live smoke commands.
 

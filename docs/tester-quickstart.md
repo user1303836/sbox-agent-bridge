@@ -1,6 +1,6 @@
 # Tester Quickstart
 
-This is the shortest path for someone validating the bridge in a normal s&box project.
+This is the shortest path for someone validating the bridge in a fresh or normal s&box project.
 
 ## 1. Build The MCP Server
 
@@ -10,7 +10,18 @@ npm install
 npm run build
 ```
 
-## 2. Install The Editor Bridge
+## 2. Create Or Choose A Project
+
+For a true fresh-project walkthrough, instantiate a Minimal Game project from the local s&box template:
+
+```powershell
+cd C:\path\to\sbox-agent-bridge
+.\scripts\create-minimal-sbox-project.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' -Title 'Agent Bridge MVP Fresh'
+```
+
+You can also use an existing project. The bridge currently cannot switch the open s&box project for you, so the project must still be opened in s&box by the tester.
+
+## 3. Install The Editor Bridge
 
 ```powershell
 cd C:\path\to\sbox-agent-bridge
@@ -23,7 +34,7 @@ Open the project in s&box and wait for compile. The bridge starts automatically 
 View -> Agent Bridge
 ```
 
-## 3. Run The Readiness Check
+## 4. Run The Readiness Check
 
 From an MCP-capable agent, run the `editor` tool with `action: "doctor"`.
 
@@ -39,30 +50,37 @@ Direct file-IPC callers can send:
 
 The doctor should report `overall: "pass"` or an actionable `nextSuggestedAction`.
 
-## 4. Run The MVP Smoke
+## 5. Run The MVP Suite
 
-Use a saved test scene. For scratch scenes, allow discard/reload recovery:
+The MVP suite creates its own saved scene and then runs the focused bootstrap, MVP, asset/material, physics, sound, prefab, script/animation, and particle checks against it:
 
 ```powershell
 cd C:\path\to\sbox-agent-bridge\mcp-server
-$env:SBOX_AGENT_BRIDGE_MVP_SCENE='scenes/minimal.scene'
-$env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
+npm run smoke:mvp-suite
+```
+
+The suite defaults to `scenes/agent_bridge/smoke/mvp_suite.scene`. Override it with `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE` when needed.
+
+For a narrower single-smoke pass after the suite has created a scene:
+
+```powershell
+$env:SBOX_AGENT_BRIDGE_MVP_SCENE='scenes/agent_bridge/smoke/mvp_suite.scene'
 npm run smoke:mvp
 ```
 
-The smoke verifies the main external-tester path: doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics read-back, sound event/component read-back, prefab creation/instantiation/inspection, runtime model preview capture, play/stop settle, and cleanup.
+That smoke verifies the main external-tester path: doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics read-back, sound event/component read-back, prefab creation/instantiation/inspection, runtime model preview capture, play/stop settle, and cleanup.
 
 For a broader gameplay walkthrough after the MVP smoke passes:
 
 ```powershell
-$env:SBOX_AGENT_BRIDGE_BOXING_SCENE='scenes/minimal.scene'
+$env:SBOX_AGENT_BRIDGE_BOXING_SCENE='scenes/agent_bridge/smoke/mvp_suite.scene'
 $env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
 npm run walkthrough:boxing
 ```
 
 This installs and verifies a small boxing game loop in the open test project.
 
-## 5. MCP Client Config
+## 6. MCP Client Config
 
 Point your client at the built server:
 

@@ -52,10 +52,19 @@ For external-tester MVP readiness:
 
 ```bash
 cd mcp-server
-SBOX_AGENT_BRIDGE_MVP_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:mvp
+npm run smoke:mvp-suite
 ```
 
-This smoke is intentionally broader than the focused category smokes but narrower than the legacy live smoke. It verifies `bridge.doctor`, compile wait, `editor.recover_scene`, scene read, GameObject creation, model/material assignment, physics inspection, sound inspection, prefab instance inspection, runtime-targeted model preview, play/stop settle, and cleanup. It is the preferred smoke for new human testers.
+This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
+
+For a narrower single-smoke pass against an existing saved scene:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_MVP_SCENE=scenes/agent_bridge/smoke/mvp_suite.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:mvp
+```
+
+This smoke verifies `bridge.doctor`, compile wait, `editor.recover_scene`, scene read, GameObject creation, model/material assignment, physics inspection, sound inspection, prefab instance inspection, runtime-targeted model preview, play/stop settle, and cleanup.
 
 For clean-room scene bootstrap coverage:
 
@@ -131,12 +140,13 @@ This focused smoke creates a project sound event, inspects it, assigns it to a t
 
 Useful environment variables:
 
-- `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root.
+- `SBOX_AGENT_BRIDGE_IPC`: override the bridge IPC root. Set it for both the MCP server and the s&box editor process when isolating a fresh-project or multi-editor walkthrough.
 - `SBOX_AGENT_BRIDGE_TIMEOUT_MS`: override command timeout.
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_SCENE`: scene path written by `smoke:bootstrap`; defaults to `scenes/agent_bridge/smoke/bootstrap_smoke.scene`.
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_SCENE_NAME`: scene name used by `smoke:bootstrap`.
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_MARKER`: marker GameObject name used by `smoke:bootstrap`.
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_RESTORE=0`: leave the bootstrap scene active instead of restoring the previously active sourced scene.
+- `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE`: scene path created and reused by `smoke:mvp-suite`; defaults to `scenes/agent_bridge/smoke/mvp_suite.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
@@ -162,6 +172,15 @@ Useful environment variables:
 ## Live Editor Smoke Checks
 
 Use these when bridge code changes.
+
+To create a fresh Minimal Game project from the local s&box template before opening it in the editor:
+
+```powershell
+.\scripts\create-minimal-sbox-project.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' -Title 'Agent Bridge MVP Fresh'
+.\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh'
+```
+
+Open the generated `.sbproj` in s&box, wait for compile, then run `npm run smoke:mvp-suite`.
 
 1. Copy `editor/` into a test project:
 

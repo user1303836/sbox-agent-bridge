@@ -162,7 +162,8 @@ Status meanings:
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
 | Game/addon/editor project metadata | `editor.project_info`, `bridge.status`, `editor.context` | `editor` / `project_info` / `status` / `context` | Verified | Reads active project title/type/ident, root/assets/code/editor paths, bridge install path, and compiler availability. Bridge still assumes a human-opened project. |
-| Create/switch open project | TBD | TBD | Planned | No bridge action creates a brand-new s&box project or switches the editor to another project. Fresh-project testing still needs a human-opened project with the bridge installed. |
+| Create minimal project from template | `scripts/create-minimal-sbox-project.ps1` | CLI script | Verified | Instantiates the local s&box `game.minimal` template, writes project title/org/ident, removes template metadata, and was run locally against `agent_bridge_mvp_fresh` before installing the bridge. The bridge still cannot switch the open editor project. |
+| Create/switch open project | TBD | TBD | Planned | No bridge action creates a brand-new s&box project or switches the editor to another project. Fresh-project testing still needs the tester to open the generated or chosen project in s&box. |
 | Editor widgets, dialogs, menus, tools, and asset picker | TBD | TBD | Planned | Bridge provides the Agent Bridge dock and frame pump, but no generic API for creating/querying editor widgets, dialogs, menubar entries, tools, asset picker state, or scene-editor extensions. |
 | Asset previews, model editor, mapping, and texture generators | TBD | TBD | Planned | Official editor docs include asset previews, mapping, the model editor, and texture generators; bridge has no editor-tool automation for these surfaces. |
 | Custom editors and property attributes | TBD | TBD | Planned | Bridge can inspect/set serialized properties generically, but does not author or validate custom inspector/editor code or property attribute behavior. |
@@ -247,12 +248,13 @@ Status meanings:
 
 | Capability | Status | Notes |
 |---|---|---|
-| MCP TypeScript build | Verified | `npm` is not on PATH in the current shell and `npm run check` hits an `Access is denied` shim issue, but direct execution through the installed Node runtime works: `node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit` and `node node_modules/typescript/bin/tsc -p tsconfig.json` both passed. |
+| MCP TypeScript build | Verified | `npm run check` and `npm run build` pass locally. Direct Node commands remain documented as a Windows fallback if npm shim issues recur. |
 | MCP bridge-client and wait-helper tests | Verified | `npm test` covers bridge-client success/error/timeout behavior plus compile/runtime/stopped wait-helper polling logic. |
 | CI MCP build/test | Implemented | GitHub Actions workflow runs typecheck, tests, and build. |
 | JSON/sbproj validation | Verified | GitHub Actions workflow added; workflow-equivalent local Python validation passed for `.json` and `.sbproj` files under `schemas`, `editor`, and `mcp-server`. |
 | Runtime feedback smoke script | Verified | `mcp-server/test/runtime-feedback-smoke.ts` verifies `wait_compile`, `wait_stopped`, `wait_runtime`, runtime test-action listing/invocation, ARPG logical UI state, inventory open, damage, and restore. |
 | MVP smoke script | Verified | `mcp-server/test/mvp-smoke.ts` verifies doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics inspection, sound inspection, prefab inspection, runtime preview capture, play/stop settle, and cleanup without ARPG-specific test actions. |
+| MVP suite script | Verified | `mcp-server/test/mvp-suite.ts` creates `scenes/agent_bridge/smoke/mvp_suite.scene` through the bootstrap smoke, then runs MVP, asset/material, physics, sound, prefab, and capability-gap smokes against that scene. It passed locally without relying on `scenes/minimal.scene`. |
 | Boxing clean-room walkthrough | Verified | `mcp-server/test/boxing-poc-walkthrough.ts` installs a boxing controller through `script.create`, adds/configures the local component by exact type name, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera by GameObject id, and reports project/scene bootstrap, script-editing, input, and camera-targeting gaps. |
 | Capability gap smoke script | Verified | `mcp-server/test/capability-gap-smoke.ts` verifies scratch script create/edit/delete with new compile sequence waits, controlled compile-error diagnostics and recovery, animation helper component setup, and basic particle stack component/property mutation. |
 | Asset/material smoke script | Verified | `mcp-server/test/asset-material-smoke.ts` verifies material creation, material source inspection/mutation, runtime-targeted model preview capture, and wait-helper cleanup. |

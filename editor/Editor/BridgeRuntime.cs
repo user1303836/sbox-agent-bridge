@@ -16,10 +16,19 @@ public static class BridgeRuntime
 		WriteIndented = true
 	};
 
-	public static string IpcRoot { get; } = Path.Combine( Path.GetTempPath(), "sbox-agent-bridge" );
+	public static string IpcRoot { get; } = ResolveIpcRoot();
 	public static string RequestPath => Path.Combine( IpcRoot, "requests" );
 	public static string ResponsePath => Path.Combine( IpcRoot, "responses" );
 	public static bool IsRunning { get; private set; }
+
+	private static string ResolveIpcRoot()
+	{
+		var configured = Environment.GetEnvironmentVariable( "SBOX_AGENT_BRIDGE_IPC" );
+		if ( !string.IsNullOrWhiteSpace( configured ) )
+			return Path.GetFullPath( configured );
+
+		return Path.Combine( Path.GetTempPath(), "sbox-agent-bridge" );
+	}
 
 	public static void Start()
 	{

@@ -15,6 +15,7 @@
     "smoke:capability-gaps": "tsx test/capability-gap-smoke.ts",
     "smoke:live": "tsx test/live-smoke.ts",
     "smoke:mvp": "tsx test/mvp-smoke.ts",
+    "smoke:mvp-suite": "tsx test/mvp-suite.ts",
     "smoke:physics": "tsx test/physics-smoke.ts",
     "smoke:prefabs": "tsx test/prefab-instance-smoke.ts",
     "smoke:runtime": "tsx test/runtime-feedback-smoke.ts",

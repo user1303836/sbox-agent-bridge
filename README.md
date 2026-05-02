@@ -54,7 +54,7 @@ Agent / MCP client
         <-> SceneEditorSession.Active / All / GameSession
 ```
 
-The current transport is local file IPC under `%TEMP%/sbox-agent-bridge`. It is intentionally simple and inspectable: the MCP server writes request JSON files, the editor-frame pump processes them on the s&box editor thread, and the bridge writes response JSON files. The command envelope is designed so other transports can be added later behind the same bridge-client boundary.
+The current transport is local file IPC under `%TEMP%/sbox-agent-bridge` by default. It is intentionally simple and inspectable: the MCP server writes request JSON files, the editor-frame pump processes them on the s&box editor thread, and the bridge writes response JSON files. The command envelope is designed so other transports can be added later behind the same bridge-client boundary.
 
 The dock is the human-facing status and control surface. The editor-frame bridge pump starts automatically once the editor library compiles and loads.
 
@@ -79,6 +79,12 @@ npm run build
 ### 2. Install The Editor Bridge
 
 Copy this repo's `editor/` folder into your s&box project as `Libraries/sbox_agent_bridge`.
+
+For a fresh-project walkthrough, create a Minimal Game project from the local s&box template first:
+
+```powershell
+.\scripts\create-minimal-sbox-project.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' -Title 'Agent Bridge MVP Fresh'
+```
 
 From the repo root:
 
@@ -151,6 +157,8 @@ Optional custom IPC folder:
 }
 ```
 
+Set the same `SBOX_AGENT_BRIDGE_IPC` value in the environment before launching the s&box editor when you need an isolated bridge instance, such as a fresh-project walkthrough while another editor is already open.
+
 ### 4. Try It
 
 Start with read-only prompts:
@@ -221,16 +229,14 @@ To require fixture-backed component mutation coverage, set `SBOX_AGENT_BRIDGE_RE
 
 ### MVP tester smoke
 
-For external testers, prefer the MVP smoke:
+For external testers, prefer the MVP suite:
 
 ```powershell
 cd mcp-server
-$env:SBOX_AGENT_BRIDGE_MVP_SCENE='scenes/minimal.scene'
-$env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
-npm run smoke:mvp
+npm run smoke:mvp-suite
 ```
 
-It verifies `bridge.doctor`, compile wait, scene recovery, scene read, object creation, model/material assignment, physics/sound/prefab read-back, runtime model preview capture, play/stop settle, and cleanup without relying on the ARPG-specific runtime hooks.
+It creates its own saved scene, then verifies `bridge.doctor`, compile wait, scene recovery, scene read, object creation, model/material assignment, physics/sound/prefab read-back, runtime model preview capture, play/stop settle, script delete/compile recovery, animation helper setup, basic particle setup, and cleanup without relying on the ARPG-specific runtime hooks.
 
 ### Bootstrap smoke
 
@@ -267,7 +273,7 @@ SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:runtime
 
 The runtime smoke stops stale play sessions, waits for compile/stopped/runtime transitions, opens the configured scene, enters play mode, waits for a live runtime `GameSession`, lists component-authored runtime test actions, invokes ARPG testbed actions for logical UI/gameplay state, then stops and waits for the editor to settle again.
 
-Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, `SBOX_AGENT_BRIDGE_BOXING_SCENE`, `SBOX_AGENT_BRIDGE_CAPABILITY_SMOKE_SCRIPT`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
+Useful environment variables are documented in [docs/testing.md](docs/testing.md), including `SBOX_AGENT_BRIDGE_IPC`, `SBOX_AGENT_BRIDGE_TIMEOUT_MS`, `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE`, `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`, `SBOX_AGENT_BRIDGE_SMOKE_KEEP_OBJECTS`, `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE`, `SBOX_AGENT_BRIDGE_RUNTIME_SCENE`, `SBOX_AGENT_BRIDGE_BOXING_SCENE`, `SBOX_AGENT_BRIDGE_CAPABILITY_SMOKE_SCRIPT`, and `SBOX_AGENT_BRIDGE_DISCARD_UNSAVED`.
 
 ## Current Caveats
 
@@ -354,7 +360,8 @@ Useful scripts:
 - `npm run smoke:bootstrap`: verify project info, blank scene creation, save-as, reload, and persisted object read-back.
 - `npm run smoke:capability-gaps`: verify scratch script delete, animation helper setup, and basic particle stack setup.
 - `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
-- `npm run smoke:mvp`: run the preferred external-tester smoke against an already-open bridge.
+- `npm run smoke:mvp`: run the focused MVP smoke against an already-open bridge and saved scene.
+- `npm run smoke:mvp-suite`: create a fresh smoke scene and run the MVP plus focused category smokes against it.
 - `npm run smoke:runtime`: run the focused runtime feedback smoke against an already-open bridge.
 
 ## Project Docs

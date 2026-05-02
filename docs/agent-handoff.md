@@ -19,7 +19,7 @@ The ARPG game in the local test project is not the product. It is a testbed used
 - Live test project: `C:\Users\hidd3n\Documents\s&box projects\testproject`
 - Main test scene: `C:\Users\hidd3n\Documents\s&box projects\testproject\Assets\scenes\minimal.scene`
 - Installed bridge library in test project: `C:\Users\hidd3n\Documents\s&box projects\testproject\Libraries\sbox_agent_bridge`
-- Local bridge IPC root: `%TEMP%\sbox-agent-bridge`
+- Local bridge IPC root: `%TEMP%\sbox-agent-bridge` by default; both editor bridge and MCP server honor `SBOX_AGENT_BRIDGE_IPC`.
 - Camera captures: `%TEMP%\sbox-agent-bridge\captures`
 
 ## Grounding Rules For s&box Work
@@ -82,6 +82,8 @@ As of 2026-05-01, direct local checks verified:
 - s&box bridge editor compile is green with zero errors in the live test project.
 - `bridge.doctor` and `editor.recover_scene` are live-verified. Doctor returned all-pass checks; recover_scene restored `scenes/minimal.scene` to one active tab.
 - `editor.project_info`, `editor.new_scene`, and `editor.save_scene_as` are live-verified through `mcp-server/test/bootstrap-smoke.ts`. The smoke creates a blank scene, creates a marker object, saves to `scenes/agent_bridge/smoke/bootstrap_smoke.scene`, reloads it, verifies persisted marker read-back, and restores the original sourced scene.
+- `scripts/create-minimal-sbox-project.ps1` creates a fresh Minimal Game project from the local s&box template. It was run locally to create `C:\Users\hidd3n\Documents\s&box projects\agent_bridge_mvp_fresh`, and `scripts/install-editor-bridge.ps1` installed the bridge into that fresh project.
+- `mcp-server/test/mvp-suite.ts` is live-verified. It creates `scenes/agent_bridge/smoke/mvp_suite.scene`, then runs the focused MVP, asset/material, physics, sound, prefab, and capability-gap smokes against that suite-created scene.
 - `mcp-server/test/mvp-smoke.ts` is live-verified and is the preferred external-tester smoke.
 - `asset.inspect_model` works on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
 - `asset.inspect_material`, `asset.set_material_source_property`, and `asset.preview_model` are live-verified through `mcp-server/test/asset-material-smoke.ts`. The preview path should target `runtime` after `editor.play`/`editor.wait_runtime`; stopped editor preview captures can render black on the current s&box build.
@@ -209,7 +211,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 - `gameobject.destroy`: reverified in focused smokes and `smoke:mvp`; cleanup scripts still fall back to disabling objects if native delete fails in a stale editor session.
 - `script.delete`: live-smoked with a scratch C# file in `AgentBridgeScratch/CapabilityGapSmokeFixture.cs`; create/edit/delete read-back and compile status passed.
 - Runtime inspection: `targetSession: runtime`, `editor.stop stopAll`, MCP-side wait helpers, `editor.recover_scene`, and runtime test actions are verified; generic runtime queries still need work.
-- Clean-room project setup: there is still no bridge action to create/switch s&box projects. Once a project is open with the bridge installed, `editor.project_info`, `editor.new_scene`, and `editor.save_scene_as` cover blank scene bootstrap and persisted scene verification.
+- Clean-room project setup: project files can be created from the local template and the bridge can be installed by script, but there is still no verified bridge action to switch the open s&box project. Once a project is open with the bridge installed, `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, and `smoke:mvp-suite` cover MVP verification without relying on the ARPG scene.
 - Script editing: `script.create`/`script.edit` are full-file replacement tools. Large gameplay scripts are possible, but structured patch/source-aware edit helpers would be safer.
 - Logs: `afterIndex` cursor reads are available for `editor.logs` and `editor.feedback`; structured log-event capture is still future work.
 - Local component discovery: exact-name add works, discovery is partial.
@@ -223,7 +225,7 @@ The ARPG is intentionally rough. Use it to test bridge capabilities, not as an e
 The next best bridge tasks are:
 
 - seed human-verified orientation overrides for the generated ARPG prop kit and add contact-sheet previews for ambiguous rotations;
-- project bootstrap tooling: create/switch project if feasible, scene template install, and clearer fresh-project install/open workflow;
+- open/switch project automation if a reliable s&box editor API or CLI entry point is verified;
 - structured source edit helpers for large scripts;
 - viewport/HUD capture or generic panel hierarchy inspection;
 - focused viewport input injection;
