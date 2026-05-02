@@ -65,6 +65,10 @@ Errors use the same envelope:
 - `script.create`
 - `script.edit`
 - `script.delete`
+- `script.list`
+- `script.read`
+- `script.search`
+- `script.analyze`
 - `project.list_files`
 - `project.read_file`
 - `project.write_file`
@@ -152,6 +156,8 @@ Vector payloads must be complete. For `Vector3` fields, direct protocol callers 
 `project.list_files`, `project.read_file`, `project.write_file`, and `project.delete_file` are project-scoped file helpers. They accept a `root` of `assets`, `code`, `editor`, `settings`, or `project` and reject `..` traversal or paths that escape the selected root. `read_file` returns UTF-8 text when the file appears textual and base64 for binary data. `write_file` requires `content` and refuses to replace an existing file unless `overwrite: true` is supplied.
 
 `project.input_actions` reads `ProjectSettings/Input.config` and returns action names, groups, titles, keyboard codes, and gamepad codes. `project.upsert_input_action` creates or updates one action by `name`; it accepts optional `groupName`, `title`, `keyboardCode`, and `gamepadCode`. `project.remove_input_action` removes an action by `name` and returns before/after verification.
+
+`script.list` lists C# files under the project `Code` directory. `script.read` returns script metadata and UTF-8 content. `script.search` does project-code text search with file/line read-back. `script.analyze` accepts either a script `path` or raw `content` and returns source-level class/base/interface detection, lifecycle method names, attributes, and markers such as `[Sync]`, `[Rpc.*]`, `ISceneStartup`, and `IGameObjectNetworkEvents`.
 
 `component.set_property` also accepts `dryRun: true`. In dry-run mode, the bridge resolves the component/property and converts the input value, but does not call `PropertyDescription.SetValue`.
 

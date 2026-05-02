@@ -146,7 +146,7 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 | **Sound** | create `.sound` events, assign/read `SoundPointComponent`, preview/status/stop playback |
 | **Visual feedback** | capture camera PNGs with luminance stats; preview isolated model/material combinations |
 | **Play/debug loop** | start/stop play mode, wait for runtime, read compile status/logs, run deterministic runtime test hooks |
-| **Scripts** | create/edit/delete C# files and wait for compile recovery |
+| **Scripts** | create/edit/delete/list/read/search/analyze C# files and wait for compile recovery |
 | **Smoke tests** | run focused live-editor smokes and a clean-room boxing gameplay walkthrough |
 
 The current MCP tools are: `editor`, `scene`, `gameobject`, `component`, `script`, `project`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
@@ -179,7 +179,7 @@ npm run ci                # typecheck, unit tests, build
 npm run smoke:mvp-suite   # preferred external-tester live gate
 ```
 
-The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, project file/input helpers, script delete/compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
+The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, project file/input helpers, script introspection and compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
 
 Other focused smokes:
 
@@ -187,6 +187,7 @@ Other focused smokes:
 npm run smoke:bootstrap
 npm run smoke:matrix-core
 npm run smoke:project
+npm run smoke:scripts
 npm run smoke:assets
 npm run smoke:physics
 npm run smoke:prefabs

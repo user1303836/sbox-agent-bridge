@@ -66,7 +66,7 @@ The doctor should report `overall: "pass"` or an actionable `nextSuggestedAction
 
 ## 5. Run The MVP Suite
 
-The MVP suite creates its own saved scene and then runs the focused bootstrap, MVP, asset/material, physics, sound, prefab, matrix-core, project-file/input, script/animation, and particle checks against it:
+The MVP suite creates its own saved scene and then runs the focused bootstrap, MVP, asset/material, physics, sound, prefab, matrix-core, project-file/input, script-introspection, script/animation, and particle checks against it:
 
 ```powershell
 cd C:\path\to\sbox-agent-bridge\mcp-server

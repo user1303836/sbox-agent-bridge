@@ -55,7 +55,7 @@ cd mcp-server
 npm run smoke:mvp-suite
 ```
 
-This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, matrix-core, project-file/input, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
+This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, matrix-core, project-file/input, script-introspection, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
 
 For a narrower single-smoke pass against an existing saved scene:
 
@@ -110,6 +110,15 @@ npm run smoke:project
 ```
 
 This focused smoke lists project settings files, reads `ProjectSettings/Input.config`, writes/reads/lists/deletes a scratch asset-root file, inspects a built-in input action, then creates, updates, and removes a temporary input action through structured `ProjectSettings/Input.config` helpers.
+
+For script introspection verification:
+
+```bash
+cd mcp-server
+npm run smoke:scripts
+```
+
+This focused smoke creates a scratch C# component, waits for compile, verifies `script.list`, `script.read`, `script.search`, and `script.analyze` against lifecycle methods and attributes, runs source-only analysis for `[Sync]`, `[Rpc.*]`, and `IGameObjectNetworkEvents`, deletes the scratch component, and waits for compile recovery.
 
 For runtime feedback and ARPG testbed verification:
 
@@ -168,6 +177,7 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_MATRIX_CORE_SCENE`: scene path used by `smoke:matrix-core`; defaults to `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE` or `scenes/agent_bridge/smoke/mvp_suite.scene`.
 - `SBOX_AGENT_BRIDGE_PROJECT_SMOKE_FILE`: asset-root scratch file used by `smoke:project`; defaults to `agent_bridge/smoke/project_file_smoke.txt`.
 - `SBOX_AGENT_BRIDGE_PROJECT_SMOKE_INPUT`: input action name used by `smoke:project`; defaults to a timestamped `AgentBridgeSmokeInput...` action.
+- `SBOX_AGENT_BRIDGE_SCRIPT_INTROSPECTION_PATH`: scratch script path used by `smoke:scripts`; defaults to `AgentBridgeScratch/ScriptIntrospectionSmoke.cs`.
 - `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
