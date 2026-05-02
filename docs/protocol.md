@@ -65,6 +65,13 @@ Errors use the same envelope:
 - `script.create`
 - `script.edit`
 - `script.delete`
+- `project.list_files`
+- `project.read_file`
+- `project.write_file`
+- `project.delete_file`
+- `project.input_actions`
+- `project.upsert_input_action`
+- `project.remove_input_action`
 - `asset.search`
 - `asset.get_info`
 - `asset.inspect_model`
@@ -96,7 +103,9 @@ Errors use the same envelope:
 - `prefab.instantiate`
 - `scene.summary`
 - `scene.hierarchy`
+- `scene.metadata`
 - `scene.find`
+- `scene.find_in_radius`
 - `scene.details`
 - `scene.batch`
 - `gameobject.get`
@@ -137,6 +146,10 @@ Vector payloads must be complete. For `Vector3` fields, direct protocol callers 
 `editor.save_scene` returns before/after save state. `dryRun: true` reads save state without writing. Untitled scenes without a source path are guarded: the bridge returns `saveAttempted: false` and a `skippedReason` instead of opening a surprise save-as flow. When a save is attempted, `saveVerified` is true only if the after-state reports no unsaved changes.
 
 `editor.save_scene_as` saves the active editor scene to a supplied project `path` without opening the human save-as dialog. It accepts `overwrite`, `bringToFront`, and `activateAfterSave`. The bridge registers/compiles the written scene asset, returns file/resource read-back, and can reopen the saved asset so the active tab has a source path.
+
+`project.list_files`, `project.read_file`, `project.write_file`, and `project.delete_file` are project-scoped file helpers. They accept a `root` of `assets`, `code`, `editor`, `settings`, or `project` and reject `..` traversal or paths that escape the selected root. `read_file` returns UTF-8 text when the file appears textual and base64 for binary data. `write_file` requires `content` and refuses to replace an existing file unless `overwrite: true` is supplied.
+
+`project.input_actions` reads `ProjectSettings/Input.config` and returns action names, groups, titles, keyboard codes, and gamepad codes. `project.upsert_input_action` creates or updates one action by `name`; it accepts optional `groupName`, `title`, `keyboardCode`, and `gamepadCode`. `project.remove_input_action` removes an action by `name` and returns before/after verification.
 
 `component.set_property` also accepts `dryRun: true`. In dry-run mode, the bridge resolves the component/property and converts the input value, but does not call `PropertyDescription.SetValue`.
 

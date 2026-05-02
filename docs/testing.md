@@ -55,7 +55,7 @@ cd mcp-server
 npm run smoke:mvp-suite
 ```
 
-This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, matrix-core, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
+This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, matrix-core, project-file/input, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
 
 For a narrower single-smoke pass against an existing saved scene:
 
@@ -101,6 +101,15 @@ SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:matrix-core
 ```
 
 This focused smoke recovers the saved MVP suite scene, verifies `scene.metadata` source metadata, verifies `scene.find_in_radius` with near/far temporary objects, verifies `component.list_types` can discover `AgentBridgeMutationFixture` through runtime assembly scanning, and verifies `gameobject.destroy` with undo/redo read-back.
+
+For project file and input-settings verification:
+
+```bash
+cd mcp-server
+npm run smoke:project
+```
+
+This focused smoke lists project settings files, reads `ProjectSettings/Input.config`, writes/reads/lists/deletes a scratch asset-root file, inspects a built-in input action, then creates, updates, and removes a temporary input action through structured `ProjectSettings/Input.config` helpers.
 
 For runtime feedback and ARPG testbed verification:
 
@@ -157,6 +166,8 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_RESTORE=0`: leave the bootstrap scene active instead of restoring the previously active sourced scene.
 - `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE`: scene path created and reused by `smoke:mvp-suite`; defaults to `scenes/agent_bridge/smoke/mvp_suite.scene`.
 - `SBOX_AGENT_BRIDGE_MATRIX_CORE_SCENE`: scene path used by `smoke:matrix-core`; defaults to `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE` or `scenes/agent_bridge/smoke/mvp_suite.scene`.
+- `SBOX_AGENT_BRIDGE_PROJECT_SMOKE_FILE`: asset-root scratch file used by `smoke:project`; defaults to `agent_bridge/smoke/project_file_smoke.txt`.
+- `SBOX_AGENT_BRIDGE_PROJECT_SMOKE_INPUT`: input action name used by `smoke:project`; defaults to a timestamped `AgentBridgeSmokeInput...` action.
 - `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.
@@ -302,7 +313,7 @@ For component mutation changes, verify:
 8. `editor.undo` restores the removed component
 9. `editor.redo` removes it again
 
-`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` in this repo and should be installed as `Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFixture.cs` in a test project. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, reopen the project before running `npm run smoke:live`. Do not keep a second copy in the project's own `Code/` folder; duplicate component class definitions can break cold compilation and prevent the Agent Bridge dock from loading. Some editor sessions may not expose local game components through `Game.TypeLibrary`; the bridge now has an exact-type-name fallback for `component.add`, but `component.list_types` may still not list the fixture. Use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
+`AgentBridgeMutationFixture` lives at `editor/Code/TestFixtures/AgentBridgeMutationFixture.cs` in this repo and should be installed as `Libraries/sbox_agent_bridge/Code/TestFixtures/AgentBridgeMutationFixture.cs` in a test project. It is runtime/library code, not editor-only code, because the smoke test needs to add it to a scene GameObject by type name. If an already-open s&box project has not generated or hotloaded the library runtime project yet, reopen the project before running `npm run smoke:live`. Do not keep a second copy in the project's own `Code/` folder; duplicate component class definitions can break a cold compile and prevent the Agent Bridge dock from loading. `component.list_types` now supplements `Game.TypeLibrary` with runtime assembly scanning, and `component.add` still has an exact-type-name fallback. Use `SBOX_AGENT_BRIDGE_REQUIRE_FIXTURE=1` when you specifically need fixture-backed component mutation coverage.
 
 For resource-backed component property changes, also verify at least one built-in component with known asset paths:
 

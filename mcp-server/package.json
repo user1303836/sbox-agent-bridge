@@ -19,6 +19,7 @@
     "smoke:mvp-suite": "tsx test/mvp-suite.ts",
     "smoke:physics": "tsx test/physics-smoke.ts",
     "smoke:prefabs": "tsx test/prefab-instance-smoke.ts",
+    "smoke:project": "tsx test/project-file-input-smoke.ts",
     "smoke:runtime": "tsx test/runtime-feedback-smoke.ts",
     "smoke:sounds": "tsx test/sound-smoke.ts",
     "test": "tsx --test test/bridge-client.test.ts test/wait-helpers.test.ts"

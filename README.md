@@ -139,6 +139,7 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 | **Scene operations** | summarize hierarchy, search, inspect details, create/save/recover scenes |
 | **GameObjects** | create, rename, transform, enable/disable, duplicate, reparent, frame, destroy with undo/redo read-back |
 | **Components** | list, inspect schemas, add/remove, enable/disable, dry-run validate, set properties |
+| **Project files/input** | list/read/write/delete project-scoped files, inspect/edit input actions |
 | **Assets/materials** | search assets, inspect models/materials, create/edit `.vmat`, assign models/materials, preview models |
 | **Prefabs** | create, list, inspect, instantiate with GUID remapping, inspect instance patch metadata |
 | **Physics** | add/read rigidbodies, colliders, joints; run raycasts |
@@ -148,7 +149,7 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 | **Scripts** | create/edit/delete C# files and wait for compile recovery |
 | **Smoke tests** | run focused live-editor smokes and a clean-room boxing gameplay walkthrough |
 
-The current MCP tools are: `editor`, `scene`, `gameobject`, `component`, `script`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
+The current MCP tools are: `editor`, `scene`, `gameobject`, `component`, `script`, `project`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
 
 For exact action payloads, see [docs/protocol.md](docs/protocol.md). For the verified capability matrix, see [docs/capability-matrix.md](docs/capability-matrix.md).
 
@@ -178,13 +179,14 @@ npm run ci                # typecheck, unit tests, build
 npm run smoke:mvp-suite   # preferred external-tester live gate
 ```
 
-The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, script delete/compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
+The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, project file/input helpers, script delete/compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
 
 Other focused smokes:
 
 ```powershell
 npm run smoke:bootstrap
 npm run smoke:matrix-core
+npm run smoke:project
 npm run smoke:assets
 npm run smoke:physics
 npm run smoke:prefabs

@@ -31,6 +31,13 @@ internal static class CommandDispatcher
 			"script.create" => ScriptHandlers.Create( request ),
 			"script.edit" => ScriptHandlers.Edit( request ),
 			"script.delete" => ScriptHandlers.Delete( request ),
+			"project.list_files" => ProjectHandlers.ListFiles( request ),
+			"project.read_file" => ProjectHandlers.ReadFile( request ),
+			"project.write_file" => ProjectHandlers.WriteFile( request ),
+			"project.delete_file" => ProjectHandlers.DeleteFile( request ),
+			"project.input_actions" => ProjectHandlers.InputActions( request ),
+			"project.upsert_input_action" => ProjectHandlers.UpsertInputAction( request ),
+			"project.remove_input_action" => ProjectHandlers.RemoveInputAction( request ),
 			"asset.search" => AssetHandlers.Search( request ),
 			"asset.get_info" => AssetHandlers.GetInfo( request ),
 			"asset.inspect_model" => AssetHandlers.InspectModel( request ),
@@ -90,7 +97,7 @@ internal static class CommandDispatcher
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, bridge.doctor, editor.context, editor.project_info, editor.tabs, editor.activate_tab, editor.new_scene, editor.open_scene, editor.recover_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.save_scene_as, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, asset.search, asset.get_info, asset.inspect_model, asset.inspect_material, asset.set_material_source_property, asset.preview_model, asset.get_orientation_override, asset.set_orientation_override, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, visual.capture_camera, sound.list, sound.get_info, sound.inspect, sound.create_event, sound.assign, sound.preview, physics.inspect, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, runtime.list_test_actions, runtime.run_test_action, prefab.create, prefab.list, prefab.get_info, prefab.inspect_instance, prefab.instantiate, scene.summary, scene.hierarchy, scene.metadata, scene.find, scene.find_in_radius, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, gameobject.place_asset, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
+				"Use one of: bridge.status, bridge.doctor, editor.context, editor.project_info, editor.tabs, editor.activate_tab, editor.new_scene, editor.open_scene, editor.recover_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.save_scene_as, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, project.list_files, project.read_file, project.write_file, project.delete_file, project.input_actions, project.upsert_input_action, project.remove_input_action, asset.search, asset.get_info, asset.inspect_model, asset.inspect_material, asset.set_material_source_property, asset.preview_model, asset.get_orientation_override, asset.set_orientation_override, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, visual.capture_camera, sound.list, sound.get_info, sound.inspect, sound.create_event, sound.assign, sound.preview, physics.inspect, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, runtime.list_test_actions, runtime.run_test_action, prefab.create, prefab.list, prefab.get_info, prefab.inspect_instance, prefab.instantiate, scene.summary, scene.hierarchy, scene.metadata, scene.find, scene.find_in_radius, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, gameobject.place_asset, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
 			)
 		};
 	}
