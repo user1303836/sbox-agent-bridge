@@ -80,7 +80,7 @@ npm run build
 
 Copy this repo's `editor/` folder into your s&box project as `Libraries/sbox_agent_bridge`.
 
-For a fresh-project walkthrough, create a Minimal Game project from the local s&box template first:
+From the repo root, create a Minimal Game project from the local s&box template for a fresh-project walkthrough:
 
 ```powershell
 .\scripts\create-minimal-sbox-project.ps1 `
@@ -89,7 +89,7 @@ For a fresh-project walkthrough, create a Minimal Game project from the local s&
   -Ident 'agent_bridge_mvp_fresh'
 ```
 
-From the repo root:
+Then install the editor bridge library into that project:
 
 ```powershell
 .\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh'
@@ -375,11 +375,15 @@ Useful scripts:
 - `npm run ci`: typecheck, unit test, and build.
 - `npm run walkthrough:boxing`: build and verify the clean-room boxing gameplay walkthrough.
 - `npm run smoke:bootstrap`: verify project info, blank scene creation, save-as, reload, and persisted object read-back.
+- `npm run smoke:assets`: verify material source inspection/mutation and runtime model preview capture.
 - `npm run smoke:capability-gaps`: verify scratch script delete, animation helper setup, and basic particle stack setup.
-- `npm run smoke:live`: run the live editor smoke test against an already-open bridge.
+- `npm run smoke:live`: run the legacy broad live editor smoke test against an already-open bridge.
 - `npm run smoke:mvp`: run the focused MVP smoke against an already-open bridge and saved scene.
 - `npm run smoke:mvp-suite`: create a fresh smoke scene and run the MVP plus focused category smokes against it.
+- `npm run smoke:physics`: verify physics body, collider, joint, inspect, and raycast flows.
+- `npm run smoke:prefabs`: verify prefab creation, GUID-remapped instantiation, and instance metadata/patch read-back.
 - `npm run smoke:runtime`: run the focused runtime feedback smoke against an already-open bridge.
+- `npm run smoke:sounds`: verify sound event creation/inspection, component assignment, and preview playback.
 
 ## Project Docs
 
