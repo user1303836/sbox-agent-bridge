@@ -46,7 +46,7 @@ Acceptance criteria:
 
 Goal: make the bridge installable and diagnosable by testers who did not build the ARPG testbed.
 
-Status: MVP candidate. Verified locally: fresh Minimal Game project creation script, install script, project launch script with isolated IPC, `bridge.doctor`, `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, `editor.recover_scene`, `npm run smoke:bootstrap`, `npm run smoke:mvp`, `npm run smoke:mvp-suite`, and `npm run walkthrough:boxing`.
+Status: MVP candidate. Verified locally: fresh Minimal Game project creation script, install script, project launch script with isolated IPC, `bridge.doctor`, `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, `editor.recover_scene`, `npm run smoke:bootstrap`, `npm run smoke:mvp`, `npm run smoke:mvp-suite`, `npm run walkthrough:arpg`, `npm run walkthrough:boxing`, and `npm run audit:capabilities`.
 
 Acceptance criteria:
 
@@ -57,7 +57,7 @@ Acceptance criteria:
 - The MVP smoke covers the main safe workflow without relying on ARPG-specific runtime components.
 - A bootstrap smoke can create, save, reload, and verify a new scene inside an opened or launched project.
 - A suite-level smoke can run bootstrap plus focused asset/material, asset-resource/cloud, sound, physics, prefab, script/compile, reference, network, animation, particle, and matrix-gap checks against a suite-created scene.
-- A clean-room gameplay walkthrough can build and verify a second genre without relying on the ARPG controller.
+- Clean-room gameplay walkthroughs can build and verify an ARPG and a second genre without relying on the original hand-built ARPG scene.
 - Docs point testers to one quickstart instead of several overlapping engineering notes.
 
 ## Milestone 2: Core Scene Editing

@@ -410,6 +410,11 @@ internal static class HandlerUtil
 			throw new InvalidOperationException( $"Payload property '{propertyName}' must be a GameObject GUID." );
 
 		var go = scene.Directory.FindByGuid( guid );
+		if ( go is null || !go.IsValid || go.IsDestroyed )
+		{
+			go = WalkSceneObjects( scene )
+				.FirstOrDefault( item => item.Id == guid && item.IsValid && !item.IsDestroyed );
+		}
 
 		if ( go is null || !go.IsValid || go.IsDestroyed )
 			throw new InvalidOperationException( $"No active GameObject found for id '{id}'." );

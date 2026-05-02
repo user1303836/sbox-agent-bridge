@@ -57,6 +57,15 @@ npm run smoke:mvp-suite
 
 This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, asset-resource/cloud, physics, sound, prefab, matrix-core, project-file/input, script-introspection, reference, network, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
 
+For a matrix status audit after docs/capability changes:
+
+```bash
+cd mcp-server
+npm run audit:capabilities
+```
+
+This audit parses `docs/capability-matrix.md` and fails unless every capability row is either `Verified` or `Verified gap`.
+
 For a narrower single-smoke pass against an existing saved scene:
 
 ```bash
@@ -79,10 +88,22 @@ For clean-room gameplay walkthrough coverage:
 
 ```bash
 cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run walkthrough:arpg
 SBOX_AGENT_BRIDGE_BOXING_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run walkthrough:boxing
 ```
 
-This walkthrough installs a reusable `BoxingDemoController` fixture through `script.create`, waits for compile, recovers the target scene, creates an isolated controller object, adds/configures the local component by exact type name, saves the scene, enters play mode, verifies runtime test actions for a boxing loop, exercises jab/block/dodge/knockdown/TKO/decision paths, captures the generated broadcast camera by GameObject id, stops play mode, and reports weak spots found during the run.
+The ARPG walkthrough creates an isolated scene and controller through bridge actions, waits for compile/runtime readiness, verifies character creation, Warrior/Mage skills, health/mana orbs, aggro, collision policy, inventory, loot, chest, vendor, elite, health-orb pickup, deterministic runtime actions, and captures the generated runtime camera by GameObject id.
+
+The boxing walkthrough installs a reusable `BoxingDemoController` fixture through `script.create`, waits for compile, recovers the target scene, creates an isolated controller object, adds/configures the local component by exact type name, saves the scene, enters play mode, verifies runtime test actions for a boxing loop, exercises jab/block/dodge/knockdown/TKO/decision paths, captures the generated broadcast camera by GameObject id, stops play mode, and reports weak spots found during the run.
+
+For only the boxing walkthrough:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_BOXING_SCENE=scenes/minimal.scene SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run walkthrough:boxing
+```
+
+This runs the second-genre gameplay smoke without rebuilding the ARPG fixture.
 
 For closing implemented-but-unverified capability gaps:
 
@@ -206,6 +227,8 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_PROJECT_SMOKE_INPUT`: input action name used by `smoke:project`; defaults to a timestamped `AgentBridgeSmokeInput...` action.
 - `SBOX_AGENT_BRIDGE_SCRIPT_INTROSPECTION_PATH`: scratch script path used by `smoke:scripts`; defaults to `AgentBridgeScratch/ScriptIntrospectionSmoke.cs`.
 - `SBOX_AGENT_BRIDGE_NETWORK_SCENE`: scene path used by `smoke:network`; defaults to `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE` or `scenes/agent_bridge/smoke/mvp_suite.scene`.
+- `SBOX_AGENT_BRIDGE_ARPG_SCENE`: scene path written by the ARPG clean-room walkthrough; defaults to `scenes/agent_bridge/walkthrough/arpg_cleanroom.scene`.
+- `SBOX_AGENT_BRIDGE_ARPG_CONTROLLER_NAME`: override the scene object name used by the ARPG clean-room walkthrough.
 - `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.

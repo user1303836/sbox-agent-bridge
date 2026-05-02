@@ -147,7 +147,7 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 | **Visual feedback** | capture camera PNGs with luminance stats; preview isolated model/material combinations |
 | **Play/debug loop** | start/stop play mode, wait for runtime, read compile status/logs, run deterministic runtime test hooks |
 | **Scripts** | create/edit/delete/list/read/search/analyze C# files and wait for compile recovery |
-| **Smoke tests** | run focused live-editor smokes and a clean-room boxing gameplay walkthrough |
+| **Smoke tests** | run focused live-editor smokes plus clean-room ARPG and boxing gameplay walkthroughs |
 
 The current MCP tools are: `editor`, `scene`, `gameobject`, `component`, `script`, `project`, `reference`, `asset`, `visual`, `sound`, `network`, `physics`, `prefab`, and `runtime`.
 
@@ -177,6 +177,7 @@ CI validates the TypeScript MCP server and metadata. Live editor behavior requir
 cd mcp-server
 npm run ci                # typecheck, unit tests, build
 npm run smoke:mvp-suite   # preferred external-tester live gate
+npm run audit:capabilities
 ```
 
 The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, asset type/resource/cloud reads, physics/sound/network/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, project file/input/reference helpers, script introspection and compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
@@ -197,7 +198,9 @@ npm run smoke:sounds
 npm run smoke:network
 npm run smoke:capability-gaps
 npm run smoke:runtime
+npm run walkthrough:arpg
 npm run walkthrough:boxing
+npm run audit:capabilities
 ```
 
 See [docs/testing.md](docs/testing.md) for all live-smoke commands and environment variables.

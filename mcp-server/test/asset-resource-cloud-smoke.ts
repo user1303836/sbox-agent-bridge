@@ -1,5 +1,5 @@
 import { BridgeClient } from "../src/bridge-client.js";
-import { waitForCompile } from "../src/wait-helpers.js";
+import { waitForCompile, waitForStopped } from "../src/wait-helpers.js";
 
 interface AssetTypesResult {
   verified: {
@@ -53,6 +53,10 @@ const bridge = new BridgeClient({
 const resourcePath = process.env.SBOX_AGENT_BRIDGE_RESOURCE_SMOKE_PATH ?? "sounds/agent_bridge/smoke/generic_resource_smoke.sound";
 
 try {
+  await bridge.send("editor.stop", { stopAll: true });
+  const stopped = await waitForStopped(bridge, { timeoutMs: 10_000, requireNoGameSessions: true });
+  ensure(stopped.verified.satisfied, "editor.wait_stopped did not clear runtime sessions before asset resource/cloud smoke");
+
   const compileWait = await waitForCompile(bridge, { timeoutMs: 10_000, maxDiagnostics: 20 });
   ensure(compileWait.verified.satisfied, "editor.wait_compile did not settle before asset resource/cloud smoke");
 
@@ -102,6 +106,7 @@ try {
     JSON.stringify(
       {
         ok: true,
+        stopWaitMs: stopped.verified.elapsedMs,
         compileWaitMs: compileWait.verified.elapsedMs,
         assetTypes: {
           count: assetTypes.verified.count,

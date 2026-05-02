@@ -126,14 +126,17 @@ internal static class AssetHandlers
 		var assetType = NormalizeAssetTypeExtension( requestedType );
 		var relativePath = NormalizeAssetPath( HandlerUtil.GetRequiredString( request.Payload, "path" ) );
 		var overwrite = HandlerUtil.GetBool( request.Payload, "overwrite", false );
-		var absolutePath = ResolveAssetPath( EnsureExtension( relativePath, "." + assetType ) );
+		var normalizedPath = NormalizeAssetPath( EnsureExtension( relativePath, "." + assetType ) );
+		var absolutePath = ResolveAssetPath( normalizedPath );
+		var compiledPath = absolutePath + "_c";
 
-		if ( File.Exists( absolutePath ) )
+		if ( File.Exists( absolutePath ) || File.Exists( compiledPath ) )
 		{
 			if ( !overwrite )
-				throw new InvalidOperationException( $"Resource '{relativePath}' already exists. Pass overwrite:true to replace it." );
+				throw new InvalidOperationException( $"Resource '{normalizedPath}' already exists. Pass overwrite:true to replace it." );
 
 			File.Delete( absolutePath );
+			File.Delete( compiledPath );
 		}
 
 		Directory.CreateDirectory( Path.GetDirectoryName( absolutePath ) ?? Project.Current.GetAssetsPath() );
@@ -143,6 +146,7 @@ internal static class AssetHandlers
 			throw new InvalidOperationException( $"AssetSystem.CreateResource('{assetType}', '{absolutePath}') returned null." );
 
 		asset.Compile( true );
+		AssetSystem.RegisterFile( absolutePath );
 
 		return BridgeResponse.Success( request.Id, new
 		{
@@ -151,7 +155,7 @@ internal static class AssetHandlers
 			{
 				requestedType,
 				assetType,
-				path = NormalizeAssetPath( EnsureExtension( relativePath, "." + assetType ) ),
+				path = normalizedPath,
 				asset = DescribeAssetDetails( asset )
 			}
 		} );
@@ -1021,6 +1025,13 @@ internal static class AssetHandlers
 		var asset = AssetSystem.FindByPath( path );
 		if ( asset is null && path.StartsWith( "assets/", StringComparison.OrdinalIgnoreCase ) )
 			asset = AssetSystem.FindByPath( path.Substring( "assets/".Length ) );
+
+		if ( asset is null )
+		{
+			var absolutePath = ResolveAssetPath( path );
+			if ( File.Exists( absolutePath ) )
+				asset = AssetSystem.RegisterFile( absolutePath ) ?? AssetSystem.FindByPath( path );
+		}
 
 		if ( asset is null )
 			throw new InvalidOperationException( $"Asset '{path}' was not found." );

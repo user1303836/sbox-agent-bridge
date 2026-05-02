@@ -198,7 +198,7 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 
 `asset.list_types` lists registered editor asset types from `AssetType.All`. It accepts optional `query`, `onlyGameResources`, `includeHidden`, and `maxResults`, and returns file extensions, category, flags, editor availability, and `GameResource` resource type metadata.
 
-`asset.create_resource` creates an empty `GameResource` through `AssetSystem.CreateResource`. It accepts `path`, `assetType` or `type` for the asset extension, and optional `overwrite`, then compiles and returns `asset.get_info`-style read-back.
+`asset.create_resource` creates an empty `GameResource` through `AssetSystem.CreateResource`. It accepts `path`, `assetType` or `type` for the asset extension, and optional `overwrite`, then compiles and returns `asset.get_info`-style read-back. `overwrite:true` removes both the source path and the compiled `_c` sidecar before recreating the resource, and `asset.get_info` can register an existing source file before failing a read-back.
 
 `asset.cloud_packages` reads installed and project-referenced cloud package cache metadata through `AssetSystem.GetInstalledPackages()` and `AssetSystem.GetReferencedPackages()`. It accepts `includeInstalled`, `includeReferenced`, and `maxResults`.
 

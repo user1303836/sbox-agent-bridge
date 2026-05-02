@@ -75,6 +75,12 @@ npm run smoke:mvp-suite
 
 The suite defaults to `scenes/agent_bridge/smoke/mvp_suite.scene`. Override it with `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE` when needed.
 
+To confirm the published capability matrix has no unverified statuses:
+
+```powershell
+npm run audit:capabilities
+```
+
 For a narrower single-smoke pass after the suite has created a scene:
 
 ```powershell
@@ -87,12 +93,16 @@ That smoke verifies the main external-tester path: doctor, compile wait, scene r
 For a broader gameplay walkthrough after the MVP smoke passes:
 
 ```powershell
+$env:SBOX_AGENT_BRIDGE_ARPG_SCENE='scenes/agent_bridge/walkthrough/arpg_cleanroom.scene'
+$env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
+npm run walkthrough:arpg
+
 $env:SBOX_AGENT_BRIDGE_BOXING_SCENE='scenes/agent_bridge/smoke/mvp_suite.scene'
 $env:SBOX_AGENT_BRIDGE_DISCARD_UNSAVED='1'
 npm run walkthrough:boxing
 ```
 
-This installs and verifies a small boxing game loop in the open test project.
+These install and verify clean-room ARPG and boxing gameplay loops in the open test project.
 
 ## 6. MCP Client Config
 
