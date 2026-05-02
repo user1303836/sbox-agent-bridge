@@ -12,6 +12,9 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
         .enum([
           "search",
           "get_info",
+          "list_types",
+          "cloud_packages",
+          "create_resource",
           "inspect_model",
           "inspect_material",
           "set_material_source_property",
@@ -25,8 +28,9 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
         ])
         .describe("The asset action to run."),
       query: z.string().optional().describe("Asset name/path search query."),
-      type: z.string().optional().describe("Optional asset type filter, such as Model, Material, SoundEvent, vmdl, or vmat."),
-      path: z.string().optional().describe("Asset path for get_info, inspect_model, inspect_material, preview_model, or create_material."),
+      type: z.string().optional().describe("Optional asset type filter, such as Model, Material, SoundEvent, vmdl, or vmat. For create_resource, this is the GameResource asset extension when assetType is omitted."),
+      assetType: z.string().optional().describe("GameResource asset extension for create_resource, such as sound."),
+      path: z.string().optional().describe("Asset path for get_info, create_resource, inspect_model, inspect_material, preview_model, or create_material."),
       modelPath: z.string().optional().describe("Model resource path for inspect_model, preview_model, or assign_model."),
       materialPath: z.string().optional().describe("Material resource path for inspect_material, preview_model, assign_material, or set_material_source_property."),
       targetSession: z
@@ -42,7 +46,7 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
       name: z.string().optional().describe("Material name for create_material."),
       shader: z.string().optional().describe("Shader path for create_material."),
       color: z.string().optional().describe("Optional material tint color for create_material, such as '#aa2222' or 'red'."),
-      overwrite: z.boolean().optional().describe("Allow create_material to replace an existing file."),
+      overwrite: z.boolean().optional().describe("Allow create_material or create_resource to replace an existing file."),
       property: z.string().optional().describe("Material parameter name for set_material_property or set_material_source_property."),
       value: z.any().optional().describe("Material parameter value for set_material_property or set_material_source_property."),
       width: z.number().int().min(64).max(2048).optional().describe("Capture width for preview_model."),
@@ -68,6 +72,10 @@ export function registerAssetTools(server: McpServer, bridge: BridgeClient): voi
       source: z.string().optional().describe("Optional source label for set_orientation_override."),
       notes: z.string().optional().describe("Optional notes for set_orientation_override."),
       includeMaterials: z.boolean().optional().describe("Include model material slots in inspect_model output."),
+      includeInstalled: z.boolean().optional().describe("Include installed cloud/cache packages in cloud_packages."),
+      includeReferenced: z.boolean().optional().describe("Include cloud/cache packages referenced by project assets in cloud_packages."),
+      onlyGameResources: z.boolean().optional().describe("Filter list_types to registered GameResource asset types."),
+      includeHidden: z.boolean().optional().describe("Include hidden asset types in list_types."),
       maxResults: z.number().int().min(1).max(500).optional().describe("Maximum search results.")
     },
     async ({ action, ...payload }) => {

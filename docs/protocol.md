@@ -76,8 +76,15 @@ Errors use the same envelope:
 - `project.input_actions`
 - `project.upsert_input_action`
 - `project.remove_input_action`
+- `reference.search`
+- `reference.type`
+- `reference.console`
+- `reference.whitelist`
 - `asset.search`
 - `asset.get_info`
+- `asset.list_types`
+- `asset.cloud_packages`
+- `asset.create_resource`
 - `asset.inspect_model`
 - `asset.inspect_material`
 - `asset.set_material_source_property`
@@ -97,6 +104,9 @@ Errors use the same envelope:
 - `sound.preview`
 - `sound.preview_status`
 - `sound.stop_preview`
+- `network.connections`
+- `network.inspect_object`
+- `network.set_object_mode`
 - `physics.inspect`
 - `physics.add_physics`
 - `physics.add_collider`
@@ -157,7 +167,9 @@ Vector payloads must be complete. For `Vector3` fields, direct protocol callers 
 
 `project.input_actions` reads `ProjectSettings/Input.config` and returns action names, groups, titles, keyboard codes, and gamepad codes. `project.upsert_input_action` creates or updates one action by `name`; it accepts optional `groupName`, `title`, `keyboardCode`, and `gamepadCode`. `project.remove_input_action` removes an action by `name` and returns before/after verification.
 
-`script.list` lists C# files under the project `Code` directory. `script.read` returns script metadata and UTF-8 content. `script.search` does project-code text search with file/line read-back. `script.analyze` accepts either a script `path` or raw `content` and returns source-level class/base/interface detection, lifecycle method names, attributes, and markers such as `[Sync]`, `[Rpc.*]`, `ISceneStartup`, and `IGameObjectNetworkEvents`.
+`script.list` lists C# files under the project `Code` directory. `script.read` returns script metadata and UTF-8 content. `script.search` does project-code text search with file/line read-back. `script.analyze` accepts either a script `path` or raw `content` and returns source-level class/base/interface detection, lifecycle method names, attributes, and markers such as `[Sync]`, `[Rpc.*]`, `ISceneStartup`, `IScenePhysicsEvents`, `IGameObjectNetworkEvents`, network snapshot/visibility interfaces, and broad domain markers for rendering, UI, assets, world systems, animation, services, media, editor tools, and input.
+
+`reference.search` searches installed s&box XML documentation from loaded editor/runtime assemblies. It accepts `query`, optional `kind` (`all`, `type`, `property`, `method`, `field`, `event`), and `maxResults`; returned entries include XML member name, kind, declaring type, member name, summary, assembly, and source XML file. `reference.type` resolves a loaded C# type by name/full name and returns reflected public properties, methods, fields, enum values, interfaces, and matching XML summaries. When names collide, s&box assemblies are preferred over system assemblies. `reference.console` reads a single editor console variable as string/int/float. `reference.whitelist` reflects the API whitelist metadata when available and returns a bounded sample.
 
 `component.set_property` also accepts `dryRun: true`. In dry-run mode, the bridge resolves the component/property and converts the input value, but does not call `PropertyDescription.SetValue`.
 
@@ -183,6 +195,12 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 `asset.inspect_model` accepts `path` or `modelPath`, plus optional `scale`, `yaw`, and `includeMaterials`. It loads the model resource and returns model/render/physics bounds, material slots, common orientation candidates, candidate ground offsets, footprints, and limitations. Bounds are geometry facts; callers should not treat them as proof of semantic uprightness.
 
 `asset.inspect_material` accepts `path` or `materialPath`. It loads the material and, when a readable `.vmat` source file exists, parses key/value properties, texture slots, color/vector values, and scalar-style params.
+
+`asset.list_types` lists registered editor asset types from `AssetType.All`. It accepts optional `query`, `onlyGameResources`, `includeHidden`, and `maxResults`, and returns file extensions, category, flags, editor availability, and `GameResource` resource type metadata.
+
+`asset.create_resource` creates an empty `GameResource` through `AssetSystem.CreateResource`. It accepts `path`, `assetType` or `type` for the asset extension, and optional `overwrite`, then compiles and returns `asset.get_info`-style read-back.
+
+`asset.cloud_packages` reads installed and project-referenced cloud package cache metadata through `AssetSystem.GetInstalledPackages()` and `AssetSystem.GetReferencedPackages()`. It accepts `includeInstalled`, `includeReferenced`, and `maxResults`.
 
 `asset.set_material_source_property` accepts `path` or `materialPath`, `property`, and `value`. Values can be booleans, numbers, strings, numeric arrays, `{ path }` / `{ resourcePath }`, color objects `{ r, g, b, a }`, or vector objects `{ x, y, z, w }`. It updates or inserts the `.vmat` source property, recompiles the asset, and returns material inspection read-back.
 
@@ -220,6 +238,14 @@ Resource-backed properties use `schema.kind: "resourceReference"` for `Sandbox.R
 `sound.preview` accepts `eventPath`, optional `position`, and optional `fadeIn`. It starts the sound through s&box, stores a bridge-local `previewId`, and returns `SoundHandle` read-back such as validity, playing/stopped state, name, volume, pitch, playback time, amplitude, and position.
 
 `sound.preview_status` accepts optional `previewId` and `includeStopped`. It reports tracked preview handles and their current `SoundHandle` state. `sound.stop_preview` accepts `previewId` or `stopAll:true`, plus optional `fadeOut`, and returns stopped-handle read-back.
+
+## Network Actions
+
+`network.connections` reports `Connection.All`, local connection, host connection, and permission/readiness fields such as `canSpawnObjects`, `canRefreshObjects`, `canDestroyObjects`, `isConnecting`, `isActive`, `ping`, and host identity.
+
+`network.inspect_object` accepts `gameObjectId`, optional `targetSession`, and session selectors. It returns GameObject network mode, owner transfer/orphan policy, flags, always-transmit, network root, owner ids, owner/proxy booleans, and owner connection read-back.
+
+`network.set_object_mode` accepts `gameObjectId`, optional `networkMode`, `ownerTransfer`, `networkOrphaned`, and `alwaysTransmit`. It mutates editor-side network metadata through the same `GameObject.Network` accessor path used by the s&box inspector and returns before/after read-back.
 
 ## Batch Actions
 

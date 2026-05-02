@@ -27,12 +27,15 @@ const steps: SuiteStep[] = [
   },
   { name: "mvp", script: "test/mvp-smoke.ts" },
   { name: "assets-materials", script: "test/asset-material-smoke.ts" },
+  { name: "asset-resources-cloud", script: "test/asset-resource-cloud-smoke.ts" },
   { name: "physics", script: "test/physics-smoke.ts" },
   { name: "sounds", script: "test/sound-smoke.ts" },
   { name: "prefabs", script: "test/prefab-instance-smoke.ts" },
   { name: "matrix-core", script: "test/matrix-core-smoke.ts" },
   { name: "project-files-input", script: "test/project-file-input-smoke.ts" },
   { name: "script-introspection", script: "test/script-introspection-smoke.ts" },
+  { name: "reference", script: "test/reference-smoke.ts" },
+  { name: "network", script: "test/network-smoke.ts" },
   { name: "capability-gaps", script: "test/capability-gap-smoke.ts" }
 ];
 

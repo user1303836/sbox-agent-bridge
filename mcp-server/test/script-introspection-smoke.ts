@@ -58,7 +58,83 @@ interface ScriptAnalyzeResult {
       syncAttributeCount: number;
       rpcAttributeCount: number;
       containsSceneStartup: boolean;
+      containsScenePhysicsEvents: boolean;
       containsGameObjectNetworkEvents: boolean;
+      containsNetworkSnapshot: boolean;
+      containsNetworkVisible: boolean;
+      containsNetworkSpawn: boolean;
+      containsNetworkListener: boolean;
+      domainMarkers: {
+        physics: {
+          scenePhysicsEvents: boolean;
+        };
+        networking: {
+          networkSnapshot: boolean;
+          networkVisible: boolean;
+          networkSpawn: boolean;
+          networkListener: boolean;
+          http: boolean;
+          webSocket: boolean;
+        };
+        rendering: {
+          sceneCamera: boolean;
+          renderTarget: boolean;
+          commandList: boolean;
+          hudPainter: boolean;
+          screenPanel: boolean;
+          shaderGraph: boolean;
+          vr: boolean;
+        };
+        ui: {
+          panel: boolean;
+          virtualGrid: boolean;
+          localization: boolean;
+          razorComponent: boolean;
+        };
+        assets: {
+          gameResource: boolean;
+          assetType: boolean;
+          clothing: boolean;
+          citizen: boolean;
+          firstPersonWeapon: boolean;
+          storage: boolean;
+        };
+        world: {
+          navMesh: boolean;
+          terrain: boolean;
+          clutter: boolean;
+        };
+        animation: {
+          animationGraph: boolean;
+          animationStateMachine: boolean;
+          animationEvent: boolean;
+          ik: boolean;
+        };
+        services: {
+          achievement: boolean;
+          auth: boolean;
+          leaderboard: boolean;
+          stats: boolean;
+          webApi: boolean;
+        };
+        media: {
+          video: boolean;
+        };
+        editor: {
+          widget: boolean;
+          dialog: boolean;
+          menu: boolean;
+          assetPicker: boolean;
+          actionGraph: boolean;
+          movieMaker: boolean;
+          gameMount: boolean;
+        };
+        input: {
+          gamepad: boolean;
+          rawInput: boolean;
+          glyph: boolean;
+        };
+      };
     };
   };
 }
@@ -109,6 +185,63 @@ public sealed class AgentBridgeNetworkProbe : Component, IGameObjectNetworkEvent
 }
 `;
 
+const domainProbeContent = `using Sandbox;
+using Editor;
+
+public sealed class AgentBridgeDomainProbe : Component, ISceneStartup, IScenePhysicsEvents, IGameObjectNetworkEvents, Component.INetworkSnapshot, Component.INetworkVisible
+{
+  [Property] public GameResource Resource { get; set; }
+  [Sync] public int Score { get; set; }
+
+  public void MarkerReferences()
+  {
+    _ = nameof(INetworkSpawn);
+    _ = nameof(INetworkListener);
+    _ = nameof(HttpClient);
+    _ = nameof(WebSocket);
+    _ = nameof(SceneCamera);
+    _ = nameof(RenderTarget);
+    _ = nameof(CommandList);
+    _ = nameof(HudPainter);
+    _ = nameof(ScreenPanel);
+    _ = nameof(ShaderGraph);
+    _ = nameof(VR);
+    _ = nameof(Panel);
+    _ = nameof(VirtualGrid);
+    _ = nameof(Localization);
+    _ = nameof(ComponentBase);
+    _ = nameof(AssetType);
+    _ = nameof(Clothing);
+    _ = nameof(Citizen);
+    _ = nameof(FirstPerson);
+    _ = nameof(Storage);
+    _ = nameof(NavMesh);
+    _ = nameof(Terrain);
+    _ = nameof(Clutter);
+    _ = nameof(AnimationGraph);
+    _ = nameof(AnimationStateMachine);
+    _ = nameof(AnimationEvent);
+    _ = nameof(IK);
+    _ = nameof(Achievement);
+    _ = nameof(Auth);
+    _ = nameof(Leaderboard);
+    _ = nameof(Stats);
+    _ = nameof(WebApi);
+    _ = nameof(Video);
+    _ = nameof(Widget);
+    _ = nameof(Dialog);
+    _ = nameof(Menu);
+    _ = nameof(AssetPicker);
+    _ = nameof(ActionGraph);
+    _ = nameof(MovieMaker);
+    _ = nameof(GameMount);
+    _ = nameof(Gamepad);
+    _ = nameof(RawInput);
+    _ = nameof(Glyph);
+  }
+}
+`;
+
 try {
   const beforeCreateSequence = await latestCompileSequence();
   await bridge.send("script.create", {
@@ -154,6 +287,50 @@ try {
   ensure(networkProbe.verified.analysis.rpcAttributeCount >= 1, "script.analyze did not identify Rpc attributes from content");
   ensure(networkProbe.verified.analysis.containsGameObjectNetworkEvents, "script.analyze did not identify IGameObjectNetworkEvents from content");
 
+  const domainProbe = await bridge.send<ScriptAnalyzeResult>("script.analyze", {
+    content: domainProbeContent
+  });
+  const domain = domainProbe.verified.analysis.domainMarkers;
+  ensure(domainProbe.verified.analysis.containsScenePhysicsEvents, "script.analyze did not identify IScenePhysicsEvents from content");
+  ensure(domainProbe.verified.analysis.containsNetworkSnapshot, "script.analyze did not identify INetworkSnapshot from content");
+  ensure(domainProbe.verified.analysis.containsNetworkVisible, "script.analyze did not identify INetworkVisible from content");
+  ensure(domainProbe.verified.analysis.containsNetworkSpawn, "script.analyze did not identify INetworkSpawn from content");
+  ensure(domainProbe.verified.analysis.containsNetworkListener, "script.analyze did not identify INetworkListener from content");
+  ensure(domain.physics.scenePhysicsEvents, "script.analyze domain markers did not identify scene physics events");
+  ensure(domain.networking.http && domain.networking.webSocket, "script.analyze domain markers did not identify HTTP/WebSocket markers");
+  ensure(
+    domain.rendering.sceneCamera &&
+      domain.rendering.renderTarget &&
+      domain.rendering.commandList &&
+      domain.rendering.hudPainter &&
+      domain.rendering.screenPanel &&
+      domain.rendering.shaderGraph &&
+      domain.rendering.vr,
+    "script.analyze domain markers did not identify render/UI render markers"
+  );
+  ensure(domain.ui.panel && domain.ui.virtualGrid && domain.ui.localization && domain.ui.razorComponent, "script.analyze domain markers did not identify UI markers");
+  ensure(
+    domain.assets.gameResource &&
+      domain.assets.assetType &&
+      domain.assets.clothing &&
+      domain.assets.citizen &&
+      domain.assets.firstPersonWeapon &&
+      domain.assets.storage,
+    "script.analyze domain markers did not identify asset workflow markers"
+  );
+  ensure(domain.world.navMesh && domain.world.terrain && domain.world.clutter, "script.analyze domain markers did not identify world-system markers");
+  ensure(
+    domain.animation.animationGraph && domain.animation.animationStateMachine && domain.animation.animationEvent && domain.animation.ik,
+    "script.analyze domain markers did not identify animation markers"
+  );
+  ensure(domain.services.achievement && domain.services.auth && domain.services.leaderboard && domain.services.stats && domain.services.webApi, "script.analyze domain markers did not identify service markers");
+  ensure(domain.media.video, "script.analyze domain markers did not identify media markers");
+  ensure(
+    domain.editor.widget && domain.editor.dialog && domain.editor.menu && domain.editor.assetPicker && domain.editor.actionGraph && domain.editor.movieMaker && domain.editor.gameMount,
+    "script.analyze domain markers did not identify editor tool markers"
+  );
+  ensure(domain.input.gamepad && domain.input.rawInput && domain.input.glyph, "script.analyze domain markers did not identify input markers");
+
   const beforeDeleteSequence = await latestCompileSequence();
   const deleted = await bridge.send<ScriptMutationResult>("script.delete", {
     path: scriptPath
@@ -180,7 +357,8 @@ try {
         },
         search: search.verified.results,
         analysis: analyzed.verified.analysis,
-        networkProbe: networkProbe.verified.analysis
+        networkProbe: networkProbe.verified.analysis,
+        domainProbe: domainProbe.verified.analysis
       },
       null,
       2

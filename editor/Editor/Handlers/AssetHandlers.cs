@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -47,6 +48,112 @@ internal static class AssetHandlers
 		{
 			message = "Asset info read",
 			verified = DescribeAssetDetails( asset )
+		} );
+	}
+
+	public static BridgeResponse ListTypes( BridgeRequest request )
+	{
+		var query = HandlerUtil.GetString( request.Payload, "query" );
+		var onlyGameResources = HandlerUtil.GetBool( request.Payload, "onlyGameResources", false );
+		var includeHidden = HandlerUtil.GetBool( request.Payload, "includeHidden", true );
+		var maxResults = ClampInt( HandlerUtil.GetInt( request.Payload, "maxResults", 200 ), 1, 500 );
+
+		var allTypes = AssetType.All
+			.Where( type => includeHidden || !type.HiddenByDefault )
+			.Where( type => !onlyGameResources || type.IsGameResource )
+			.Where( type => string.IsNullOrWhiteSpace( query ) || MatchesAssetTypeQuery( type, query ) )
+			.ToArray();
+
+		var results = allTypes
+			.OrderBy( type => type.Category ?? "" )
+			.ThenBy( type => type.FriendlyName ?? "" )
+			.Take( maxResults )
+			.Select( DescribeAssetType )
+			.ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Asset types listed",
+			verified = new
+			{
+				query,
+				onlyGameResources,
+				includeHidden,
+				count = results.Length,
+				totalMatched = allTypes.Length,
+				gameResourceCount = allTypes.Count( type => type.IsGameResource ),
+				results
+			}
+		} );
+	}
+
+	public static BridgeResponse CloudPackages( BridgeRequest request )
+	{
+		var includeInstalled = HandlerUtil.GetBool( request.Payload, "includeInstalled", true );
+		var includeReferenced = HandlerUtil.GetBool( request.Payload, "includeReferenced", true );
+		var maxResults = ClampInt( HandlerUtil.GetInt( request.Payload, "maxResults", 100 ), 1, 500 );
+
+		var installed = includeInstalled
+			? SafePackageArray( () => AssetSystem.GetInstalledPackages() )
+			: Array.Empty<Package>();
+
+		var referenced = includeReferenced
+			? SafePackageArray( () => AssetSystem.GetReferencedPackages() )
+			: Array.Empty<Package>();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Cloud packages inspected",
+			verified = new
+			{
+				includeInstalled,
+				includeReferenced,
+				installedCount = installed.Length,
+				referencedCount = referenced.Length,
+				installed = installed.Take( maxResults ).Select( DescribePackage ).ToArray(),
+				referenced = referenced.Take( maxResults ).Select( DescribePackage ).ToArray(),
+				truncated = installed.Length > maxResults || referenced.Length > maxResults
+			}
+		} );
+	}
+
+	public static BridgeResponse CreateResource( BridgeRequest request )
+	{
+		var requestedType = HandlerUtil.GetString( request.Payload, "assetType" );
+		if ( string.IsNullOrWhiteSpace( requestedType ) )
+			requestedType = HandlerUtil.GetRequiredString( request.Payload, "type" );
+
+		var assetType = NormalizeAssetTypeExtension( requestedType );
+		var relativePath = NormalizeAssetPath( HandlerUtil.GetRequiredString( request.Payload, "path" ) );
+		var overwrite = HandlerUtil.GetBool( request.Payload, "overwrite", false );
+		var absolutePath = ResolveAssetPath( EnsureExtension( relativePath, "." + assetType ) );
+
+		if ( File.Exists( absolutePath ) )
+		{
+			if ( !overwrite )
+				throw new InvalidOperationException( $"Resource '{relativePath}' already exists. Pass overwrite:true to replace it." );
+
+			File.Delete( absolutePath );
+		}
+
+		Directory.CreateDirectory( Path.GetDirectoryName( absolutePath ) ?? Project.Current.GetAssetsPath() );
+
+		var asset = AssetSystem.CreateResource( assetType, absolutePath );
+		if ( asset is null )
+			throw new InvalidOperationException( $"AssetSystem.CreateResource('{assetType}', '{absolutePath}') returned null." );
+
+		asset.Compile( true );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "GameResource asset created",
+			verified = new
+			{
+				requestedType,
+				assetType,
+				path = NormalizeAssetPath( EnsureExtension( relativePath, "." + assetType ) ),
+				asset = DescribeAssetDetails( asset )
+			}
 		} );
 	}
 
@@ -900,6 +1007,15 @@ internal static class AssetHandlers
 			string.Equals( assetType?.ResourceType?.Name ?? "", type, StringComparison.OrdinalIgnoreCase );
 	}
 
+	private static bool MatchesAssetTypeQuery( AssetType assetType, string query )
+	{
+		return (assetType.FriendlyName ?? "").Contains( query, StringComparison.OrdinalIgnoreCase ) ||
+			(assetType.FileExtension ?? "").Contains( query.TrimStart( '.' ), StringComparison.OrdinalIgnoreCase ) ||
+			(assetType.Category ?? "").Contains( query, StringComparison.OrdinalIgnoreCase ) ||
+			(assetType.ResourceType?.Name ?? "").Contains( query, StringComparison.OrdinalIgnoreCase ) ||
+			(assetType.ResourceType?.FullName ?? "").Contains( query, StringComparison.OrdinalIgnoreCase );
+	}
+
 	private static Asset RequireAsset( string path )
 	{
 		var asset = AssetSystem.FindByPath( path );
@@ -941,6 +1057,66 @@ internal static class AssetHandlers
 			compiledFile = SafePath( () => asset.GetCompiledFile( false ) ),
 			hasUnsavedChanges = asset.HasUnsavedChanges,
 			tags = asset.Tags.GetAll()
+		};
+	}
+
+	private static object DescribeAssetType( AssetType assetType )
+	{
+		return new
+		{
+			friendlyName = assetType.FriendlyName,
+			fileExtension = assetType.FileExtension,
+			fileExtensions = ReadStringEnumerableProperty( assetType, "FileExtensions" ),
+			category = assetType.Category ?? "",
+			hiddenByDefault = assetType.HiddenByDefault,
+			isSimpleAsset = assetType.IsSimpleAsset,
+			hasDependencies = assetType.HasDependencies,
+			prefersIconThumbnail = assetType.PrefersIconThumbnail,
+			isGameResource = assetType.IsGameResource,
+			resourceType = assetType.ResourceType?.FullName ?? "",
+			flags = assetType.Flags.ToString(),
+			hasEditor = assetType.HasEditor
+		};
+	}
+
+	private static object DescribePackage( Package package )
+	{
+		var references = ReadStringEnumerableProperty( package, "PackageReferences" );
+		var editorReferences = ReadStringEnumerableProperty( package, "EditorReferences" );
+
+		return new
+		{
+			fullIdent = ReadStringProperty( package, "FullIdent" ),
+			ident = ReadStringProperty( package, "Ident" ),
+			org = DescribePackageOrganization( ReadObjectProperty( package, "Org" ) ),
+			title = ReadStringProperty( package, "Title" ),
+			summary = ReadStringProperty( package, "Summary" ),
+			typeName = ReadStringProperty( package, "TypeName" ),
+			packageType = ReadStringProperty( package, "PackageType" ),
+			isRemote = ReadBoolProperty( package, "IsRemote" ),
+			isPublic = ReadBoolProperty( package, "Public" ),
+			archived = ReadBoolProperty( package, "Archived" ),
+			canEdit = ReadBoolProperty( package, "CanEdit" ),
+			fileSize = ReadStringProperty( package, "FileSize" ),
+			url = ReadStringProperty( package, "Url" ),
+			updated = ReadStringProperty( package, "Updated" ),
+			created = ReadStringProperty( package, "Created" ),
+			packageReferenceCount = references.Length,
+			packageReferences = references.Take( 20 ).ToArray(),
+			editorReferenceCount = editorReferences.Length,
+			editorReferences = editorReferences.Take( 20 ).ToArray()
+		};
+	}
+
+	private static object? DescribePackageOrganization( object? org )
+	{
+		if ( org is null )
+			return null;
+
+		return new
+		{
+			ident = ReadStringProperty( org, "Ident" ),
+			title = ReadStringProperty( org, "Title" )
 		};
 	}
 
@@ -1048,6 +1224,82 @@ internal static class AssetHandlers
 		{
 			return "";
 		}
+	}
+
+	private static Package[] SafePackageArray( Func<IEnumerable<Package>> getter )
+	{
+		try
+		{
+			return getter()?.Where( package => package is not null ).ToArray() ?? Array.Empty<Package>();
+		}
+		catch
+		{
+			return Array.Empty<Package>();
+		}
+	}
+
+	private static string NormalizeAssetTypeExtension( string assetType )
+	{
+		assetType = (assetType ?? "").Trim().TrimStart( '.' );
+
+		if ( string.IsNullOrWhiteSpace( assetType ) )
+			throw new InvalidOperationException( "Asset type extension cannot be empty." );
+
+		if ( assetType.Contains( '/' ) || assetType.Contains( '\\' ) || assetType.Contains( "..", StringComparison.Ordinal ) )
+			throw new InvalidOperationException( "Asset type extension cannot contain path separators or '..'." );
+
+		return assetType;
+	}
+
+	private static object? ReadObjectProperty( object instance, string name )
+	{
+		try
+		{
+			return instance.GetType().GetProperty( name )?.GetValue( instance );
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	private static string ReadStringProperty( object instance, string name )
+	{
+		var value = ReadObjectProperty( instance, name );
+		return value?.ToString() ?? "";
+	}
+
+	private static bool? ReadBoolProperty( object instance, string name )
+	{
+		var value = ReadObjectProperty( instance, name );
+		return value switch
+		{
+			bool boolValue => boolValue,
+			null => null,
+			_ when bool.TryParse( value.ToString(), out var parsed ) => parsed,
+			_ => null
+		};
+	}
+
+	private static string[] ReadStringEnumerableProperty( object instance, string name )
+	{
+		var value = ReadObjectProperty( instance, name );
+		if ( value is null )
+			return Array.Empty<string>();
+
+		if ( value is string stringValue )
+			return new[] { stringValue };
+
+		if ( value is IEnumerable enumerable )
+		{
+			return enumerable
+				.Cast<object?>()
+				.Select( item => item?.ToString() ?? "" )
+				.Where( item => !string.IsNullOrWhiteSpace( item ) )
+				.ToArray();
+		}
+
+		return new[] { value.ToString() ?? "" };
 	}
 
 	private static string NormalizeAssetPath( string path )

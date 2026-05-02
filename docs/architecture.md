@@ -27,7 +27,7 @@ The editor bridge lives in an s&box library under `editor/`. It is editor-only c
 - a dock widget so the developer can see bridge status and manually start/stop IPC;
 - an editor-frame pump that auto-starts the runtime and processes queued commands once the editor assembly loads;
 - a dispatcher that maps command names to handlers;
-- small handler classes for editor, scene, GameObject, component, asset, visual, sound, physics, prefab, and script operations;
+- small handler classes for editor, scene, GameObject, component, asset, visual, sound, network, physics, prefab, reference/API lookup, project files/input, runtime hooks, and script operations;
 - a feedback state helper for compile-event snapshots and recent editor logs.
 
 The bridge should keep mutation behavior conservative:

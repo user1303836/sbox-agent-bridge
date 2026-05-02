@@ -1182,6 +1182,11 @@ internal static class HandlerUtil
 		return fallback;
 	}
 
+	public static bool HasProperty( JsonElement payload, string name )
+	{
+		return payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty( name, out _ );
+	}
+
 	public static int GetInt( JsonElement payload, string name, int fallback )
 	{
 		if ( payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty( name, out var value ) && value.TryGetInt32( out var result ) )

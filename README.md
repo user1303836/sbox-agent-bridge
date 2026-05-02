@@ -140,16 +140,18 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 | **GameObjects** | create, rename, transform, enable/disable, duplicate, reparent, frame, destroy with undo/redo read-back |
 | **Components** | list, inspect schemas, add/remove, enable/disable, dry-run validate, set properties |
 | **Project files/input** | list/read/write/delete project-scoped files, inspect/edit input actions |
-| **Assets/materials** | search assets, inspect models/materials, create/edit `.vmat`, assign models/materials, preview models |
+| **Reference/API lookup** | search installed s&box XML docs, inspect loaded C# types, read console variables, inspect whitelist metadata |
+| **Assets/materials** | search assets, inspect models/materials, list asset types, create generic `GameResource` assets, inspect cloud package cache metadata, create/edit `.vmat`, assign models/materials, preview models |
 | **Prefabs** | create, list, inspect, instantiate with GUID remapping, inspect instance patch metadata |
 | **Physics** | add/read rigidbodies, colliders, joints; run raycasts |
 | **Sound** | create `.sound` events, assign/read `SoundPointComponent`, preview/status/stop playback |
+| **Networking** | inspect local/host connection permissions, read and mutate GameObject network metadata, analyze `[Sync]`/`[Rpc.*]` source |
 | **Visual feedback** | capture camera PNGs with luminance stats; preview isolated model/material combinations |
 | **Play/debug loop** | start/stop play mode, wait for runtime, read compile status/logs, run deterministic runtime test hooks |
 | **Scripts** | create/edit/delete/list/read/search/analyze C# files and wait for compile recovery |
 | **Smoke tests** | run focused live-editor smokes and a clean-room boxing gameplay walkthrough |
 
-The current MCP tools are: `editor`, `scene`, `gameobject`, `component`, `script`, `project`, `asset`, `visual`, `sound`, `physics`, `prefab`, and `runtime`.
+The current MCP tools are: `editor`, `scene`, `gameobject`, `component`, `script`, `project`, `reference`, `asset`, `visual`, `sound`, `network`, `physics`, `prefab`, and `runtime`.
 
 For exact action payloads, see [docs/protocol.md](docs/protocol.md). For the verified capability matrix, see [docs/capability-matrix.md](docs/capability-matrix.md).
 
@@ -179,7 +181,7 @@ npm run ci                # typecheck, unit tests, build
 npm run smoke:mvp-suite   # preferred external-tester live gate
 ```
 
-The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, project file/input helpers, script introspection and compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
+The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, asset type/resource/cloud reads, physics/sound/network/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, project file/input/reference helpers, script introspection and compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
 
 Other focused smokes:
 
@@ -187,11 +189,14 @@ Other focused smokes:
 npm run smoke:bootstrap
 npm run smoke:matrix-core
 npm run smoke:project
+npm run smoke:reference
 npm run smoke:scripts
 npm run smoke:assets
+npm run smoke:asset-resources
 npm run smoke:physics
 npm run smoke:prefabs
 npm run smoke:sounds
+npm run smoke:network
 npm run smoke:capability-gaps
 npm run smoke:runtime
 npm run walkthrough:boxing

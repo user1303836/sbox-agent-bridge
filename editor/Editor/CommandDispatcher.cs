@@ -42,8 +42,15 @@ internal static class CommandDispatcher
 			"project.input_actions" => ProjectHandlers.InputActions( request ),
 			"project.upsert_input_action" => ProjectHandlers.UpsertInputAction( request ),
 			"project.remove_input_action" => ProjectHandlers.RemoveInputAction( request ),
+			"reference.search" => ReferenceHandlers.Search( request ),
+			"reference.type" => ReferenceHandlers.Type( request ),
+			"reference.console" => ReferenceHandlers.Console( request ),
+			"reference.whitelist" => ReferenceHandlers.Whitelist( request ),
 			"asset.search" => AssetHandlers.Search( request ),
 			"asset.get_info" => AssetHandlers.GetInfo( request ),
+			"asset.list_types" => AssetHandlers.ListTypes( request ),
+			"asset.cloud_packages" => AssetHandlers.CloudPackages( request ),
+			"asset.create_resource" => AssetHandlers.CreateResource( request ),
 			"asset.inspect_model" => AssetHandlers.InspectModel( request ),
 			"asset.inspect_material" => AssetHandlers.InspectMaterial( request ),
 			"asset.set_material_source_property" => AssetHandlers.SetMaterialSourceProperty( request ),
@@ -63,6 +70,9 @@ internal static class CommandDispatcher
 			"sound.preview" => SoundHandlers.Preview( request ),
 			"sound.preview_status" => SoundHandlers.PreviewStatus( request ),
 			"sound.stop_preview" => SoundHandlers.StopPreview( request ),
+			"network.connections" => NetworkHandlers.Connections( request ),
+			"network.inspect_object" => NetworkHandlers.InspectObject( request ),
+			"network.set_object_mode" => NetworkHandlers.SetObjectMode( request ),
 			"physics.inspect" => PhysicsHandlers.Inspect( request ),
 			"physics.add_physics" => PhysicsHandlers.AddPhysics( request ),
 			"physics.add_collider" => PhysicsHandlers.AddCollider( request ),
@@ -103,7 +113,7 @@ internal static class CommandDispatcher
 			_ => BridgeResponse.Fail(
 				request.Id,
 				$"Unknown bridge action '{request.Action}'",
-				"Use one of: bridge.status, bridge.doctor, editor.context, editor.project_info, editor.tabs, editor.activate_tab, editor.new_scene, editor.open_scene, editor.recover_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.save_scene_as, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, script.list, script.read, script.search, script.analyze, project.list_files, project.read_file, project.write_file, project.delete_file, project.input_actions, project.upsert_input_action, project.remove_input_action, asset.search, asset.get_info, asset.inspect_model, asset.inspect_material, asset.set_material_source_property, asset.preview_model, asset.get_orientation_override, asset.set_orientation_override, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, visual.capture_camera, sound.list, sound.get_info, sound.inspect, sound.create_event, sound.assign, sound.preview, sound.preview_status, sound.stop_preview, physics.inspect, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, runtime.list_test_actions, runtime.run_test_action, prefab.create, prefab.list, prefab.get_info, prefab.inspect_instance, prefab.instantiate, scene.summary, scene.hierarchy, scene.metadata, scene.find, scene.find_in_radius, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, gameobject.place_asset, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
+				"Use one of: bridge.status, bridge.doctor, editor.context, editor.project_info, editor.tabs, editor.activate_tab, editor.new_scene, editor.open_scene, editor.recover_scene, editor.get_selection, editor.set_selection, editor.save_scene, editor.save_scene_as, editor.undo, editor.redo, editor.frame_object, editor.play_state, editor.play, editor.stop, editor.logs, editor.compile_status, editor.feedback, script.create, script.edit, script.delete, script.list, script.read, script.search, script.analyze, project.list_files, project.read_file, project.write_file, project.delete_file, project.input_actions, project.upsert_input_action, project.remove_input_action, reference.search, reference.type, reference.console, reference.whitelist, asset.search, asset.get_info, asset.list_types, asset.cloud_packages, asset.create_resource, asset.inspect_model, asset.inspect_material, asset.set_material_source_property, asset.preview_model, asset.get_orientation_override, asset.set_orientation_override, asset.assign_model, asset.assign_material, asset.create_material, asset.set_material_property, visual.capture_camera, sound.list, sound.get_info, sound.inspect, sound.create_event, sound.assign, sound.preview, sound.preview_status, sound.stop_preview, network.connections, network.inspect_object, network.set_object_mode, physics.inspect, physics.add_physics, physics.add_collider, physics.add_joint, physics.raycast, runtime.list_test_actions, runtime.run_test_action, prefab.create, prefab.list, prefab.get_info, prefab.inspect_instance, prefab.instantiate, scene.summary, scene.hierarchy, scene.metadata, scene.find, scene.find_in_radius, scene.details, scene.batch, gameobject.get, gameobject.create, gameobject.rename, gameobject.set_transform, gameobject.set_enabled, gameobject.destroy, gameobject.duplicate, gameobject.reparent, gameobject.place_asset, component.list_types, component.list_on_gameobject, component.get, component.get_properties, component.add, component.remove, component.set_enabled, component.set_property, component.validate_property."
 			)
 		};
 	}

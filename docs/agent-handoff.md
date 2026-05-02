@@ -1,6 +1,6 @@
 # Fresh Agent Handoff
 
-Last updated: 2026-05-01
+Last updated: 2026-05-02
 
 This file is the continuity note for a fresh agent taking over work on `sbox-agent-bridge`. It summarizes the project intent, local setup, what has been built, what was learned, and the best next steps.
 
@@ -84,7 +84,7 @@ As of 2026-05-01, direct local checks verified:
 - `editor.project_info`, `editor.new_scene`, and `editor.save_scene_as` are live-verified through `mcp-server/test/bootstrap-smoke.ts`. The smoke creates a blank scene, creates a marker object, saves to `scenes/agent_bridge/smoke/bootstrap_smoke.scene`, reloads it, verifies persisted marker read-back, and restores the original sourced scene.
 - `scripts/create-minimal-sbox-project.ps1` creates a fresh Minimal Game project from the local s&box template. It was run locally to create `C:\Users\hidd3n\Documents\s&box projects\agent_bridge_mvp_fresh`, and `scripts/install-editor-bridge.ps1` installed the bridge into that fresh project.
 - `scripts/start-sbox-project.ps1` launches a selected `.sbproj` using the verified s&box command-line shape: `sbox-dev.exe sbox-launcher.dll sbox-dev.dll -project ...`. It supports an isolated `SBOX_AGENT_BRIDGE_IPC` root and was live-verified by launching `local.agent_bridge_mvp_fresh` beside the existing test editor.
-- `mcp-server/test/mvp-suite.ts` is live-verified. It creates `scenes/agent_bridge/smoke/mvp_suite.scene`, then runs the focused MVP, asset/material, physics, sound, prefab, and capability-gap smokes against that suite-created scene. It passed against the generated fresh Minimal Game project through the isolated IPC root.
+- `mcp-server/test/mvp-suite.ts` is live-verified. It creates `scenes/agent_bridge/smoke/mvp_suite.scene`, then runs the focused MVP, asset/material, asset-resource/cloud, physics, sound, prefab, matrix-core, project-file/input, script-introspection, reference, network, and capability-gap smokes against that suite-created scene. It passed against the generated fresh Minimal Game project through the isolated IPC root.
 - `mcp-server/test/mvp-smoke.ts` is live-verified and is the preferred external-tester smoke.
 - `asset.inspect_model` works on `models/agent_bridge/arpg_props/cursed_obelisk.vmdl`.
 - `asset.inspect_material`, `asset.set_material_source_property`, and `asset.preview_model` are live-verified through `mcp-server/test/asset-material-smoke.ts`. The preview path should target `runtime` after `editor.play`/`editor.wait_runtime`; stopped editor preview captures can render black on the current s&box build.
@@ -93,6 +93,8 @@ As of 2026-05-01, direct local checks verified:
 - `sound.inspect` is live-verified through `mcp-server/test/sound-smoke.ts`, along with sound event creation/info, SoundPointComponent assignment read-back, and a valid playing preview handle.
 - `visual.capture_camera` captures the active main camera to PNG and returns luminance stats.
 - `mcp-server/test/capability-gap-smoke.ts` is live-verified. It creates/edits/deletes `AgentBridgeScratch/CapabilityGapSmokeFixture.cs` with new compile sequence waits, verifies controlled compile-error diagnostics and recovery, verifies `SkinnedModelRenderer` and `CitizenAnimationHelper` setup against `models/citizen/citizen.vmdl`, and verifies basic particle stack property mutation.
+- `mcp-server/test/asset-resource-cloud-smoke.ts` is live-verified. It verifies registered GameResource asset type discovery, generic `.sound` resource creation through `AssetSystem.CreateResource`, `asset.get_info` read-back, and installed/referenced cloud package-cache metadata.
+- `mcp-server/test/script-introspection-smoke.ts` now verifies domain source markers for physics, networking, rendering, UI, assets, world systems, animation, services, media, editor tooling, and input in addition to lifecycle/attribute/interface analysis.
 - Spatial placement v1 works: `asset.set_orientation_override` and `asset.get_orientation_override` store/read `Assets/agent_bridge/orientation_overrides.json`, and `gameobject.place_asset` placed a cursed obelisk with a stored `pitch: 90` override, saved `scenes/minimal.scene`, force-reloaded it, and read back the persisted `ModelRenderer`.
 - TypeScript check/build pass. If npm shim issues recur on Windows, direct invocation through the installed Node runtime is a reliable fallback.
 - MCP bridge-client and wait-helper tests pass.

@@ -56,7 +56,7 @@ Acceptance criteria:
 - A tester can launch that project with an isolated bridge IPC root when another editor is already open.
 - The MVP smoke covers the main safe workflow without relying on ARPG-specific runtime components.
 - A bootstrap smoke can create, save, reload, and verify a new scene inside an opened or launched project.
-- A suite-level smoke can run bootstrap plus focused asset/material, sound, physics, prefab, script/compile, animation, and particle checks against a suite-created scene.
+- A suite-level smoke can run bootstrap plus focused asset/material, asset-resource/cloud, sound, physics, prefab, script/compile, reference, network, animation, particle, and matrix-gap checks against a suite-created scene.
 - A clean-room gameplay walkthrough can build and verify a second genre without relying on the ARPG controller.
 - Docs point testers to one quickstart instead of several overlapping engineering notes.
 
@@ -143,6 +143,9 @@ Candidate actions:
 
 - `asset.search` - verified
 - `asset.get_info` - verified
+- `asset.list_types` - verified
+- `asset.cloud_packages` - verified for installed/referenced package-cache reads
+- `asset.create_resource` - verified for generic `.sound` GameResource creation/read-back
 - `asset.get_orientation_override` - verified
 - `asset.set_orientation_override` - verified
 - `asset.assign_model` - verified

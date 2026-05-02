@@ -279,9 +279,117 @@ internal static class ScriptHandlers
 			propertyAttributeCount = CountAttribute( attributes, "Property" ),
 			syncAttributeCount = CountAttribute( attributes, "Sync" ),
 			rpcAttributeCount = attributes.Count( x => x.StartsWith( "Rpc", StringComparison.OrdinalIgnoreCase ) ),
-			containsSceneStartup = content.Contains( "ISceneStartup", StringComparison.Ordinal ),
-			containsGameObjectNetworkEvents = content.Contains( "IGameObjectNetworkEvents", StringComparison.Ordinal )
+			containsSceneStartup = ContainsIdentifier( content, "ISceneStartup" ),
+			containsScenePhysicsEvents = ContainsIdentifier( content, "IScenePhysicsEvents" ),
+			containsGameObjectNetworkEvents = ContainsIdentifier( content, "IGameObjectNetworkEvents" ),
+			containsNetworkSnapshot = ContainsIdentifier( content, "INetworkSnapshot" ),
+			containsNetworkVisible = ContainsIdentifier( content, "INetworkVisible" ),
+			containsNetworkSpawn = ContainsIdentifier( content, "INetworkSpawn" ),
+			containsNetworkListener = ContainsIdentifier( content, "INetworkListener" ),
+			domainMarkers = AnalyzeDomainMarkers( content )
 		};
+	}
+
+	private static object AnalyzeDomainMarkers( string content )
+	{
+		return new
+		{
+			physics = new
+			{
+				scenePhysicsEvents = ContainsIdentifier( content, "IScenePhysicsEvents" ),
+				physicsBody = ContainsIdentifier( content, "Rigidbody" ) || ContainsIdentifier( content, "PhysicsBody" ),
+				colliders = ContainsIdentifier( content, "BoxCollider" ) || ContainsIdentifier( content, "SphereCollider" ) || ContainsIdentifier( content, "CapsuleCollider" ) || ContainsIdentifier( content, "Collider" )
+			},
+			networking = new
+			{
+				syncProperties = ContainsIdentifier( content, "Sync" ),
+				rpc = ContainsIdentifier( content, "Rpc" ),
+				gameObjectNetworkEvents = ContainsIdentifier( content, "IGameObjectNetworkEvents" ),
+				networkSnapshot = ContainsIdentifier( content, "INetworkSnapshot" ),
+				networkVisible = ContainsIdentifier( content, "INetworkVisible" ),
+				networkSpawn = ContainsIdentifier( content, "INetworkSpawn" ),
+				networkListener = ContainsIdentifier( content, "INetworkListener" ),
+				http = ContainsIdentifier( content, "Http" ) || ContainsIdentifier( content, "HttpClient" ),
+				webSocket = ContainsIdentifier( content, "WebSocket" )
+			},
+			rendering = new
+			{
+				sceneCamera = ContainsIdentifier( content, "SceneCamera" ),
+				renderTarget = ContainsIdentifier( content, "RenderTarget" ),
+				commandList = ContainsIdentifier( content, "CommandList" ),
+				hudPainter = ContainsIdentifier( content, "HudPainter" ),
+				screenPanel = ContainsIdentifier( content, "ScreenPanel" ),
+				shaderGraph = ContainsIdentifier( content, "ShaderGraph" ),
+				vr = ContainsIdentifier( content, "VR" )
+			},
+			ui = new
+			{
+				panel = ContainsIdentifier( content, "Panel" ),
+				screenPanel = ContainsIdentifier( content, "ScreenPanel" ),
+				virtualGrid = ContainsIdentifier( content, "VirtualGrid" ),
+				localization = ContainsIdentifier( content, "Localization" ) || ContainsIdentifier( content, "Localize" ),
+				razorComponent = ContainsIdentifier( content, "ComponentBase" ) || ContainsIdentifier( content, "RazorComponent" )
+			},
+			assets = new
+			{
+				gameResource = ContainsIdentifier( content, "GameResource" ),
+				assetType = ContainsIdentifier( content, "AssetType" ),
+				clothing = ContainsIdentifier( content, "Clothing" ),
+				citizen = ContainsIdentifier( content, "Citizen" ),
+				firstPersonWeapon = ContainsIdentifier( content, "FirstPerson" ) || ContainsIdentifier( content, "ViewModel" ),
+				storage = ContainsIdentifier( content, "Storage" ) || ContainsIdentifier( content, "UGC" )
+			},
+			world = new
+			{
+				navMesh = ContainsIdentifier( content, "NavMesh" ) || ContainsIdentifier( content, "NavMeshAgent" ),
+				terrain = ContainsIdentifier( content, "Terrain" ),
+				clutter = ContainsIdentifier( content, "Clutter" )
+			},
+			animation = new
+			{
+				animationGraph = ContainsIdentifier( content, "AnimationGraph" ),
+				animationStateMachine = ContainsIdentifier( content, "AnimationStateMachine" ),
+				animationEvent = ContainsIdentifier( content, "AnimationEvent" ),
+				ik = ContainsIdentifier( content, "IK" )
+			},
+			services = new
+			{
+				achievement = ContainsIdentifier( content, "Achievement" ),
+				auth = ContainsIdentifier( content, "Auth" ),
+				leaderboard = ContainsIdentifier( content, "Leaderboard" ),
+				stats = ContainsIdentifier( content, "Stats" ),
+				webApi = ContainsIdentifier( content, "WebApi" ) || ContainsIdentifier( content, "WebAPI" )
+			},
+			media = new
+			{
+				video = ContainsIdentifier( content, "Video" ) || ContainsIdentifier( content, "Media" )
+			},
+			editor = new
+			{
+				widget = ContainsIdentifier( content, "Widget" ),
+				dialog = ContainsIdentifier( content, "Dialog" ),
+				menu = ContainsIdentifier( content, "Menu" ),
+				assetPicker = ContainsIdentifier( content, "AssetPicker" ),
+				customEditor = ContainsIdentifier( content, "ControlWidget" ) || ContainsIdentifier( content, "Property" ),
+				actionGraph = ContainsIdentifier( content, "ActionGraph" ),
+				movieMaker = ContainsIdentifier( content, "MovieMaker" ),
+				gameMount = ContainsIdentifier( content, "GameMount" )
+			},
+			input = new
+			{
+				gamepad = ContainsIdentifier( content, "Gamepad" ) || ContainsIdentifier( content, "Controller" ),
+				rawInput = ContainsIdentifier( content, "RawInput" ),
+				glyph = ContainsIdentifier( content, "Glyph" )
+			}
+		};
+	}
+
+	private static bool ContainsIdentifier( string content, string identifier )
+	{
+		if ( string.IsNullOrWhiteSpace( identifier ) )
+			return false;
+
+		return Regex.IsMatch( content, @"(?<![\w])" + Regex.Escape( identifier ) + @"(?![\w])", RegexOptions.CultureInvariant );
 	}
 
 	private static int CountAttribute( string[] attributes, string name )
