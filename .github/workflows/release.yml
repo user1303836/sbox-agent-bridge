@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    name: Build release bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mcp-server
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: mcp-server
+        run: npm run check
+
+      - name: Test
+        working-directory: mcp-server
+        run: npm test
+
+      - name: Build MCP server
+        working-directory: mcp-server
+        run: npm run build
+
+      - name: Assemble release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          BUNDLE="sbox-agent-bridge-${VERSION}"
+          mkdir -p "dist-release/${BUNDLE}"
+          cp -R README.md LICENSE CONTRIBUTING.md assets docs editor mcp-server schemas scripts "dist-release/${BUNDLE}/"
+          rm -rf "dist-release/${BUNDLE}/mcp-server/node_modules"
+          rm -rf "dist-release/${BUNDLE}/mcp-server/.turbo"
+          cd dist-release
+          zip -r "${BUNDLE}.zip" "${BUNDLE}"
+          tar -czf "${BUNDLE}.tar.gz" "${BUNDLE}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist-release/sbox-agent-bridge-${GITHUB_REF_NAME}.zip" \
+            "dist-release/sbox-agent-bridge-${GITHUB_REF_NAME}.tar.gz" \
+            --repo "$GITHUB_REPOSITORY" \
+            --generate-notes \
+            --title "sbox-agent-bridge ${GITHUB_REF_NAME}"
