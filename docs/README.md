@@ -17,4 +17,3 @@ For implementers and agents:
 Historical/context notes:
 
 - [ARPG POC First Pass](poc-arpg-first-pass.md)
-- [Prior Art](prior-art.md)
