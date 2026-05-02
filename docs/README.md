@@ -13,7 +13,3 @@ For implementers and agents:
 - [Roadmap](roadmap.md): planned capability work and open gaps.
 - [Architecture](architecture.md): bridge/MCP design.
 - [Verified s&box APIs](verified-sbox-apis.md): local API facts used by the bridge.
-
-Historical/context notes:
-
-- [ARPG POC First Pass](poc-arpg-first-pass.md)
