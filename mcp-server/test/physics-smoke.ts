@@ -28,6 +28,12 @@ interface PhysicsInspectResult {
     }>;
     joints: Array<{
       enableCollision: boolean;
+      body: {
+        id: string;
+      } | null;
+      target: {
+        id: string;
+      } | null;
     }>;
   };
 }
@@ -119,6 +125,10 @@ try {
   ensure(inspected.verified.colliders[0]?.isTrigger === false, "Collider trigger read-back was not false");
   ensure(inspected.verified.joints.length === 1, "physics.inspect did not report one joint");
   ensure(inspected.verified.joints[0]?.enableCollision === true, "Joint enableCollision read-back was not true");
+  ensure(
+    inspected.verified.joints[0]?.body?.id === anchorId || inspected.verified.joints[0]?.target?.id === anchorId,
+    "Joint target/body read-back did not reference the anchor GameObject"
+  );
 
   const raycast = await bridge.send<RaycastResult>("physics.raycast", {
     from: { x: 384, y: -384, z: 128 },

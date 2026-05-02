@@ -14,6 +14,7 @@
     "smoke:bootstrap": "tsx test/bootstrap-smoke.ts",
     "smoke:capability-gaps": "tsx test/capability-gap-smoke.ts",
     "smoke:live": "tsx test/live-smoke.ts",
+    "smoke:matrix-core": "tsx test/matrix-core-smoke.ts",
     "smoke:mvp": "tsx test/mvp-smoke.ts",
     "smoke:mvp-suite": "tsx test/mvp-suite.ts",
     "smoke:physics": "tsx test/physics-smoke.ts",

@@ -42,6 +42,10 @@ export function registerComponentTools(server: McpServer, bridge: BridgeClient):
       dryRun: z.boolean().optional().describe("Validate and convert set_property input without mutating the component."),
       query: z.string().optional().describe("Case-insensitive filter for component types or properties."),
       includeAbstract: z.boolean().optional().describe("Include abstract component types in list_types."),
+      includeRuntimeAssemblies: z
+        .boolean()
+        .optional()
+        .describe("For list_types, include Component classes found by scanning loaded runtime assemblies in addition to TypeLibrary enumeration."),
       includeAll: z
         .boolean()
         .optional()

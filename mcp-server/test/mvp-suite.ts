@@ -30,6 +30,7 @@ const steps: SuiteStep[] = [
   { name: "physics", script: "test/physics-smoke.ts" },
   { name: "sounds", script: "test/sound-smoke.ts" },
   { name: "prefabs", script: "test/prefab-instance-smoke.ts" },
+  { name: "matrix-core", script: "test/matrix-core-smoke.ts" },
   { name: "capability-gaps", script: "test/capability-gap-smoke.ts" }
 ];
 

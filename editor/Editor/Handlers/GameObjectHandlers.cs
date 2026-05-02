@@ -134,7 +134,6 @@ internal static class GameObjectHandlers
 
 	public static BridgeResponse Destroy( BridgeRequest request )
 	{
-		using var scope = SceneEditorSession.Scope();
 		var session = HandlerUtil.RequireSession();
 		var go = HandlerUtil.RequireGameObject( session.Scene, request.Payload );
 		var id = go.Id.ToString();
@@ -149,25 +148,12 @@ internal static class GameObjectHandlers
 			throw new System.InvalidOperationException( $"Failed to describe GameObject before destroy: {ex.Message}", ex );
 		}
 
-		try
+		using ( session.UndoScope( "Agent Bridge: Destroy GameObject" ).WithGameObjectDestructions( go ).Push() )
 		{
-			EditorScene.Selection.Clear();
-			EditorScene.Selection.Add( go );
-			SceneEditorMenus.Delete();
-		}
-		catch ( System.Exception ex )
-		{
-			throw new System.InvalidOperationException( $"Failed to destroy GameObject through editor delete command: {ex.Message}", ex );
+			go.Destroy();
 		}
 
-		try
-		{
-			session.Scene.ProcessDeletes();
-		}
-		catch ( System.Exception ex )
-		{
-			throw new System.InvalidOperationException( $"Destroyed GameObject but failed to process scene deletes: {ex.Message}", ex );
-		}
+		session.Scene.ProcessDeletes();
 
 		return BridgeResponse.Success( request.Id, new
 		{

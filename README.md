@@ -137,7 +137,7 @@ Create one GameObject named Agent Bridge Test, verify that it exists, then undo 
 |---|---|
 | **Editor health** | `bridge.doctor`, project info, tab/session reads, stale play-tab warnings |
 | **Scene operations** | summarize hierarchy, search, inspect details, create/save/recover scenes |
-| **GameObjects** | create, rename, transform, enable/disable, duplicate, reparent, frame, destroy with cleanup fallbacks |
+| **GameObjects** | create, rename, transform, enable/disable, duplicate, reparent, frame, destroy with undo/redo read-back |
 | **Components** | list, inspect schemas, add/remove, enable/disable, dry-run validate, set properties |
 | **Assets/materials** | search assets, inspect models/materials, create/edit `.vmat`, assign models/materials, preview models |
 | **Prefabs** | create, list, inspect, instantiate with GUID remapping, inspect instance patch metadata |
@@ -178,12 +178,13 @@ npm run ci                # typecheck, unit tests, build
 npm run smoke:mvp-suite   # preferred external-tester live gate
 ```
 
-The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, script delete/compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
+The MVP suite creates its own saved scene and verifies the main bridge path: doctor, compile wait, scene recovery, object creation, model/material assignment, physics/sound/prefab read-back, runtime preview capture, scene metadata, spatial radius search, runtime component type discovery, undoable destruction, script delete/compile recovery, animation helper setup, particle setup, play/stop settle, and cleanup.
 
 Other focused smokes:
 
 ```powershell
 npm run smoke:bootstrap
+npm run smoke:matrix-core
 npm run smoke:assets
 npm run smoke:physics
 npm run smoke:prefabs
@@ -201,7 +202,7 @@ This is useful now, but still intentionally honest:
 
 - The editor bridge must be installed into each s&box project that should expose live access.
 - CI cannot currently run a real s&box editor, so editor behavior is verified by local smoke tests.
-- Local project component discovery is partial; exact-name `component.add` works for compiled local components in verified cases.
+- Component discovery combines editor-visible TypeLibrary entries with runtime assembly scanning; exact-name `component.add` remains the fallback for compiled local components.
 - `gameobject.duplicate` is shallow: name/enabled/transform/parent, not full child/component cloning.
 - `visual.capture_camera` captures camera output, not the full editor/game viewport overlay or generic UI panel hierarchy.
 - Semantic model orientation still needs stored overrides or human/vision confirmation; bounds alone cannot prove “upright.”

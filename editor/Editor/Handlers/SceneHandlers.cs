@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Editor;
 using Sandbox;
 
 namespace SboxAgentBridge.Editor;
@@ -25,7 +26,9 @@ internal static class SceneHandlers
 		"editor.feedback",
 		"scene.summary",
 		"scene.hierarchy",
+		"scene.metadata",
 		"scene.find",
+		"scene.find_in_radius",
 		"scene.details",
 		"gameobject.get",
 		"gameobject.create",
@@ -147,6 +150,93 @@ internal static class SceneHandlers
 				scene = session.Scene.Name,
 				count = results.Length,
 				results
+			}
+		} );
+	}
+
+	public static BridgeResponse FindInRadius( BridgeRequest request )
+	{
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
+		var center = HandlerUtil.GetVector3( request.Payload, "center" ) ?? throw new InvalidOperationException( "scene.find_in_radius requires a center vector." );
+		var radius = HandlerUtil.GetFloat( request.Payload, "radius", 0f );
+		var nameContains = HandlerUtil.GetString( request.Payload, "nameContains" );
+		var componentContains = HandlerUtil.GetString( request.Payload, "componentContains" );
+		var includeDisabled = HandlerUtil.GetBool( request.Payload, "includeDisabled", true );
+		var maxResults = HandlerUtil.GetInt( request.Payload, "maxResults", 50 );
+
+		if ( radius <= 0f )
+			throw new InvalidOperationException( "scene.find_in_radius radius must be greater than zero." );
+
+		var query = HandlerUtil.WalkSceneObjects( session.Scene );
+
+		if ( !includeDisabled )
+			query = query.Where( x => x.Enabled );
+
+		if ( !string.IsNullOrWhiteSpace( nameContains ) )
+			query = query.Where( x => x.Name.Contains( nameContains, StringComparison.OrdinalIgnoreCase ) );
+
+		if ( !string.IsNullOrWhiteSpace( componentContains ) )
+		{
+			query = query.Where( x => x.Components.GetAll().Any( c => c.GetType().Name.Contains( componentContains, StringComparison.OrdinalIgnoreCase ) ) );
+		}
+
+		var results = query
+			.Select( x => new
+			{
+				gameObject = x,
+				distance = Distance( center, x.WorldPosition )
+			} )
+			.Where( x => x.distance <= radius )
+			.OrderBy( x => x.distance )
+			.ThenBy( x => x.gameObject.Name )
+			.Take( maxResults )
+			.Select( x => new
+			{
+				distance = x.distance,
+				gameObject = HandlerUtil.DescribeGameObject( x.gameObject )
+			} )
+			.ToArray();
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Scene radius search complete",
+			verified = new
+			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				scene = session.Scene.Name,
+				center = HandlerUtil.ToJson( center ),
+				radius,
+				includeDisabled,
+				nameContains,
+				componentContains,
+				maxResults,
+				count = results.Length,
+				results
+			}
+		} );
+	}
+
+	public static BridgeResponse Metadata( BridgeRequest request )
+	{
+		var resolution = HandlerUtil.RequireSessionResolution( request.Payload );
+		var session = resolution.Session;
+		var sourcePath = Safe( () => session.Scene?.Source?.ResourcePath ?? "", "" );
+		JsonObject? sceneProperties = Safe<JsonObject?>( () => session.Scene.SerializeProperties(), null );
+		var metadata = sceneProperties is null ? EmptyMetadata() : ExtractMetadata( sceneProperties );
+		var sourceMetadata = ReadSourceMetadata( sourcePath );
+
+		return BridgeResponse.Success( request.Id, new
+		{
+			message = "Scene metadata read",
+			verified = new
+			{
+				targetSession = HandlerUtil.DescribeSessionResolution( resolution ),
+				scene = session.Scene.Name,
+				sourcePath,
+				scenePropertiesAvailable = sceneProperties is not null,
+				activeSceneMetadata = metadata,
+				sourceMetadata
 			}
 		} );
 	}
@@ -431,5 +521,93 @@ internal static class SceneHandlers
 				suggestion
 			}
 		};
+	}
+
+	private static float Distance( Vector3 a, Vector3 b )
+	{
+		var dx = a.x - b.x;
+		var dy = a.y - b.y;
+		var dz = a.z - b.z;
+		return MathF.Sqrt( dx * dx + dy * dy + dz * dz );
+	}
+
+	private static object ExtractMetadata( JsonObject sceneProperties )
+	{
+		if ( !sceneProperties.TryGetPropertyValue( "Metadata", out var metadataNode ) || metadataNode is not JsonObject metadata )
+			return EmptyMetadata();
+
+		var entries = metadata
+			.Select( x => new
+			{
+				key = x.Key,
+				valueJson = x.Value?.ToJsonString( JsonOptions ) ?? "null"
+			} )
+			.OrderBy( x => x.key )
+			.ToArray();
+
+		return new
+		{
+			count = entries.Length,
+			entries
+		};
+	}
+
+	private static object EmptyMetadata()
+	{
+		return new
+		{
+			count = 0,
+			entries = Array.Empty<object>()
+		};
+	}
+
+	private static object ReadSourceMetadata( string sourcePath )
+	{
+		if ( string.IsNullOrWhiteSpace( sourcePath ) )
+		{
+			return new
+			{
+				hasSource = false,
+				title = "",
+				description = "",
+				readError = ""
+			};
+		}
+
+		try
+		{
+			var asset = AssetSystem.FindByPath( sourcePath );
+			var sceneFile = ResourceLibrary.Get<SceneFile>( sourcePath ) ?? asset?.LoadResource<SceneFile>();
+
+			return new
+			{
+				hasSource = true,
+				title = sceneFile?.GetMetadata( "Title", "" ) ?? "",
+				description = sceneFile?.GetMetadata( "Description", "" ) ?? "",
+				readError = sceneFile is null ? "SceneFile resource could not be loaded." : ""
+			};
+		}
+		catch ( Exception ex )
+		{
+			return new
+			{
+				hasSource = true,
+				title = "",
+				description = "",
+				readError = ex.Message
+			};
+		}
+	}
+
+	private static T Safe<T>( Func<T> getter, T fallback )
+	{
+		try
+		{
+			return getter();
+		}
+		catch
+		{
+			return fallback;
+		}
 	}
 }

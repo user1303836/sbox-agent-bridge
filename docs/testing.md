@@ -55,7 +55,7 @@ cd mcp-server
 npm run smoke:mvp-suite
 ```
 
-This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
+This suite is the preferred external-tester gate. It first creates a saved scene through `smoke:bootstrap`, then runs the focused MVP, asset/material, physics, sound, prefab, matrix-core, and capability-gap smokes against that scene. It avoids assuming `scenes/minimal.scene` exists or is the intended test target.
 
 For a narrower single-smoke pass against an existing saved scene:
 
@@ -92,6 +92,15 @@ SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:capability-gaps
 ```
 
 This focused smoke creates, edits, compiles, deletes, and verifies removal of a scratch C# script using new compile sequence waits. It also creates a deliberately invalid scratch script to verify compile diagnostics, deletes it, waits for recovery to zero errors, then uses temporary scene objects to verify `SkinnedModelRenderer`, `CitizenAnimationHelper`, `ParticleEffect`, `ParticleConeEmitter`, `ParticleSpriteRenderer`, and `ParticleLightRenderer` add/configure/read-back flows.
+
+For core matrix verification:
+
+```bash
+cd mcp-server
+SBOX_AGENT_BRIDGE_DISCARD_UNSAVED=1 npm run smoke:matrix-core
+```
+
+This focused smoke recovers the saved MVP suite scene, verifies `scene.metadata` source metadata, verifies `scene.find_in_radius` with near/far temporary objects, verifies `component.list_types` can discover `AgentBridgeMutationFixture` through runtime assembly scanning, and verifies `gameobject.destroy` with undo/redo read-back.
 
 For runtime feedback and ARPG testbed verification:
 
@@ -147,6 +156,7 @@ Useful environment variables:
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_MARKER`: marker GameObject name used by `smoke:bootstrap`.
 - `SBOX_AGENT_BRIDGE_BOOTSTRAP_RESTORE=0`: leave the bootstrap scene active instead of restoring the previously active sourced scene.
 - `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE`: scene path created and reused by `smoke:mvp-suite`; defaults to `scenes/agent_bridge/smoke/mvp_suite.scene`.
+- `SBOX_AGENT_BRIDGE_MATRIX_CORE_SCENE`: scene path used by `smoke:matrix-core`; defaults to `SBOX_AGENT_BRIDGE_MVP_SUITE_SCENE` or `scenes/agent_bridge/smoke/mvp_suite.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_SCENE`: scene path used by the boxing clean-room walkthrough; defaults to `SBOX_AGENT_BRIDGE_RUNTIME_SCENE` or `scenes/minimal.scene`.
 - `SBOX_AGENT_BRIDGE_BOXING_CONTROLLER_NAME`: override the scene object name used by the boxing walkthrough.
 - `SBOX_AGENT_BRIDGE_SMOKE_PREFIX`: override temporary object name prefix.

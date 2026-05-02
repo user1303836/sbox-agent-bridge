@@ -54,11 +54,11 @@ Status meanings:
 |---|---|---|---|---|
 | Scene summary | `scene.summary` | `scene` / `summary` | Verified | Returns object/component counts from the resolved session; `targetSession: runtime` was live verified against the ARPG GameSession with 219 objects. |
 | Scene hierarchy | `scene.hierarchy` | `scene` / `hierarchy` | Verified | Live IPC read-back verified the ARPG fixture yard hierarchy after scene mutations; now supports target-session selection. |
-| Scene metadata | TBD | TBD | Planned | Official docs include scene metadata; bridge reads active scene identity/path/state, but does not inspect or edit scene metadata resources. |
+| Scene metadata | `scene.metadata` | `scene` / `metadata` | Verified | Reads active scene source path, active scene metadata entries, and source-file title/description metadata. Live `smoke:matrix-core` verified `scenes/agent_bridge/smoke/mvp_suite.scene` source metadata read-back. |
 | Find GameObjects | `scene.find` | `scene` / `find` | Verified | Verified by finding created objects and runtime-only ARPG components with `targetSession: runtime`. |
 | Object details | `scene.details` | `scene` / `details` | Verified | Includes id, parent, enabled/active state, transforms, components, child count; supports target-session selection. |
 | Batch operations | `scene.batch` | `scene` / `batch` | Verified | Runs bounded action lists with per-operation result capture and `$ref` alias substitution. Live IPC verified object create/reparent/duplicate/rename/enable/selection/focus plus asset assignment, sound assignment, physics/collider/joint, material-property, and raycast actions. |
-| Find in radius | `scene.find_in_radius` | TBD | Planned | Useful for spatial workflows. |
+| Find in radius | `scene.find_in_radius` | `scene` / `find_in_radius` | Verified | Spatial GameObject query with center/radius, name/component filters, max results, and distance-sorted read-back. Live `smoke:matrix-core` verified a near object was returned and a far object was excluded. |
 
 ## GameObjects
 
@@ -66,7 +66,7 @@ Status meanings:
 |---|---|---|---|---|
 | Read GameObject | `gameobject.get` | `gameobject` / `get` | Verified | Id-targeted read returning the same detail shape as `scene.details`; supports target-session selection for runtime reads. |
 | Create GameObject | `gameobject.create` | `gameobject` / `create` | Verified | Uses `SceneEditorSession.Active.Scene.CreateObject(true)` and verifies via read-back; optional `parentId` was verified through `scene.batch`. |
-| Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Partial | Reverified through focused category smokes and `smoke:mvp`; cleanup scripts fall back to disabling objects if the native editor delete/undo path fails in a stale session. |
+| Destroy GameObject | `gameobject.destroy` | `gameobject` / `destroy` | Verified | Uses a direct undo-scoped editor destruction path, processes deletes, and verifies the target is gone. Live `smoke:matrix-core` verified destroy, `editor.undo` restore, and `editor.redo` destroy again. |
 | Rename GameObject | `gameobject.rename` | `gameobject` / `rename` | Verified | Id-targeted, undo scoped, unique-name default verified by read-back. |
 | Set transform | `gameobject.set_transform` | `gameobject` / `set_transform` | Verified | World position, Euler/quaternion rotation input, and world scale; verified by read-back. |
 | Enable/disable | `gameobject.set_enabled` | `gameobject` / `set_enabled` | Verified | Verified false and true read-back on a live object. |
@@ -78,7 +78,7 @@ Status meanings:
 
 | Capability | Bridge Action | MCP Tool | Status | Notes |
 |---|---|---|---|---|
-| List component types | `component.list_types` | `component` / `list_types` | Partial | Uses `Game.TypeLibrary.GetTypes(typeof(Component))`; live smoke returned built-in/editor-visible types. Local game components such as `AgentBridgeArpgFixture` are not enumerated even after instances exist. |
+| List component types | `component.list_types` | `component` / `list_types` | Verified | Combines `Game.TypeLibrary.GetTypes(typeof(Component))` with runtime assembly scanning for compiled local component classes. Live `smoke:matrix-core` verified `AgentBridgeMutationFixture` appears through runtime assembly discovery. |
 | List GameObject components | `component.list_on_gameobject` | `component` / `list_on_gameobject` | Verified | Id-targeted GameObject component list; supports target-session selection for runtime components. |
 | Read component | `component.get` | `component` / `get` | Verified | Id-targeted component read with owning GameObject context; supports target-session selection. |
 | Get properties | `component.get_properties` | `component` / `get_properties` | Verified | Read-only metadata/value inspection; defaults to `[Property]` inspector properties and includes schema hints, attributes, enum values, and reference targets for settable JSON shapes; supports runtime target sessions. |
@@ -122,7 +122,7 @@ Status meanings:
 | Inspect physics components | `physics.inspect` | `physics` / `inspect` | Verified | Reads Rigidbody, Collider, and Joint summaries from a GameObject, including rigidbody flags/mass, collider shape dimensions, trigger/static flags, joint collision state, and target read-back. Live physics smoke verified all fields. |
 | Add collider | `physics.add_collider` | `physics` / `add_collider` | Verified | Added box colliders to ARPG fixture props and raycasted against them. Live physics smoke verified box scale/center/static/trigger read-back through `physics.inspect`. |
 | Add physics body | `physics.add_physics` | `physics` / `add_physics` | Verified | Added static/non-motion rigidbodies to fixture props. Live physics smoke verified gravity, motion, and mass override read-back. |
-| Add joint | `physics.add_joint` | `physics` / `add_joint` | Partial | Creates joint components and `physics.inspect` verifies joint collision read-back. Target assignment is still blocked in v0 because `Joint.Object2` is read-only through the verified API. |
+| Add joint | `physics.add_joint` | `physics` / `add_joint` | Verified | Creates joint components, sets collision state, assigns the linked body when supplied, and reports body/target read-back through `physics.inspect`. Live physics smoke verified a `FixedJoint` linked to the temporary anchor object. |
 | Raycast | `physics.raycast` | `physics` / `raycast` | Verified | Live IPC raycast hit the Blood Shrine fixture through its collider; live physics smoke also verified a temporary box collider hit and collider read-back. |
 | Scene physics events | TBD | TBD | Planned | Official docs include `IScenePhysicsEvents`; bridge has no helper to inspect, register, or verify physics event callbacks. |
 | Create prefab | `prefab.create` | `prefab` / `create` | Verified | Serialized a live GameObject to `prefabs/agent_bridge/arpg_loot_chest_fixture.prefab`; list/get-info verified the resource. |
@@ -255,12 +255,13 @@ Status meanings:
 | JSON/sbproj validation | Verified | GitHub Actions workflow added; workflow-equivalent local Python validation passed for `.json` and `.sbproj` files under `schemas`, `editor`, and `mcp-server`. |
 | Runtime feedback smoke script | Verified | `mcp-server/test/runtime-feedback-smoke.ts` verifies `wait_compile`, `wait_stopped`, `wait_runtime`, runtime test-action listing/invocation, ARPG logical UI state, inventory open, damage, and restore. |
 | MVP smoke script | Verified | `mcp-server/test/mvp-smoke.ts` verifies doctor, compile wait, scene recovery, scene read, object creation, model/material assignment, physics inspection, sound inspection, prefab inspection, runtime preview capture, play/stop settle, and cleanup without ARPG-specific test actions. |
-| MVP suite script | Verified | `mcp-server/test/mvp-suite.ts` creates `scenes/agent_bridge/smoke/mvp_suite.scene` through the bootstrap smoke, then runs MVP, asset/material, physics, sound, prefab, and capability-gap smokes against that scene. It passed locally without relying on `scenes/minimal.scene`, including against a generated fresh Minimal Game project launched with isolated IPC. |
+| MVP suite script | Verified | `mcp-server/test/mvp-suite.ts` creates `scenes/agent_bridge/smoke/mvp_suite.scene` through the bootstrap smoke, then runs MVP, asset/material, physics, sound, prefab, matrix-core, and capability-gap smokes against that scene. It passed locally without relying on `scenes/minimal.scene`, including against a generated fresh Minimal Game project launched with isolated IPC. |
+| Matrix core smoke script | Verified | `mcp-server/test/matrix-core-smoke.ts` verifies scene metadata, spatial radius search, runtime assembly component discovery, and undoable GameObject destruction against the saved MVP suite scene. |
 | Boxing clean-room walkthrough | Verified | `mcp-server/test/boxing-poc-walkthrough.ts` installs a boxing controller through `script.create`, adds/configures the local component by exact type name, verifies jab/block/dodge/knockdown/TKO/decision runtime actions, captures the generated broadcast camera by GameObject id, and reports project/scene bootstrap, script-editing, input, and camera-targeting gaps. |
 | Capability gap smoke script | Verified | `mcp-server/test/capability-gap-smoke.ts` verifies scratch script create/edit/delete with new compile sequence waits, controlled compile-error diagnostics and recovery, animation helper component setup, and basic particle stack component/property mutation. |
 | Asset/material smoke script | Verified | `mcp-server/test/asset-material-smoke.ts` verifies material creation, material source inspection/mutation, runtime-targeted model preview capture, and wait-helper cleanup. |
 | Prefab instance smoke script | Verified | `mcp-server/test/prefab-instance-smoke.ts` verifies prefab creation, source binding, prefab info reload, GUID-remapped instantiation, instance id maps, and transform override patch samples. |
-| Physics smoke script | Verified | `mcp-server/test/physics-smoke.ts` verifies physics body creation/read-back, box collider creation/read-back, joint creation/read-back, and a raycast hit against the temporary collider. |
+| Physics smoke script | Verified | `mcp-server/test/physics-smoke.ts` verifies physics body creation/read-back, box collider creation/read-back, joint creation/read-back including linked body/target metadata, and a raycast hit against the temporary collider. |
 | Sound smoke script | Verified | `mcp-server/test/sound-smoke.ts` verifies sound event creation/info, SoundPointComponent assignment/read-back, and a valid playing sound preview handle. |
 | Live editor smoke script | Partial | Broad regression smoke for older scene-editing workflows. Prefer `smoke:mvp` for external testers; fixture-backed component mutation is skipped unless `AgentBridgeMutationFixture` is visible. |
 | Automated s&box editor tests | Blocked | Requires a reliable way to run/control s&box editor in CI. |

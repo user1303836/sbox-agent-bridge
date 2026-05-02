@@ -110,6 +110,9 @@ internal static class PhysicsHandlers
 				_ => throw new InvalidOperationException( "Joint type must be one of: fixed, hinge, spring, ball, slider." )
 			};
 
+			if ( target is not null )
+				joint.Body = target;
+
 			joint.EnableCollision = HandlerUtil.GetBool( request.Payload, "enableCollision", joint.EnableCollision );
 		}
 
@@ -121,7 +124,7 @@ internal static class PhysicsHandlers
 				gameObject = HandlerUtil.DescribeGameObject( go ),
 				target = target is null ? null : HandlerUtil.DescribeGameObject( target ),
 				component = HandlerUtil.DescribeComponent( joint ),
-				notes = target is null ? "" : "Joint target read-back is exposed, but direct target assignment is not wired in v0 because Joint.Object2 is read-only in the editor API."
+				joint = DescribeJoint( joint )
 			}
 		} );
 	}
@@ -239,12 +242,16 @@ internal static class PhysicsHandlers
 
 	private static object DescribeJoint( Joint joint )
 	{
+		var anchorBody = Safe( () => joint.AnchorBody, null );
+		var body = Safe( () => joint.Body, null );
 		var target = Safe( () => joint.Object2, null );
 
 		return new
 		{
 			component = HandlerUtil.DescribeComponent( joint ),
 			enableCollision = joint.EnableCollision,
+			anchorBody = anchorBody is null ? null : HandlerUtil.DescribeGameObject( anchorBody ),
+			body = body is null ? null : HandlerUtil.DescribeGameObject( body ),
 			target = target is null ? null : HandlerUtil.DescribeGameObject( target )
 		};
 	}

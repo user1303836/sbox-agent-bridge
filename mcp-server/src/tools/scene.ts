@@ -8,7 +8,7 @@ export function registerSceneTools(server: McpServer, bridge: BridgeClient): voi
     "scene",
     "Read scene state and run small verified batches against the active s&box editor scene.",
     {
-      action: z.enum(["summary", "hierarchy", "find", "details", "batch"]).describe("The scene action to run."),
+      action: z.enum(["summary", "hierarchy", "metadata", "find", "find_in_radius", "details", "batch"]).describe("The scene action to run."),
       id: z.string().optional().describe("GameObject id for details."),
       targetSession: z
         .enum(["active", "editor", "playing", "runtime", "game"])
@@ -19,6 +19,15 @@ export function registerSceneTools(server: McpServer, bridge: BridgeClient): voi
       sessionPath: z.string().optional().describe("Optional scene source path selector."),
       sessionScene: z.string().optional().describe("Optional scene name selector."),
       includeDisabled: z.boolean().optional().describe("Include disabled GameObjects where applicable."),
+      center: z
+        .object({
+          x: z.number(),
+          y: z.number(),
+          z: z.number()
+        })
+        .optional()
+        .describe("Center point for scene.find_in_radius."),
+      radius: z.number().positive().optional().describe("Radius for scene.find_in_radius."),
       maxDepth: z.number().int().min(0).max(32).optional().describe("Maximum hierarchy depth."),
       maxNodes: z.number().int().min(1).max(1000).optional().describe("Maximum hierarchy nodes."),
       maxResults: z.number().int().min(1).max(500).optional().describe("Maximum search results."),

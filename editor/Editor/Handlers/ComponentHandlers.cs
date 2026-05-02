@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -14,6 +15,7 @@ internal static class ComponentHandlers
 	{
 		var query = HandlerUtil.GetString( request.Payload, "query" );
 		var includeAbstract = HandlerUtil.GetBool( request.Payload, "includeAbstract", false );
+		var includeRuntimeAssemblies = HandlerUtil.GetBool( request.Payload, "includeRuntimeAssemblies", true );
 		var maxResults = HandlerUtil.GetInt( request.Payload, "maxResults", 100 );
 
 		var types = Game.TypeLibrary.GetTypes( typeof( Component ) )
@@ -31,15 +33,35 @@ internal static class ComponentHandlers
 			);
 		}
 
-		var ordered = types
+		var orderedTypeLibraryTypes = types
 			.OrderBy( x => x.Group )
 			.ThenBy( x => x.Title )
 			.ThenBy( x => x.Name )
 			.ToArray();
 
-		var results = ordered
+		var knownFullNames = new HashSet<string>(
+			orderedTypeLibraryTypes.Select( x => x.FullName ).Where( x => !string.IsNullOrWhiteSpace( x ) ),
+			StringComparer.OrdinalIgnoreCase
+		);
+
+		var runtimeTypes = includeRuntimeAssemblies
+			? EnumerateRuntimeComponentTypes()
+				.Where( x => includeAbstract || !x.IsAbstract )
+				.Where( x => !x.IsGenericType )
+				.Where( x => !knownFullNames.Contains( x.FullName ?? "" ) )
+				.Where( x => string.IsNullOrWhiteSpace( query ) || Contains( x.Name, query ) || Contains( x.FullName, query ) )
+				.OrderBy( x => x.Namespace )
+				.ThenBy( x => x.Name )
+				.ToArray()
+			: Array.Empty<Type>();
+
+		var allResults = orderedTypeLibraryTypes
+			.Select( x => DescribeComponentType( x, "typeLibrary" ) )
+			.Concat( runtimeTypes.Select( x => DescribeRuntimeComponentType( x, "runtimeAssembly" ) ) )
+			.ToArray();
+
+		var results = allResults
 			.Take( maxResults )
-			.Select( HandlerUtil.DescribeComponentType )
 			.ToArray();
 
 		return BridgeResponse.Success( request.Id, new
@@ -49,12 +71,80 @@ internal static class ComponentHandlers
 			{
 				query,
 				includeAbstract,
+				includeRuntimeAssemblies,
 				maxResults,
-				total = ordered.Length,
+				typeLibraryTotal = orderedTypeLibraryTypes.Length,
+				runtimeAssemblyTotal = runtimeTypes.Length,
+				total = allResults.Length,
 				count = results.Length,
 				results
 			}
 		} );
+	}
+
+	private static object DescribeComponentType( TypeDescription type, string source )
+	{
+		return new
+		{
+			source,
+			name = type.Name,
+			fullName = type.FullName,
+			title = type.Title,
+			description = type.Description,
+			group = type.Group,
+			icon = type.Icon,
+			isAbstract = type.IsAbstract,
+			isGenericType = type.IsGenericType,
+			propertyCount = type.Properties.Count( HandlerUtil.IsReadableProperty ),
+			inspectorPropertyCount = type.Properties.Count( x => HandlerUtil.IsReadableProperty( x ) && HandlerUtil.IsInspectorProperty( x ) )
+		};
+	}
+
+	private static object DescribeRuntimeComponentType( Type type, string source )
+	{
+		var description = Game.TypeLibrary.GetType( type );
+
+		return new
+		{
+			source,
+			name = type.Name,
+			fullName = type.FullName ?? type.Name,
+			title = description?.Title ?? type.Name,
+			description = description?.Description ?? "",
+			group = description?.Group ?? "",
+			icon = description?.Icon ?? "",
+			isAbstract = type.IsAbstract,
+			isGenericType = type.IsGenericType,
+			propertyCount = description?.Properties.Count( HandlerUtil.IsReadableProperty ) ?? 0,
+			inspectorPropertyCount = description?.Properties.Count( x => HandlerUtil.IsReadableProperty( x ) && HandlerUtil.IsInspectorProperty( x ) ) ?? 0
+		};
+	}
+
+	private static IEnumerable<Type> EnumerateRuntimeComponentTypes()
+	{
+		foreach ( var assembly in AppDomain.CurrentDomain.GetAssemblies() )
+		{
+			Type[] types;
+
+			try
+			{
+				types = assembly.GetTypes();
+			}
+			catch ( ReflectionTypeLoadException ex )
+			{
+				types = ex.Types.Where( x => x is not null ).Cast<Type>().ToArray();
+			}
+			catch
+			{
+				continue;
+			}
+
+			foreach ( var type in types )
+			{
+				if ( typeof( Component ).IsAssignableFrom( type ) )
+					yield return type;
+			}
+		}
 	}
 
 	public static BridgeResponse ListOnGameObject( BridgeRequest request )
