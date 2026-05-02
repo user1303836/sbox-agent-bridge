@@ -57,7 +57,7 @@ The current bridge uses file IPC:
 - Editor bridge writes `responses/response-{id}.json`.
 - MCP server polls until timeout.
 
-The default IPC root is `%TEMP%/sbox-agent-bridge`. Set `SBOX_AGENT_BRIDGE_IPC` for both the s&box editor process and the MCP server when a fresh-project or multi-editor walkthrough needs an isolated bridge instance.
+The default IPC root is `%TEMP%/sbox-agent-bridge`. Set `SBOX_AGENT_BRIDGE_IPC` for both the s&box editor process and the MCP server when a fresh-project or multi-editor walkthrough needs an isolated bridge instance. `scripts/start-sbox-project.ps1 -IpcRoot ...` launches s&box with that environment value already set.
 
 HTTP/SSE can be added later behind the same `BridgeClient` interface.
 

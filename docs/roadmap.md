@@ -46,15 +46,16 @@ Acceptance criteria:
 
 Goal: make the bridge installable and diagnosable by testers who did not build the ARPG testbed.
 
-Status: MVP candidate. Verified locally: fresh Minimal Game project creation script, install script, `bridge.doctor`, `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, `editor.recover_scene`, `npm run smoke:bootstrap`, `npm run smoke:mvp`, `npm run smoke:mvp-suite`, and `npm run walkthrough:boxing`.
+Status: MVP candidate. Verified locally: fresh Minimal Game project creation script, install script, project launch script with isolated IPC, `bridge.doctor`, `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, `editor.recover_scene`, `npm run smoke:bootstrap`, `npm run smoke:mvp`, `npm run smoke:mvp-suite`, and `npm run walkthrough:boxing`.
 
 Acceptance criteria:
 
 - A tester can install the editor bridge with one PowerShell script.
 - A tester can run a readiness check before mutating the scene.
 - A tester can create a fresh Minimal Game project from the local s&box template.
+- A tester can launch that project with an isolated bridge IPC root when another editor is already open.
 - The MVP smoke covers the main safe workflow without relying on ARPG-specific runtime components.
-- A bootstrap smoke can create, save, reload, and verify a new scene inside a human-opened project.
+- A bootstrap smoke can create, save, reload, and verify a new scene inside an opened or launched project.
 - A suite-level smoke can run bootstrap plus focused asset/material, sound, physics, prefab, script/compile, animation, and particle checks against a suite-created scene.
 - A clean-room gameplay walkthrough can build and verify a second genre without relying on the ARPG controller.
 - Docs point testers to one quickstart instead of several overlapping engineering notes.
@@ -224,7 +225,7 @@ Acceptance criteria:
 
 Remaining gaps:
 
-- Project open/switch automation. Fresh project files can be created by script and scene bootstrap is covered by `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, and `smoke:bootstrap`, but the tester still needs to open the project in s&box because no reliable editor project-switch action has been verified.
+- In-editor project switch automation. Fresh project files can be created by script and launched as a separate editor process with `scripts/start-sbox-project.ps1`, and scene bootstrap is covered by `editor.project_info`, `editor.new_scene`, `editor.save_scene_as`, and `smoke:bootstrap`. No bridge action switches the current editor process to a different project yet.
 - Structured source edits. `script.create` and `script.edit` replace whole files; large gameplay scripts would be safer with patch/source-aware edit helpers.
 - Structured live log-event capture, if a stable editor-library hook is verified.
 - Generic runtime/game-session inspection beyond scene/component reads and component-authored self-report.

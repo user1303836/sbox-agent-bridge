@@ -33,5 +33,5 @@ Get-ChildItem -LiteralPath $sourcePath -Force | Copy-Item -Destination $targetPa
   projectPath = $projectFullPath
   sourcePath = $sourcePath
   installedPath = $targetPath
-  nextStep = 'Open the project in s&box, wait for compile, then run bridge.doctor or npm run smoke:mvp-suite from mcp-server.'
+  nextStep = 'Launch the project with scripts/start-sbox-project.ps1 or open it in s&box, wait for compile, then run bridge.doctor or npm run smoke:mvp-suite from mcp-server.'
 } | ConvertTo-Json -Depth 8

@@ -89,5 +89,5 @@ Get-ChildItem -LiteralPath $projectFullPath -Recurse -File | Where-Object {
   ident = $Ident
   org = $Org
   templatePath = $templateFullPath
-  nextStep = 'Install the bridge, open the .sbproj in s&box, wait for compile, then run npm run smoke:mvp-suite from mcp-server.'
+  nextStep = 'Install the bridge, launch the .sbproj with scripts/start-sbox-project.ps1 or open it in s&box, then run npm run smoke:mvp-suite from mcp-server.'
 } | ConvertTo-Json -Depth 8

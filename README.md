@@ -83,13 +83,27 @@ Copy this repo's `editor/` folder into your s&box project as `Libraries/sbox_age
 For a fresh-project walkthrough, create a Minimal Game project from the local s&box template first:
 
 ```powershell
-.\scripts\create-minimal-sbox-project.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' -Title 'Agent Bridge MVP Fresh'
+.\scripts\create-minimal-sbox-project.ps1 `
+  -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' `
+  -Title 'Agent Bridge MVP Fresh' `
+  -Ident 'agent_bridge_mvp_fresh'
 ```
 
 From the repo root:
 
 ```powershell
-.\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\YourProject'
+.\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh'
+```
+
+To launch a project from the command line, use the verified s&box startup shape:
+
+```powershell
+$env:SBOX_AGENT_BRIDGE_IPC = "$env:TEMP\sbox-agent-bridge-mvp-fresh"
+.\scripts\start-sbox-project.ps1 `
+  -ProjectFile 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh\agent_bridge_mvp_fresh.sbproj' `
+  -IpcRoot $env:SBOX_AGENT_BRIDGE_IPC `
+  -ClearIpc `
+  -WaitForBridgeSeconds 90
 ```
 
 Or copy manually:
@@ -118,7 +132,7 @@ YourProject/
           ...
 ```
 
-Open the project in s&box and let it compile. The bridge starts automatically once the editor bridge assembly loads. To view status and controls, open:
+Open or launch the project in s&box and let it compile. The bridge starts automatically once the editor bridge assembly loads. To view status and controls, open:
 
 ```text
 View -> Agent Bridge
@@ -157,7 +171,7 @@ Optional custom IPC folder:
 }
 ```
 
-Set the same `SBOX_AGENT_BRIDGE_IPC` value in the environment before launching the s&box editor when you need an isolated bridge instance, such as a fresh-project walkthrough while another editor is already open.
+Set the same `SBOX_AGENT_BRIDGE_IPC` value in the environment before launching the s&box editor when you need an isolated bridge instance, such as a fresh-project walkthrough while another editor is already open. `scripts/start-sbox-project.ps1 -IpcRoot ...` sets that value for the launched editor process.
 
 ### 4. Try It
 
@@ -351,6 +365,9 @@ npm run ci
 
 Useful scripts:
 
+- `scripts/create-minimal-sbox-project.ps1`: create a fresh Minimal Game project from the local s&box template.
+- `scripts/install-editor-bridge.ps1`: install the editor bridge library into a project.
+- `scripts/start-sbox-project.ps1`: launch a `.sbproj` with optional isolated bridge IPC.
 - `npm run dev`: run the MCP server from TypeScript.
 - `npm run check`: TypeScript typecheck without emitting files.
 - `npm test`: run bridge-client and wait-helper unit tests.

@@ -16,19 +16,33 @@ For a true fresh-project walkthrough, instantiate a Minimal Game project from th
 
 ```powershell
 cd C:\path\to\sbox-agent-bridge
-.\scripts\create-minimal-sbox-project.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' -Title 'Agent Bridge MVP Fresh'
+.\scripts\create-minimal-sbox-project.ps1 `
+  -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' `
+  -Title 'Agent Bridge MVP Fresh' `
+  -Ident 'agent_bridge_mvp_fresh'
 ```
 
-You can also use an existing project. The bridge currently cannot switch the open s&box project for you, so the project must still be opened in s&box by the tester.
+You can also use an existing project. There is no in-editor bridge action for switching projects, but `scripts/start-sbox-project.ps1` can launch a chosen `.sbproj` with an optional isolated IPC root.
 
 ## 3. Install The Editor Bridge
 
 ```powershell
 cd C:\path\to\sbox-agent-bridge
-.\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\YourProject'
+.\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh'
 ```
 
-Open the project in s&box and wait for compile. The bridge starts automatically after the editor library loads. The status dock is under:
+Launch the project through the helper script, or open it normally in s&box:
+
+```powershell
+$env:SBOX_AGENT_BRIDGE_IPC = "$env:TEMP\sbox-agent-bridge-mvp-fresh"
+.\scripts\start-sbox-project.ps1 `
+  -ProjectFile 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh\agent_bridge_mvp_fresh.sbproj' `
+  -IpcRoot $env:SBOX_AGENT_BRIDGE_IPC `
+  -ClearIpc `
+  -WaitForBridgeSeconds 90
+```
+
+Wait for compile. The bridge starts automatically after the editor library loads. The status dock is under:
 
 ```text
 View -> Agent Bridge

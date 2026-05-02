@@ -173,14 +173,29 @@ Useful environment variables:
 
 Use these when bridge code changes.
 
-To create a fresh Minimal Game project from the local s&box template before opening it in the editor:
+To create a fresh Minimal Game project from the local s&box template before launching or opening it in the editor:
 
 ```powershell
-.\scripts\create-minimal-sbox-project.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' -Title 'Agent Bridge MVP Fresh'
+.\scripts\create-minimal-sbox-project.ps1 `
+  -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh' `
+  -Title 'Agent Bridge MVP Fresh' `
+  -Ident 'agent_bridge_mvp_fresh'
 .\scripts\install-editor-bridge.ps1 -ProjectPath 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh'
 ```
 
-Open the generated `.sbproj` in s&box, wait for compile, then run `npm run smoke:mvp-suite`.
+Launch the generated `.sbproj` with the same IPC root the MCP server will use, wait for compile, then run `npm run smoke:mvp-suite`:
+
+```powershell
+$env:SBOX_AGENT_BRIDGE_IPC = "$env:TEMP\sbox-agent-bridge-mvp-fresh"
+.\scripts\start-sbox-project.ps1 `
+  -ProjectFile 'C:\Users\you\Documents\s&box projects\AgentBridgeMvpFresh\agent_bridge_mvp_fresh.sbproj' `
+  -IpcRoot $env:SBOX_AGENT_BRIDGE_IPC `
+  -ClearIpc `
+  -WaitForBridgeSeconds 90
+
+cd .\mcp-server
+npm run smoke:mvp-suite
+```
 
 1. Copy `editor/` into a test project:
 
