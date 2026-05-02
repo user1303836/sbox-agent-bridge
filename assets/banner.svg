@@ -43,10 +43,17 @@
   <path d="M680 220C742 120 820 120 884 220C948 320 1030 320 1180 150" stroke="url(#bridge)" stroke-width="20" stroke-linecap="round" filter="url(#glow)"/>
   <path d="M680 220C742 120 820 120 884 220C948 320 1030 320 1180 150" stroke="white" stroke-opacity="0.34" stroke-width="3" stroke-linecap="round"/>
 
-  <circle cx="692" cy="220" r="46" fill="#101827" stroke="#7CFFB2" stroke-width="8"/>
-  <circle cx="692" cy="220" r="13" fill="#7CFFB2"/>
-  <path d="M662 164L692 112L722 164" stroke="#7CFFB2" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M692 112V184" stroke="#7CFFB2" stroke-width="10" stroke-linecap="round"/>
+  <g filter="url(#glow)">
+    <rect x="644" y="172" width="96" height="96" rx="28" fill="#101827" stroke="#7CFFB2" stroke-width="7"/>
+    <path d="M670 220H714" stroke="#7CFFB2" stroke-width="8" stroke-linecap="round"/>
+    <path d="M692 198V242" stroke="#7AA7FF" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="692" cy="220" r="12" fill="#F7F8FF"/>
+    <circle cx="664" cy="192" r="7" fill="#7CFFB2"/>
+    <circle cx="720" cy="192" r="7" fill="#B98CFF"/>
+    <circle cx="664" cy="248" r="7" fill="#7AA7FF"/>
+    <circle cx="720" cy="248" r="7" fill="#7CFFB2"/>
+    <path d="M664 192L692 220L720 192M664 248L692 220L720 248" stroke="white" stroke-opacity="0.26" stroke-width="3" stroke-linecap="round"/>
+  </g>
 
   <path d="M1060 104L1162 160V274L1060 330L958 274V160L1060 104Z" fill="#111827" stroke="#E9F1FF" stroke-opacity="0.22" stroke-width="3"/>
   <path d="M1060 104L1162 160L1060 216L958 160L1060 104Z" fill="#CAD8FF"/>
